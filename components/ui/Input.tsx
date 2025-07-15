@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, TextInputProps, ViewStyle } from 'react-native';
 import { TouchableOpacity } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
-import { Colors, Typography, Spacing, BorderRadius, Dimensions, Shadows } from '../../constants/Design';
+import { Colors, Typography, Spacing, BorderRadius, ComponentDimensions, Shadows } from '../../constants/Design';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     borderRadius: BorderRadius.default,
-    paddingHorizontal: Dimensions.inputPadding,
+    paddingHorizontal: ComponentDimensions.input.padding,
     fontFamily: Typography.fontFamily.primary,
     fontSize: Typography.sizes.base.fontSize,
     color: Colors.white,
@@ -134,13 +134,13 @@ const styles = StyleSheet.create({
   default: {
     backgroundColor: Colors.backgroundTertiary,
     borderColor: Colors.borderDefault,
-    minHeight: Dimensions.inputHeight,
+    minHeight: ComponentDimensions.input.height,
   },
 
   filled: {
     backgroundColor: Colors.neutral800,
     borderColor: Colors.borderLight,
-    minHeight: Dimensions.inputHeight,
+    minHeight: ComponentDimensions.input.height,
   },
 
   sm: {
@@ -150,8 +150,8 @@ const styles = StyleSheet.create({
   },
 
   md: {
-    minHeight: Dimensions.inputHeight,
-    paddingHorizontal: Dimensions.inputPadding,
+    minHeight: ComponentDimensions.input.height,
+    paddingHorizontal: ComponentDimensions.input.padding,
     fontSize: Typography.sizes.base.fontSize,
   },
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, BorderRadius, Shadows, Dimensions } from '../../constants/Design';
+import { Colors, BorderRadius, Shadows, ComponentDimensions } from '../../constants/Design';
 
 interface CardProps {
   children: React.ReactNode;
@@ -15,7 +15,7 @@ interface CardProps {
 export function Card({
   children,
   style,
-  padding = Dimensions.cardPadding,
+  padding = ComponentDimensions.card.padding,
   variant = 'default',
   pressable = false,
   onPress
@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.medium,
     borderWidth: 1,
     borderColor: Colors.borderDefault,
-    minHeight: Dimensions.cardMinHeight,
+    minHeight: ComponentDimensions.card.minHeight,
   },
 
   default: {

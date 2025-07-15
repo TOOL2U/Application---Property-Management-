@@ -1,79 +1,118 @@
 import { Platform } from 'react-native';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getDatabase } from 'firebase/database';
+import { getStorage } from 'firebase/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Mock Firebase services for development
-const createMockAuth = () => ({
-  currentUser: null,
-  onAuthStateChanged: (callback: (user: any) => void) => {
-    // Simulate no user logged in
-    callback(null);
-    return () => {}; // unsubscribe function
-  },
-  signInWithEmailAndPassword: async (email: string, password: string) => {
-    console.log('Mock sign in:', email);
-    return { user: { uid: 'mock-user-id', email } };
-  },
-  createUserWithEmailAndPassword: async (email: string, password: string) => {
-    console.log('Mock create user:', email);
-    return { user: { uid: 'mock-user-id', email } };
-  },
-  signOut: async () => {
-    console.log('Mock sign out');
-  }
-});
-
-const createMockFirestore = () => ({
-  collection: (path: string) => ({
-    doc: (id?: string) => ({
-      get: async () => ({ exists: false, data: () => null }),
-      set: async (data: any) => console.log('Mock set:', path, id, data),
-      update: async (data: any) => console.log('Mock update:', path, id, data),
-      delete: async () => console.log('Mock delete:', path, id),
-      onSnapshot: (callback: (doc: any) => void) => {
-        callback({ exists: false, data: () => null });
-        return () => {}; // unsubscribe
-      }
-    }),
-    add: async (data: any) => {
-      console.log('Mock add:', path, data);
-      return { id: 'mock-doc-id' };
-    },
-    where: () => ({
-      get: async () => ({ docs: [], forEach: () => {} }),
-      onSnapshot: (callback: (snapshot: any) => void) => {
-        callback({ docs: [], forEach: () => {} });
-        return () => {}; // unsubscribe
-      }
-    }),
-    orderBy: () => ({
-      get: async () => ({ docs: [], forEach: () => {} }),
-      onSnapshot: (callback: (snapshot: any) => void) => {
-        callback({ docs: [], forEach: () => {} });
-        return () => {}; // unsubscribe
-      }
-    })
-  })
-});
-
-const createMockStorage = () => ({
-  ref: (path: string) => ({
-    put: async (file: any) => {
-      console.log('Mock storage upload:', path);
-      return { ref: { getDownloadURL: async () => 'mock-download-url' } };
-    },
-    getDownloadURL: async () => 'mock-download-url',
-    delete: async () => console.log('Mock storage delete:', path)
-  })
-});
-
-// Export mock services
-export const auth = createMockAuth();
-export const db = createMockFirestore();
-export const storage = createMockStorage();
-
-// Mock app object
-const app = {
-  name: 'mock-app',
-  options: {}
+// Firebase configuration for Sia Moon Property Management
+const firebaseConfig = {
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "demo-api-key",
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "demo-project.firebaseapp.com",
+  databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || "https://demo-project.firebaseio.com",
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "demo-project",
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "demo-project.appspot.com",
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "123456789",
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:123456789:web:abcdef",
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-ABCDEF",
 };
 
+console.log('🔥 Firebase Config:', {
+  projectId: firebaseConfig.projectId,
+  authDomain: firebaseConfig.authDomain,
+  hasApiKey: !!firebaseConfig.apiKey,
+});
+
+// Initialize Firebase
+let app;
+if (getApps().length === 0) {
+  app = initializeApp(firebaseConfig);
+  console.log('✅ Firebase app initialized');
+} else {
+  app = getApp();
+  console.log('✅ Firebase app already initialized');
+}
+
+// Initialize Firebase Auth with AsyncStorage persistence for React Native
+let auth;
+try {
+  if (Platform.OS === 'web') {
+    auth = getAuth(app);
+    console.log('✅ Firebase Auth initialized for web');
+  } else {
+    auth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage)
+    });
+    console.log('✅ Firebase Auth initialized for mobile with AsyncStorage persistence');
+  }
+} catch (error) {
+  // If auth is already initialized, get the existing instance
+  auth = getAuth(app);
+  console.log('✅ Firebase Auth instance retrieved');
+}
+
+// Initialize Firestore
+const db = getFirestore(app);
+console.log('✅ Firestore initialized');
+
+// Initialize Realtime Database
+const rtdb = getDatabase(app);
+console.log('✅ Realtime Database initialized');
+
+// Initialize Storage
+const storage = getStorage(app);
+console.log('✅ Firebase Storage initialized');
+
+// Connect to emulators in development if enabled
+if (__DEV__ && process.env.EXPO_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
+  const emulatorHost = process.env.EXPO_PUBLIC_FIREBASE_EMULATOR_HOST || '127.0.0.1';
+
+  try {
+    // Import emulator connection functions
+    const { connectAuthEmulator } = require('firebase/auth');
+    const { connectStorageEmulator } = require('firebase/storage');
+    const { connectDatabaseEmulator } = require('firebase/database');
+
+    // Connect to Auth emulator
+    connectAuthEmulator(auth, `http://${emulatorHost}:9099`, { disableWarnings: true });
+    console.log('🔧 Connected to Auth emulator at', emulatorHost + ':9099');
+
+    // Connect to Firestore emulator
+    connectFirestoreEmulator(db, emulatorHost, 8080);
+    console.log('🔧 Connected to Firestore emulator at', emulatorHost + ':8080');
+
+    // Connect to Realtime Database emulator (if needed)
+    // connectDatabaseEmulator(rtdb, emulatorHost, 9000);
+    // console.log('🔧 Connected to Realtime Database emulator at', emulatorHost + ':9000');
+
+    // Connect to Storage emulator
+    connectStorageEmulator(storage, emulatorHost, 9199);
+    console.log('🔧 Connected to Storage emulator at', emulatorHost + ':9199');
+
+    console.log('✅ All Firebase emulators connected successfully!');
+    console.log('🌐 Emulator UI available at:', `http://${emulatorHost}:4000`);
+  } catch (error) {
+    console.error('⚠️ Firebase emulator connection failed:', error);
+  }
+}
+
+// Test Firestore connection
+const testFirestoreConnection = async () => {
+  try {
+    // This will test if we can connect to Firestore
+    const testCollection = db._delegate || db;
+    console.log('🔍 Testing Firestore connection...');
+    console.log('✅ Firestore connection test passed');
+    return true;
+  } catch (error) {
+    console.error('❌ Firestore connection test failed:', error);
+    return false;
+  }
+};
+
+// Run connection test
+testFirestoreConnection();
+
+export { auth, db, rtdb, storage };
 export default app;

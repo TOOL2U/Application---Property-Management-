@@ -8,16 +8,17 @@ import {
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Card } from './ui/Card';
-import { Colors, Typography, Spacing, BorderRadius, Dimensions } from '../constants/Design';
+import { Colors, Typography, Spacing, BorderRadius } from '../constants/Design';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading, error, clearError } = useAuth();
+  const { signIn, isLoading } = useAuth();
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -25,27 +26,30 @@ export default function LoginScreen() {
       return;
     }
 
-    clearError();
-    const success = await login({ email: email.trim(), password });
-    
-    if (!success) {
-      Alert.alert('Login Failed', error || 'Please check your credentials and try again');
+    setLoginError(null);
+    try {
+      await signIn(email.trim(), password);
+      console.log('✅ Login successful!');
+      // Navigation will be handled by the auth state change
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Login failed';
+      setLoginError(errorMessage);
+      Alert.alert('Login Failed', errorMessage);
+      console.error('❌ Login failed:', errorMessage);
     }
   };
 
   const handleDemoLogin = async () => {
-    // For testing purposes - remove in production
-    clearError();
-    const success = await login({ 
-      email: 'staff@example.com', 
-      password: 'demo123' 
-    });
-    
-    if (!success) {
-      Alert.alert(
-        'Demo Login', 
-        'Demo login failed. This means your web app API is not configured yet.\n\nPlease update your .env.local file with your actual API URL.'
-      );
+    setLoginError(null);
+    try {
+      // Use one of the predefined demo accounts
+      await signIn('demo@villa.com', 'demo123');
+      console.log('✅ Demo login successful!');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Demo login failed';
+      setLoginError(errorMessage);
+      Alert.alert('Demo Login Failed', errorMessage);
+      console.error('❌ Demo login failed:', errorMessage);
     }
   };
 
@@ -85,9 +89,9 @@ export default function LoginScreen() {
               editable={!isLoading}
             />
 
-            {error && (
+            {loginError && (
               <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
+                <Text style={styles.errorText}>{loginError}</Text>
               </View>
             )}
 

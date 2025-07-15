@@ -1,0 +1,249 @@
+rules_version='2'
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null &&
+        (request.auth.token.email == 'shaun@siamoon.com' ||
+         request.auth.token.email == 'shaunducker1@gmail.com' ||
+         getUserRole() == 'admin');
+    }
+
+    // Helper function to check if user is staff
+    function isStaff() {
+      return request.auth != null &&
+        (isAdmin() ||
+         getUserRole() == 'staff' ||
+         getStaffStatus() == 'active');
+    }
+
+    // Helper function to get user role from users collection
+    function getUserRole() {
+      return request.auth != null ?
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role : null;
+    }
+
+    // Helper function to get staff status
+    function getStaffStatus() {
+      return request.auth != null && exists(/databases/$(database)/documents/staff/$(request.auth.uid)) ?
+        get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.status : null;
+    }
+
+    // Helper function to check if user owns the resource
+    function isOwner(ownerId) {
+      return request.auth != null && request.auth.uid == ownerId;
+    }
+
+    // Helper function to check if staff member is assigned to property
+    function isAssignedToProperty(propertyId) {
+      return request.auth != null && exists(/databases/$(database)/documents/staff/$(request.auth.uid)) &&
+        propertyId in get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.assignedProperties;
+    }
+
+    // Enhanced user document rules with role-based access
+    match /users/{userId} {
+      // Users can read and write their own user document
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Admins can read all users and create new user documents
+      allow read, create: if isAdmin();
+
+      // Admins can update user documents (for credential management)
+      allow update: if isAdmin() &&
+        // Ensure critical fields are protected
+        (!('role' in request.resource.data) || request.resource.data.role in ['client', 'staff', 'admin']) &&
+        (!('isActive' in request.resource.data) || request.resource.data.isActive is bool);
+
+      // Admins can delete user documents (for staff removal)
+      allow delete: if isAdmin();
+    }
+
+    // Users can read and write their own properties
+    match /properties/{propertyId} {
+      allow read, write: if request.auth != null &&
+        (request.auth.uid == resource.data.ownerId ||
+         request.auth.uid == request.resource.data.ownerId);
+      allow read: if isAdmin() || isStaff(); // Admins and staff can read all properties
+    }
+
+    // Enhanced booking rules for cross-platform sync
+    match /bookings/{bookingId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.userId ||
+         request.auth.uid == request.resource.data.userId ||
+         isAdmin() || isStaff());
+      allow write: if request.auth != null &&
+        (request.auth.uid == resource.data.userId ||
+         request.auth.uid == request.resource.data.userId ||
+         isAdmin());
+      allow create: if request.auth != null; // Allow creation for API endpoints
+    }
+
+    // Legacy booking collections for backward compatibility
+    match /pending_bookings/{bookingId} {
+      allow read, write: if isAdmin();
+      allow create: if request.auth != null; // Allow creation for API endpoints
+    }
+
+    match /live_bookings/{bookingId} {
+      allow read, write: if isAdmin();
+      allow create: if request.auth != null; // Allow creation for API endpoints
+    }
+
+    // Booking approval actions - admin only
+    match /booking_approvals/{approvalId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Enhanced staff management with Firebase Auth integration
+    match /staff/{staffId} {
+      // Staff can read their own profile, admins can read all
+      allow read: if request.auth != null &&
+        (request.auth.uid == staffId || isAdmin() || isStaff());
+
+      // Staff can update their own profile (limited fields)
+      allow update: if request.auth != null && request.auth.uid == staffId &&
+        // Only allow updates to specific fields
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'phone', 'address', 'profilePicture', 'availability', 'updatedAt', 'lastSyncedAt'
+        ]);
+
+      // Admins can create, update, and delete staff profiles
+      allow create, update, delete: if isAdmin();
+
+      // Ensure staff profile integrity
+      allow write: if isAdmin() &&
+        // Validate required fields
+        request.resource.data.keys().hasAll(['name', 'email', 'role', 'status']) &&
+        // Validate data types
+        request.resource.data.email is string &&
+        request.resource.data.name is string &&
+        request.resource.data.role is string &&
+        request.resource.data.status in ['active', 'inactive', 'suspended'] &&
+        // Ensure Firebase UID matches document ID
+        request.resource.data.firebaseUid == staffId;
+    }
+
+    // Task assignments - staff can read/update their own, admins can do everything
+    match /task_assignments/{taskId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.staffId ||
+         request.auth.uid == resource.data.assignedBy ||
+         isAdmin());
+      allow write: if request.auth != null &&
+        (request.auth.uid == resource.data.staffId ||
+         isAdmin());
+      allow create: if isAdmin();
+    }
+
+    // Staff assignment actions - admin only
+    match /staff_assignments/{assignmentId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Sync events - read for admins and staff, write for system
+    match /sync_events/{eventId} {
+      allow read: if isAdmin() || isStaff();
+      allow write: if isAdmin();
+      allow create: if request.auth != null; // Allow creation for API endpoints
+    }
+
+    // Staff accounts for mobile app authentication (NEW)
+    match /staff_accounts/{accountId} {
+      // Staff can read their own account, admins can read all
+      allow read: if request.auth != null &&
+        (request.auth.uid == accountId || isAdmin());
+
+      // Admins can create, update, and delete staff accounts
+      allow create, update, delete: if isAdmin();
+
+      // Ensure account integrity
+      allow write: if isAdmin() &&
+        // Validate required fields for mobile sync
+        request.resource.data.keys().hasAll(['firebaseUid', 'email', 'name', 'role', 'hasCredentials', 'isActive']) &&
+        // Validate data types
+        request.resource.data.email is string &&
+        request.resource.data.name is string &&
+        request.resource.data.role is string &&
+        request.resource.data.hasCredentials is bool &&
+        request.resource.data.isActive is bool &&
+        // Ensure Firebase UID matches document ID
+        request.resource.data.firebaseUid == accountId;
+    }
+
+    // Staff authentication and credential management
+    match /staff_credentials/{credentialId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Staff login sessions and metadata
+    match /staff_sessions/{sessionId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.staffId || isAdmin());
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && request.auth.uid == resource.data.staffId;
+      allow delete: if isAdmin();
+    }
+
+    // Staff performance and metrics (read-only for staff, full access for admin)
+    match /staff_performance/{performanceId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.staffId || isAdmin() || isStaff());
+      allow write: if isAdmin();
+      allow create: if isAdmin() || isStaff();
+    }
+
+    // Cross-platform notifications
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.recipientId || isAdmin());
+      allow write: if isAdmin();
+      allow create: if request.auth != null;
+    }
+
+    // Financial data - admin only
+    match /financial_transactions/{transactionId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Property analytics and reports - admin and property owners
+    match /property_analytics/{analyticsId} {
+      allow read: if isAdmin() || isStaff();
+      allow write: if isAdmin();
+    }
+
+    // Maintenance requests - staff can read/update, admins can do everything
+    match /maintenance_requests/{requestId} {
+      allow read: if isAdmin() || isStaff();
+      allow write: if isAdmin();
+      allow create: if isStaff() || isAdmin();
+    }
+
+    // Staff accounts collection - single source of truth for authentication
+    match /staff_accounts/{staffId} {
+      // Allow read access for authentication purposes (email lookup)
+      // This is needed for login functionality
+      allow read: if true;
+
+      // Allow all updates for development/testing
+      // In production, restrict this to specific conditions
+      allow update: if true;
+
+      // Allow creation and deletion for development/testing
+      // In production, restrict this to admin users only
+      allow create, delete: if true;
+    }
+
+    // Connection test collection for testing Firebase connectivity
+    match /connection_test/{testId} {
+      allow read, write: if true;
+    }
+
+    // Default deny rule for any other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,4 +1,37 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// Web-compatible storage solution
+const AsyncStorage = {
+  async getItem(key: string): Promise<string | null> {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return window.localStorage.getItem(key);
+      }
+      return null;
+    } catch (error) {
+      console.error('Storage getItem error:', error);
+      return null;
+    }
+  },
+
+  async setItem(key: string, value: string): Promise<void> {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(key, value);
+      }
+    } catch (error) {
+      console.error('Storage setItem error:', error);
+    }
+  },
+
+  async removeItem(key: string): Promise<void> {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.error('Storage removeItem error:', error);
+    }
+  },
+};
 
 // API Configuration
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000/api';
@@ -80,6 +113,40 @@ interface Property {
   }>;
 }
 
+interface StaffAssignment {
+  id: string;
+  staffId: string;
+  staffName: string;
+  bookingId: string;
+  propertyId: string;
+  propertyName: string;
+  taskType: 'cleaning' | 'maintenance' | 'inspection' | 'setup' | 'checkout' | 'other';
+  title: string;
+  description: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  estimatedDuration: number; // in minutes
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  notes?: string;
+  completionNotes?: string;
+  photos?: string[];
+  timeSpent?: number; // in minutes
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+interface SyncData {
+  bookings?: Booking[];
+  assignments?: StaffAssignment[];
+  tasks?: Task[];
+  properties?: Property[];
+  lastSyncTimestamp: number;
+  conflictCount?: number;
+  pendingOperations?: number;
+}
+
 class ApiService {
   private authToken: string | null = null;
 
@@ -124,9 +191,9 @@ class ApiService {
   ): Promise<ApiResponse<T>> {
     try {
       const url = `${API_BASE_URL}${endpoint}`;
-      const headers: HeadersInit = {
+      const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...(options.headers as Record<string, string>),
       };
 
       // Add API key if available
@@ -168,19 +235,62 @@ class ApiService {
 
   // Authentication methods
   async login(credentials: LoginCredentials): Promise<ApiResponse<AuthResponse>> {
-    const response = await this.request<AuthResponse>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    });
+    try {
+      // Demo login - accept any credentials for development
+      if (credentials.email && credentials.password) {
+        const demoUser: AuthResponse = {
+          token: 'demo_token_' + Date.now(),
+          refreshToken: 'demo_refresh_' + Date.now(),
+          user: {
+            id: 'demo_user_1',
+            email: credentials.email,
+            name: 'Demo Staff Member',
+            role: 'staff',
+          },
+        };
 
-    if (response.success && response.data?.token) {
-      await this.storeAuthToken(response.data.token);
-      if (response.data.refreshToken) {
-        await AsyncStorage.setItem(REFRESH_TOKEN_KEY, response.data.refreshToken);
+        this.authToken = demoUser.token;
+        await this.storeAuthToken(demoUser.token);
+
+        if (demoUser.refreshToken) {
+          await AsyncStorage.setItem(REFRESH_TOKEN_KEY, demoUser.refreshToken);
+        }
+
+        return {
+          success: true,
+          data: demoUser,
+          message: 'Demo login successful',
+        };
       }
-    }
 
-    return response;
+      // If no credentials provided, return error
+      return {
+        success: false,
+        error: 'Please enter email and password',
+      };
+
+      // Real API call (commented out for demo)
+      /*
+      const response = await this.request<AuthResponse>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(credentials),
+      });
+
+      if (response.success && response.data?.token) {
+        await this.storeAuthToken(response.data.token);
+        if (response.data.refreshToken) {
+          await AsyncStorage.setItem(REFRESH_TOKEN_KEY, response.data.refreshToken);
+        }
+      }
+
+      return response;
+      */
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Login failed',
+      };
+    }
   }
 
   async logout(): Promise<void> {
@@ -282,6 +392,108 @@ class ApiService {
     return this.request<Property>(`/properties/${id}`);
   }
 
+  // Staff Assignment methods
+  async getStaffAssignments(staffId?: string, date?: string): Promise<ApiResponse<StaffAssignment[]>> {
+    const params = new URLSearchParams();
+    if (staffId) params.append('staffId', staffId);
+    if (date) params.append('date', date);
+
+    const queryString = params.toString();
+    const endpoint = `/staff/assignments${queryString ? `?${queryString}` : ''}`;
+
+    return this.request<StaffAssignment[]>(endpoint);
+  }
+
+  async updateAssignmentStatus(
+    assignmentId: string,
+    status: 'pending' | 'in-progress' | 'completed' | 'cancelled',
+    completionData?: {
+      notes?: string;
+      photos?: string[];
+      timeSpent?: number;
+      completedAt?: string;
+    }
+  ): Promise<ApiResponse<StaffAssignment>> {
+    return this.request<StaffAssignment>(`/staff/assignments/${assignmentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ 
+        status, 
+        ...completionData,
+        updatedAt: new Date().toISOString()
+      }),
+    });
+  }
+
+  async acceptAssignment(assignmentId: string): Promise<ApiResponse<StaffAssignment>> {
+    return this.updateAssignmentStatus(assignmentId, 'in-progress', {
+      notes: 'Assignment accepted by staff member'
+    });
+  }
+
+  async completeAssignment(
+    assignmentId: string,
+    completionData: {
+      notes?: string;
+      photos?: string[];
+      timeSpent: number;
+    }
+  ): Promise<ApiResponse<StaffAssignment>> {
+    return this.updateAssignmentStatus(assignmentId, 'completed', {
+      ...completionData,
+      completedAt: new Date().toISOString()
+    });
+  }
+
+  // Enhanced Booking methods
+  async getMyAssignedBookings(staffId: string): Promise<ApiResponse<Booking[]>> {
+    return this.request<Booking[]>(`/bookings/assigned/${staffId}`);
+  }
+
+  async updateBookingProgress(
+    bookingId: string,
+    progressData: {
+      checklistItems?: string[];
+      notes?: string;
+      photos?: string[];
+      currentStatus?: string;
+    }
+  ): Promise<ApiResponse<Booking>> {
+    return this.request<Booking>(`/bookings/${bookingId}/progress`, {
+      method: 'POST',
+      body: JSON.stringify({
+        ...progressData,
+        timestamp: new Date().toISOString()
+      }),
+    });
+  }
+
+  // Sync methods for webapp integration
+  async syncWithWebApp(lastSyncTimestamp?: number): Promise<ApiResponse<SyncData>> {
+    return this.request<SyncData>('/sync/mobile', {
+      method: 'POST',
+      body: JSON.stringify({
+        lastSyncTimestamp,
+        deviceInfo: {
+          platform: 'mobile',
+          timestamp: Date.now()
+        }
+      }),
+    });
+  }
+
+  async reportToWebApp(reportData: {
+    type: 'assignment_completion' | 'booking_update' | 'task_completion';
+    data: any;
+  }): Promise<ApiResponse<any>> {
+    return this.request('/sync/report', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...reportData,
+        timestamp: new Date().toISOString()
+      }),
+    });
+  }
+
   // Check if user is authenticated
   isAuthenticated(): boolean {
     return !!this.authToken;
@@ -305,4 +517,6 @@ export type {
   Booking,
   Task,
   Property,
+  StaffAssignment,
+  SyncData,
 };

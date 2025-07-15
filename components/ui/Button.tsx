@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Typography, Spacing, BorderRadius, Shadows, Dimensions } from '../../constants/Design';
+import { Colors, Typography, Spacing, BorderRadius, Shadows, ComponentDimensions } from '../../constants/Design';
 
 interface ButtonProps {
   title: string;
@@ -118,8 +118,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    minHeight: Dimensions.buttonHeight,
-    paddingHorizontal: Dimensions.buttonPadding,
+    minHeight: ComponentDimensions.button.height,
+    paddingHorizontal: ComponentDimensions.button.paddingHorizontal,
   },
 
   // Variants
@@ -154,8 +154,8 @@ const styles = StyleSheet.create({
   },
 
   md: {
-    minHeight: Dimensions.buttonHeight,
-    paddingHorizontal: Dimensions.buttonPadding,
+    minHeight: ComponentDimensions.button.height,
+    paddingHorizontal: ComponentDimensions.button.paddingHorizontal,
   },
 
   lg: {
@@ -175,8 +175,8 @@ const styles = StyleSheet.create({
   // Gradient
   gradient: {
     borderRadius: BorderRadius.default,
-    paddingHorizontal: Dimensions.buttonPadding,
-    minHeight: Dimensions.buttonHeight,
+    paddingHorizontal: ComponentDimensions.button.paddingHorizontal,
+    minHeight: ComponentDimensions.button.height,
     alignItems: 'center',
     justifyContent: 'center',
   },

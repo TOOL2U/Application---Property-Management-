@@ -1,38 +1,76 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CreditCard } from 'lucide-react-native';
+import { useDesignTokens } from '@/constants/Design';
 
 export default function PaymentsScreen() {
+  const { colors, Shadows, BorderRadius, Spacing, Typography } = useDesignTokens();
+  const styles = createStyles(colors, Shadows, BorderRadius, Spacing, Typography);
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <View style={styles.header}>
         <Text style={styles.title}>Payments</Text>
-        <Text style={styles.subtitle}>Payment management coming soon...</Text>
       </View>
+      
+      <ScrollView style={styles.content}>
+        <View style={styles.placeholder}>
+          <CreditCard size={48} color={colors.text.tertiary} />
+          <Text style={styles.placeholderTitle}>Payments Coming Soon</Text>
+          <Text style={styles.placeholderText}>
+            Payment tracking and invoicing will be available here.
+          </Text>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any, Shadows: any, BorderRadius: any, Spacing: any, Typography: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: colors.background,
+  },
+  header: {
+    paddingHorizontal: Spacing.mobile.screenPadding,
+    paddingVertical: Spacing[4],
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
+  },
+  title: {
+    ...Typography.sizes.xl,
+    fontWeight: Typography.weights.bold,
+    color: colors.text.primary,
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
+    padding: Spacing.mobile.screenPadding,
+  },
+  placeholder: {
+    flex: 1,
     alignItems: 'center',
-    padding: 24,
+    justifyContent: 'center',
+    paddingVertical: Spacing[12],
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 8,
+  placeholderTitle: {
+    ...Typography.sizes.lg,
+    fontWeight: Typography.weights.semibold,
+    color: colors.text.primary,
+    marginTop: Spacing[4],
+    marginBottom: Spacing[2],
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
+  placeholderText: {
+    ...Typography.sizes.base,
+    color: colors.text.secondary,
     textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: Spacing[8],
   },
 });
