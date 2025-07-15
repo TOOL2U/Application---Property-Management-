@@ -89,9 +89,14 @@ export default function ProfileScreen() {
               
               console.log('✅ Sign out completed successfully');
               
-              // Navigate to login screen after successful sign out
-              // Using replace to prevent going back to the authenticated area
-              router.replace('/(auth)/login');
+              // Wait a moment for the auth state to properly clear
+              setTimeout(() => {
+                // Navigate to login screen after successful sign out
+                // Using replace to prevent going back to the authenticated area
+                router.replace('/(auth)/login');
+                console.log('🔄 Navigation to login screen triggered');
+              }, 100);
+              
             } catch (error) {
               console.error('❌ Sign out error:', error);
               Alert.alert(

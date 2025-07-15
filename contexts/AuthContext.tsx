@@ -189,12 +189,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Use authService to properly clear session
       await authService.signOut();
 
+      // Clear all auth state immediately
       setUser(null);
       setUserRole(null);
       setError(null);
       setIsSessionValid(false);
 
-      console.log('✅ Sign out completed');
+      console.log('✅ Sign out completed - all auth state cleared');
     } catch (error) {
       console.error('❌ Sign out error:', error);
 
@@ -203,6 +204,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUserRole(null);
       setIsSessionValid(false);
       setError('Sign out completed with warnings');
+      
+      console.log('⚠️ Sign out completed with warnings - auth state cleared anyway');
     } finally {
       setIsLoading(false);
     }
