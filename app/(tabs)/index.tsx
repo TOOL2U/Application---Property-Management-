@@ -13,6 +13,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStaffAuth } from '@/hooks/useStaffAuth';
+import { jobService } from '@/services/jobService';
+import { Job } from '@/types/job';
+import EnhancedStaffDashboard from '@/components/dashboard/EnhancedStaffDashboard';
 import { Card } from '@/components/ui/Card';
 import { SyncStatusIndicator } from '@/components/sync/SyncStatusIndicator';
 import { useSync } from '@/hooks/useSync';
@@ -57,10 +61,18 @@ interface RecentActivity {
 
 export default function DashboardScreen() {
   const { user, signOut } = useAuth();
+  const { hasRole } = useStaffAuth();
   const { isOnline, isSyncing, lastSyncTime, pendingOperations, conflictCount } = useSync();
-  
+
   const [refreshing, setRefreshing] = useState(false);
   const [showUserTest, setShowUserTest] = useState(false);
+
+  // Staff Dashboard State
+  const [todaysJobs, setTodaysJobs] = useState<Job[]>([]);
+  const [pendingJobs, setPendingJobs] = useState<Job[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+
+  const isStaffUser = hasRole(['cleaner', 'maintenance', 'staff']);
   const [stats, setStats] = useState<DashboardStats>({
     totalBookings: 24,
     activeBookings: 8,
@@ -106,8 +118,12 @@ export default function DashboardScreen() {
   ]);
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (isStaffUser && user?.id) {
+      loadStaffDashboardData();
+    } else {
+      loadDashboardData();
+    }
+  }, [isStaffUser, user?.id]);
 
   const loadDashboardData = async () => {
     try {
@@ -129,8 +145,72 @@ export default function DashboardScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadDashboardData();
+    if (isStaffUser && user?.id) {
+      await loadStaffDashboardData();
+    } else {
+      await loadDashboardData();
+    }
     setRefreshing(false);
+  };
+
+  const loadStaffDashboardData = async () => {
+    if (!user?.id) return;
+
+    try {
+      setJobsLoading(true);
+
+      // Load today's jobs for staff users
+      const todaysResponse = await jobService.getTodaysJobs(user.id);
+      if (todaysResponse.success) {
+        const pending = todaysResponse.jobs.filter(job =>
+          job.status === 'assigned' || job.status === 'pending'
+        );
+        const accepted = todaysResponse.jobs.filter(job =>
+          job.status === 'accepted' || job.status === 'in_progress'
+        );
+
+        setPendingJobs(pending);
+        setTodaysJobs(accepted);
+      }
+    } catch (error) {
+      console.error('Error loading staff dashboard data:', error);
+    } finally {
+      setJobsLoading(false);
+    }
+  };
+
+  const handleAcceptJob = async (job: Job) => {
+    if (!user?.id) return;
+
+    Alert.alert(
+      'Accept Job',
+      `Are you sure you want to accept "${job.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Accept',
+          style: 'default',
+          onPress: async () => {
+            try {
+              const response = await jobService.acceptJob({
+                jobId: job.id,
+                staffId: user.id,
+                acceptedAt: new Date(),
+              });
+
+              if (response.success) {
+                Alert.alert('Success', 'Job accepted successfully!');
+                await loadStaffDashboardData();
+              } else {
+                Alert.alert('Error', response.error || 'Failed to accept job');
+              }
+            } catch (error) {
+              Alert.alert('Error', 'Failed to accept job');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const getGreeting = () => {
@@ -333,6 +413,17 @@ export default function DashboardScreen() {
     }
   };
 
+  // Render Enhanced Staff Dashboard for staff users
+  if (isStaffUser) {
+    return (
+      <EnhancedStaffDashboard
+        user={user}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+      />
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Background Gradient */}
@@ -360,7 +451,7 @@ export default function DashboardScreen() {
             <View style={styles.headerLeft}>
               <Text style={styles.greeting}>{getGreeting()}</Text>
               <Text style={styles.userName}>
-                {user?.firstName} {user?.lastName}
+                {user?.name || 'Staff Member'}
               </Text>
               <Text style={styles.userRole}>{user?.role} • {user?.department}</Text>
             </View>
@@ -371,7 +462,7 @@ export default function DashboardScreen() {
             >
               <View style={styles.profileAvatar}>
                 <Text style={styles.profileInitials}>
-                  {user?.firstName?.[0]}{user?.lastName?.[0]}
+                  {user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'SM'}
                 </Text>
               </View>
             </TouchableOpacity>

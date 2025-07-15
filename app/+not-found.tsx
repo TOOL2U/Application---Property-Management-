@@ -3,19 +3,16 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Home, ArrowLeft } from 'lucide-react-native';
-import { useDesignTokens } from '@/constants/Design';
+import { NeumorphicTheme } from '@/constants/NeumorphicTheme';
 
 export default function NotFoundScreen() {
   const router = useRouter();
-  const { colors, Shadows, BorderRadius, Spacing, Typography } = useDesignTokens();
-
-  const styles = createStyles(colors, Shadows, BorderRadius, Spacing, Typography);
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Home size={64} color={colors.text.tertiary} />
+          <Home size={64} color={NeumorphicTheme.colors.text.tertiary} />
         </View>
         
         <Text style={styles.title}>Page Not Found</Text>
@@ -27,7 +24,7 @@ export default function NotFoundScreen() {
           style={styles.button}
           onPress={() => router.replace('/')}
         >
-          <ArrowLeft size={20} color={colors.text.inverse} />
+          <ArrowLeft size={20} color="#ffffff" />
           <Text style={styles.buttonText}>Go to Dashboard</Text>
         </TouchableOpacity>
       </View>
@@ -35,48 +32,55 @@ export default function NotFoundScreen() {
   );
 }
 
-const createStyles = (colors: any, Shadows: any, BorderRadius: any, Spacing: any, Typography: any) => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: NeumorphicTheme.colors.background.primary,
   },
   content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: Spacing.mobile.screenPadding,
+    paddingHorizontal: NeumorphicTheme.spacing[6],
   },
   iconContainer: {
-    marginBottom: Spacing[8],
+    marginBottom: NeumorphicTheme.spacing[8],
   },
   title: {
-    ...Typography.sizes['3xl'],
-    fontWeight: Typography.weights.bold,
-    color: colors.text.primary,
+    fontSize: NeumorphicTheme.typography.sizes['3xl'].fontSize,
+    fontWeight: NeumorphicTheme.typography.weights.bold,
+    color: NeumorphicTheme.colors.text.primary,
     textAlign: 'center',
-    marginBottom: Spacing[4],
+    marginBottom: NeumorphicTheme.spacing[4],
   },
   subtitle: {
-    ...Typography.sizes.base,
-    color: colors.text.secondary,
+    fontSize: NeumorphicTheme.typography.sizes.base.fontSize,
+    color: NeumorphicTheme.colors.text.secondary,
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: Spacing[8],
-    paddingHorizontal: Spacing[4],
+    marginBottom: NeumorphicTheme.spacing[8],
+    paddingHorizontal: NeumorphicTheme.spacing[4],
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary,
-    paddingHorizontal: Spacing[6],
-    paddingVertical: Spacing[4],
-    borderRadius: BorderRadius.md,
-    ...Shadows.sm,
+    backgroundColor: NeumorphicTheme.colors.brand.primary,
+    paddingHorizontal: NeumorphicTheme.spacing[6],
+    paddingVertical: NeumorphicTheme.spacing[4],
+    borderRadius: NeumorphicTheme.borderRadius.md,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
   },
   buttonText: {
-    ...Typography.sizes.base,
-    fontWeight: Typography.weights.semibold,
-    color: colors.text.inverse,
-    marginLeft: Spacing[2],
+    fontSize: NeumorphicTheme.typography.sizes.base.fontSize,
+    fontWeight: NeumorphicTheme.typography.weights.semibold,
+    color: '#ffffff',
+    marginLeft: NeumorphicTheme.spacing[2],
   },
 });

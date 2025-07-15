@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { 
+import {
   Search,
   Filter,
   Plus,
@@ -24,6 +24,10 @@ import {
 } from 'lucide-react-native';
 import { NeumorphicCard, NeumorphicButton } from '@/components/ui/NeumorphicComponents';
 import { NeumorphicTheme } from '@/constants/NeumorphicTheme';
+import { useStaffAuth } from '@/hooks/useStaffAuth';
+import { useAuth } from '@/contexts/AuthContext';
+import StaffJobsView from '@/components/jobs/StaffJobsView';
+import EnhancedStaffJobsView from '@/components/jobs/EnhancedStaffJobsView';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -98,9 +102,18 @@ const mockJobs = [
 const filterOptions = ['All', 'Assigned', 'In Progress', 'Scheduled', 'Completed'];
 
 export default function JobsScreen() {
+  const { hasRole } = useStaffAuth();
+  const { user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const isStaffUser = hasRole(['cleaner', 'maintenance', 'staff']);
+
+  // Render Enhanced Staff Jobs View for staff users
+  if (isStaffUser) {
+    return <EnhancedStaffJobsView />;
+  }
 
   const onRefresh = async () => {
     setRefreshing(true);

@@ -1,10 +1,9 @@
 import { Platform } from 'react-native';
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Firebase configuration for Sia Moon Property Management
 const firebaseConfig = {
@@ -34,22 +33,15 @@ if (getApps().length === 0) {
   console.log('✅ Firebase app already initialized');
 }
 
-// Initialize Firebase Auth with AsyncStorage persistence for React Native
-let auth;
+// Initialize Firebase Auth with simpler approach for React Native
+let auth: Auth;
 try {
-  if (Platform.OS === 'web') {
-    auth = getAuth(app);
-    console.log('✅ Firebase Auth initialized for web');
-  } else {
-    auth = initializeAuth(app, {
-      persistence: getReactNativePersistence(AsyncStorage)
-    });
-    console.log('✅ Firebase Auth initialized for mobile with AsyncStorage persistence');
-  }
-} catch (error) {
-  // If auth is already initialized, get the existing instance
+  console.log('🔧 Initializing Firebase Auth...');
   auth = getAuth(app);
-  console.log('✅ Firebase Auth instance retrieved');
+  console.log('✅ Firebase Auth initialized successfully');
+} catch (error) {
+  console.error('❌ Failed to initialize Firebase Auth:', error);
+  throw error;
 }
 
 // Initialize Firestore
@@ -97,11 +89,10 @@ if (__DEV__ && process.env.EXPO_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
   }
 }
 
-// Test Firestore connection
+// Test Firestore connection and set up auth state monitoring
 const testFirestoreConnection = async () => {
   try {
     // This will test if we can connect to Firestore
-    const testCollection = db._delegate || db;
     console.log('🔍 Testing Firestore connection...');
     console.log('✅ Firestore connection test passed');
     return true;

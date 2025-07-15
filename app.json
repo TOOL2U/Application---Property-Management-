@@ -49,8 +49,10 @@
         }
       ]
     ],
+    "scheme": "sia-moon-staff",
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "newArchEnabled": true
   }
 }

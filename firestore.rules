@@ -241,6 +241,61 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Jobs collection - for job management
+    match /jobs/{jobId} {
+      // Allow read access for assigned staff and admins
+      allow read: if true; // For development - restrict in production
+
+      // Allow create/update for development - restrict in production
+      allow create, update: if true;
+
+      // Allow delete for admins only
+      allow delete: if true; // For development
+    }
+
+    // Job photos collection
+    match /job_photos/{photoId} {
+      allow read, write: if true; // For development
+    }
+
+    // Location updates collection
+    match /location_updates/{updateId} {
+      allow read, write: if true; // For development
+    }
+
+    // Job assignments collection - NEW for webapp-mobile integration
+    match /job_assignments/{jobId} {
+      // Allow read access for assigned staff and admins
+      allow read: if true; // For development - restrict in production
+
+      // Allow create for job assignment from webapp
+      allow create: if true; // For development
+
+      // Allow update for status changes from mobile app
+      allow update: if true; // For development
+
+      // Prevent deletion for audit trail
+      allow delete: if true; // For development - restrict in production
+    }
+
+    // Job events collection - audit trail for job assignments
+    match /job_events/{eventId} {
+      // Allow read access for audit purposes
+      allow read: if true; // For development
+
+      // Allow create for logging events
+      allow create: if true; // For development
+
+      // Events should be immutable once created
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Connection test collections for testing Firebase connectivity
+    match /connection_tests/{testId} {
+      allow read, write: if true;
+    }
+
     // Default deny rule for any other collections
     match /{document=**} {
       allow read, write: if false;
