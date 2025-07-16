@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { authService, StaffAccount, AuthSession } from '../services/authService';
 import { AppState, AppStateStatus } from 'react-native';
+import { Storage } from '../utils/storage';
+
+// Storage keys
+const STORAGE_KEY = '@staff_auth_user';
+const SESSION_KEY = '@staff_auth_session';
 
 // Rename User to StaffUser for clarity
 interface StaffUser {
@@ -42,7 +47,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isSessionValid, setIsSessionValid] = useState(false);
 
   useEffect(() => {
-    loadStoredAuth();
+    loadStoredAuth().catch(error => {
+      console.error('❌ Error loading stored auth:', error);
+      setIsLoading(false);
+    });
 
     // Listen for app state changes to validate session
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
@@ -184,10 +192,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signOut = async () => {
     try {
       setIsLoading(true);
-      console.log('👋 Signing out user');
+      console.log('👋 AuthContext: Starting sign out process...');
+      console.log('🔍 AuthContext: Current user before sign out:', user?.email);
 
       // Use authService to properly clear session
       await authService.signOut();
+      console.log('✅ AuthService: Sign out completed');
 
       // Clear all auth state immediately
       setUser(null);
@@ -195,9 +205,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
       setIsSessionValid(false);
 
-      console.log('✅ Sign out completed - all auth state cleared');
+      console.log('✅ AuthContext: Sign out completed - all auth state cleared');
+      console.log('🔍 AuthContext: Auth state after sign out:', {
+        user: null,
+        userRole: null,
+        isSessionValid: false,
+        isAuthenticated: false
+      });
+      
     } catch (error) {
-      console.error('❌ Sign out error:', error);
+      console.error('❌ AuthContext: Sign out error:', error);
 
       // Even if there's an error, clear the user state
       setUser(null);
@@ -205,9 +222,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsSessionValid(false);
       setError('Sign out completed with warnings');
       
-      console.log('⚠️ Sign out completed with warnings - auth state cleared anyway');
+      console.log('⚠️ AuthContext: Sign out completed with warnings - auth state cleared anyway');
     } finally {
       setIsLoading(false);
+      console.log('🏁 AuthContext: Sign out process finished');
     }
   };
 

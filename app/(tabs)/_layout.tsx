@@ -15,6 +15,7 @@ import {
   Building,
   Wrench,
   History,
+  Play,
 } from 'lucide-react-native';
 
 export default function TabLayout() {
@@ -24,7 +25,9 @@ export default function TabLayout() {
 
   useEffect(() => {
     // Redirect to login if not authenticated
+    // This ensures immediate redirect on sign out
     if (!isLoading && !isAuthenticated) {
+      console.log('🚨 Tab layout detected unauthenticated user, redirecting to login...');
       router.replace('/(auth)/login');
     }
   }, [isAuthenticated, isLoading]);
@@ -39,12 +42,16 @@ export default function TabLayout() {
   const isAdminOrManager = hasRole(['admin', 'manager']);
 
   // Debug logging for role-based navigation
-  console.log('🔍 Tab Layout - Role-based Navigation:', {
+  console.log('🔍 Tab Layout - Role-Based Navigation:', {
     userEmail: user?.email,
     userRole: user?.role,
     isStaffUser,
     isAdminOrManager,
-    showingStaffTabs: isStaffUser
+    tabsShown: isStaffUser
+      ? '3 tabs (Dashboard, Active Jobs, Profile)'
+      : '13 tabs (Dashboard, Jobs, Bookings, Assign Staff, Manage Jobs, Properties, Tenants, Schedule, Maintenance, Payments, Map, History, Profile)',
+    staffSimplifiedView: isStaffUser,
+    adminFeaturesEnabled: isAdminOrManager
   });
 
   return (
@@ -84,11 +91,11 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Jobs - Always visible */}
+      {/* Jobs Tab - Different title for staff vs admin */}
       <Tabs.Screen
         name="jobs"
         options={{
-          title: 'Jobs',
+          title: isStaffUser ? 'Active Jobs' : 'Jobs',
           tabBarIcon: ({ color, size }) => (
             <Briefcase size={size} color={color} />
           ),
@@ -98,6 +105,36 @@ export default function TabLayout() {
       {/* Admin/Manager Only Tabs - Hidden for staff users */}
       {!isStaffUser && isAdminOrManager && (
         <>
+          {/* Core Admin Features */}
+          <Tabs.Screen
+            name="bookings"
+            options={{
+              title: 'Bookings',
+              tabBarIcon: ({ color, size }) => (
+                <Calendar size={size} color={color} />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="assign-staff"
+            options={{
+              title: 'Assign Staff',
+              tabBarIcon: ({ color, size }) => (
+                <Users size={size} color={color} />
+              ),
+            }}
+          />
+          <Tabs.Screen
+            name="manage-jobs"
+            options={{
+              title: 'Manage Jobs',
+              tabBarIcon: ({ color, size }) => (
+                <Wrench size={size} color={color} />
+              ),
+            }}
+          />
+
+          {/* Additional Admin Features */}
           <Tabs.Screen
             name="properties"
             options={{

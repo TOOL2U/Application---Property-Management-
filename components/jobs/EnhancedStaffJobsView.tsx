@@ -12,7 +12,8 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
-  Dimensions,
+  // Fix: Remove unused Dimensions import
+  // Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,23 +22,22 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { JobAssignment } from '@/types/jobAssignment';
 import { mobileJobAssignmentService as jobAssignmentService } from '@/services/jobAssignmentService';
 import JobAcceptanceModal from '@/components/jobs/JobAcceptanceModal';
+import ActiveJobsView from '@/components/jobs/ActiveJobsView';
 import {
   Briefcase,
   Clock,
   MapPin,
   Play,
   CheckCircle,
-  AlertTriangle,
+  // Fix: Keep Calendar as it's used, remove truly unused
   Calendar,
-  Filter,
-  Search,
+  // AlertTriangle, Filter, Search, Navigation, XCircle, - removed unused
   Bell,
   Camera,
-  Navigation,
-  XCircle,
 } from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
+// Fix: Remove unused width variable
+// const { width } = Dimensions.get('window');
 
 export default function EnhancedStaffJobsView() {
   const { user } = useAuth();
@@ -48,7 +48,7 @@ export default function EnhancedStaffJobsView() {
   const [completedJobs, setCompletedJobs] = useState<JobAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState('All');
+  const [selectedFilter, setSelectedFilter] = useState('Active'); // Default to Active for staff users
   const [selectedJob, setSelectedJob] = useState<JobAssignment | null>(null);
   const [showAcceptanceModal, setShowAcceptanceModal] = useState(false);
 
@@ -115,7 +115,8 @@ export default function EnhancedStaffJobsView() {
       setShowAcceptanceModal(true);
     } else {
       // Navigate to job details
-      router.push(`/job-details/${job.id}`);
+      // Fix: Type assertion for dynamic route
+      router.push(`/job-details/${job.id}` as any);
     }
   };
 
@@ -251,7 +252,7 @@ export default function EnhancedStaffJobsView() {
           {job.status === 'in_progress' && (
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => router.push(`/job-details/${job.id}`)}
+              onPress={() => router.push(`/job-details/${job.id}` as any)}
             >
               <LinearGradient
                 colors={['#f59e0b', '#d97706']}
@@ -284,6 +285,11 @@ export default function EnhancedStaffJobsView() {
   };
 
   const filteredJobs = getFilteredJobs();
+
+  // If Active filter is selected, render the ActiveJobsView component
+  if (selectedFilter === 'Active') {
+    return <ActiveJobsView />;
+  }
 
   return (
     <View style={styles.container}>

@@ -3,21 +3,21 @@
  * Real-time job assignment integration between webapp and mobile app
  */
 
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  limit,
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  // Fix: Remove unused imports
+  // limit, writeBatch,
   onSnapshot,
   serverTimestamp,
   Timestamp,
-  writeBatch
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type {
@@ -29,8 +29,8 @@ import type {
   JobStatusUpdateResponse,
   JobAssignmentValidation,
   JobUpdateEvent,
-  StaffAvailability,
-  NotificationLog
+  // Fix: Remove unused type imports
+  // StaffAvailability, NotificationLog
 } from '@/types/jobAssignment';
 
 class JobAssignmentService {

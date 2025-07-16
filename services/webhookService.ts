@@ -583,6 +583,51 @@ class WebhookService {
     return await Storage.getObject('staff_assignments') || [];
   }
 
+  // Perform full sync with webapp
+  async performFullSync(lastSyncTimestamp?: number): Promise<WebhookResponse<SyncData>> {
+    try {
+      console.log('🔄 Performing full sync with webapp...');
+
+      const payload = {
+        lastSyncTimestamp: lastSyncTimestamp || 0,
+        platform: 'mobile',
+        syncType: 'full',
+        requestedAt: Date.now(),
+      };
+
+      const response = await this.makeRequest<SyncData>(API_CONFIG.mobileSyncEndpoint, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      if (response.success && response.data) {
+        console.log('✅ Full sync completed successfully');
+        await this.processSyncedData(response.data);
+
+        // Clear pending changes that were successfully synced
+        await this.clearSyncedPendingChanges();
+
+        return {
+          success: true,
+          data: {
+            ...response.data,
+            lastSyncTimestamp: Date.now(),
+          },
+          timestamp: Date.now(),
+        };
+      } else {
+        throw new Error(response.error || 'Full sync failed');
+      }
+    } catch (error) {
+      console.error('❌ Full sync failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Full sync failed',
+        timestamp: Date.now(),
+      };
+    }
+  }
+
   // Test connectivity to webapp
   async testConnection(): Promise<WebhookResponse> {
     try {

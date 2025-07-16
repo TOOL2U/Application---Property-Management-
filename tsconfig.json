@@ -2,6 +2,9 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // Fix dynamic imports support
+    "module": "esnext",
+    "target": "es2020",
     "paths": {
       "@/*": ["./*"]
     }
@@ -12,5 +15,9 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "nativewind-env.d.ts"
+  ],
+  "exclude": [
+    "api/**/*",
+    "node_modules"
   ]
 }

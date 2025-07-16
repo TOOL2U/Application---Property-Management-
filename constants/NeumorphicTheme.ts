@@ -102,6 +102,13 @@ export const NeumorphicTheme = {
   shadows: {
     // Neumorphic shadows (inset and outset)
     neumorphic: {
+      // Fix: Add missing small shadow property
+      small: {
+        shadowColor: 'rgba(255, 255, 255, 0.05)',
+        shadowOffset: { width: -1, height: -1 },
+        shadowOpacity: 1,
+        shadowRadius: 2,
+      },
       light: {
         shadowColor: 'rgba(255, 255, 255, 0.1)',
         shadowOffset: { width: -2, height: -2 },

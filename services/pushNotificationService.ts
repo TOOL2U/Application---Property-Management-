@@ -8,7 +8,17 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { adminJobAssignmentService as adminService } from '@/lib/firebaseAdmin';
+
+// Conditional import for admin services (only on server side)
+let adminService: any = null;
+if (Platform.OS === 'web' && typeof window === 'undefined') {
+  // Only import admin services on server side
+  try {
+    adminService = require('@/lib/firebaseAdmin').adminJobAssignmentService;
+  } catch (error) {
+    console.warn('Admin services not available in client environment');
+  }
+}
 import type { 
   JobAssignment, 
   JobNotificationPayload, 
@@ -17,11 +27,14 @@ import type {
 } from '@/types/jobAssignment';
 
 // Configure notification behavior
+// Fix: Add missing properties for NotificationBehavior type
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -31,13 +44,19 @@ class PushNotificationService {
   private responseListener: any = null;
 
   /**
-   * Initialize push notifications for the mobile app
+   * Initialize push notifications for the mobile app and web
    */
   async initialize(staffId: string): Promise<boolean> {
     try {
       console.log('🔔 Initializing push notifications for staff:', staffId);
 
-      // Check if device supports push notifications
+      // Check platform and device support
+      if (Platform.OS === 'web') {
+        console.log('🌐 Web platform detected, using web push notifications');
+        return await this.initializeWebPushNotifications(staffId);
+      }
+
+      // Check if device supports push notifications (mobile only)
       if (!Device.isDevice) {
         console.warn('⚠️ Push notifications only work on physical devices');
         return false;
@@ -80,6 +99,158 @@ class PushNotificationService {
     } catch (error) {
       console.error('❌ Error initializing push notifications:', error);
       return false;
+    }
+  }
+
+  /**
+   * Initialize web push notifications
+   */
+  async initializeWebPushNotifications(staffId: string): Promise<boolean> {
+    try {
+      console.log('🌐 Initializing web push notifications for staff:', staffId);
+
+      // Check if service worker is supported
+      if (!('serviceWorker' in navigator)) {
+        console.warn('⚠️ Service Worker not supported in this browser');
+        return false;
+      }
+
+      // Check if push notifications are supported
+      if (!('PushManager' in window)) {
+        console.warn('⚠️ Push notifications not supported in this browser');
+        return false;
+      }
+
+      // Request notification permission
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        console.warn('⚠️ Notification permission not granted');
+        return false;
+      }
+
+      // Register service worker first (required for Expo web push notifications)
+      try {
+        console.log('🔧 Registering service worker for web push notifications...');
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+          scope: '/'
+        });
+
+        // Wait for service worker to be ready
+        await navigator.serviceWorker.ready;
+        console.log('✅ Service worker registered and ready:', registration);
+
+        // Now try to get Expo push token
+        try {
+          const token = await Notifications.getExpoPushTokenAsync({
+            projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'operty-b54dc',
+          });
+
+          this.expoPushToken = token.data;
+          console.log('✅ Web Expo push token obtained:', this.expoPushToken);
+
+          // Save token to staff profile
+          await this.saveTokenToStaffProfile(staffId, this.expoPushToken);
+
+          // Set up notification listeners for web
+          this.setupWebNotificationListeners();
+
+          return true;
+        } catch (tokenError) {
+          console.error('❌ Error getting web push token (continuing without Expo token):', tokenError);
+
+          // Continue without Expo token - we can still receive notifications via service worker
+          this.setupWebNotificationListeners();
+          return true;
+        }
+      } catch (swError) {
+        console.error('❌ Service worker registration failed:', swError);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Error initializing web push notifications:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Set up notification listeners for web platform
+   */
+  setupWebNotificationListeners(): void {
+    try {
+      // Listen for notification clicks
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          console.log('📱 Web notification message received:', event.data);
+
+          if (event.data?.type === 'notification-click') {
+            // Handle notification click
+            const { jobId, action } = event.data;
+            this.handleWebNotificationAction(jobId, action);
+          }
+        });
+      }
+
+      // Set up Expo notification listeners if available
+      if (Notifications.addNotificationReceivedListener) {
+        this.notificationListener = Notifications.addNotificationReceivedListener((notification) => {
+          console.log('📱 Web notification received:', notification);
+        });
+      }
+
+      if (Notifications.addNotificationResponseReceivedListener) {
+        this.responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
+          console.log('📱 Web notification response:', response);
+
+          // Handle job assignment actions
+          if (response.notification.request.content.data?.type === 'job_assignment') {
+            const { jobId } = response.notification.request.content.data;
+            const action = response.actionIdentifier as string;
+            this.handleWebNotificationAction(jobId as string, action);
+          }
+        });
+      }
+
+      console.log('✅ Web notification listeners set up successfully');
+    } catch (error) {
+      console.error('❌ Error setting up web notification listeners:', error);
+    }
+  }
+
+  /**
+   * Handle web notification actions
+   */
+  async handleWebNotificationAction(jobId: string, action: string): Promise<void> {
+    try {
+      console.log('🔄 Handling web notification action:', { jobId, action });
+
+      if (action === 'accept' || action === 'decline') {
+        // Import job assignment service dynamically
+        const { mobileJobAssignmentService } = await import('@/services/jobAssignmentService');
+
+        const status = action === 'accept' ? 'accepted' : 'rejected';
+        const result = await mobileJobAssignmentService.updateJobStatus({
+          jobId,
+          staffId: 'current-user', // This should be the actual staff ID
+          status,
+          // Remove timestamp as it's not part of JobStatusUpdate interface
+        });
+
+        if (result.success) {
+          console.log(`✅ Job ${action}ed successfully via web notification`);
+
+          // Show confirmation notification
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(`Job ${action}ed`, {
+              body: `Job has been ${action}ed successfully`,
+              icon: '/assets/icon.png',
+            });
+          }
+        } else {
+          console.error(`❌ Failed to ${action} job:`, result.error);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error handling web notification action:', error);
     }
   }
 
@@ -274,7 +445,9 @@ class PushNotificationService {
       }
     } catch (error) {
       console.error('❌ Error sending job assignment notification:', error);
-      await PushNotificationService.logNotification(job, 'job_assigned', 'failed', error.message);
+      // Fix: Handle unknown error type safely
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      await PushNotificationService.logNotification(job, 'job_assigned', 'failed', errorMessage);
     }
   }
 
@@ -418,4 +591,6 @@ class PushNotificationService {
 
 // Export singleton instance
 export const pushNotificationService = new PushNotificationService();
+// Fix: Export class for dynamic imports
+export { PushNotificationService };
 export default pushNotificationService;

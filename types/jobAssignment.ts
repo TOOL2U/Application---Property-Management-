@@ -221,7 +221,8 @@ export interface JobUpdateEvent {
   jobId: string;
   staffId: string;
   timestamp: Timestamp;
-  data: Partial<JobAssignment>;
+  // Fix: Allow previousStatus in event data
+  data: Partial<JobAssignment> & { previousStatus?: string };
   triggeredBy: string; // User ID who triggered the update
   source: 'webapp' | 'mobile' | 'system';
 }

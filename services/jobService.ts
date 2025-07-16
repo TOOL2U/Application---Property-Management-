@@ -113,6 +113,169 @@ class JobService {
   }
 
   /**
+   * Get pending jobs for a specific staff member
+   */
+  async getPendingJobs(staffId: string): Promise<Job[]> {
+    try {
+      console.log('🔍 JobService: Getting pending jobs for staff:', staffId);
+
+      const jobsRef = collection(db, this.JOBS_COLLECTION);
+      const q = query(
+        jobsRef,
+        where('assignedTo', '==', staffId),
+        where('status', '==', 'pending'),
+        orderBy('scheduledDate', 'asc')
+      );
+
+      const querySnapshot = await getDocs(q);
+      const jobs: Job[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const job: Job = {
+          id: doc.id,
+          title: data.title || 'Untitled Job',
+          description: data.description || '',
+          type: data.type || 'general',
+          status: data.status || 'pending',
+          priority: data.priority || 'medium',
+          assignedTo: data.assignedTo,
+          assignedBy: data.assignedBy || data.createdBy,
+          assignedAt: data.assignedAt?.toDate() || data.createdAt?.toDate() || new Date(),
+          scheduledDate: data.scheduledDate?.toDate() || new Date(),
+          estimatedDuration: data.estimatedDuration || 60,
+          propertyId: data.propertyId || '',
+          location: {
+            address: data.location?.address || 'Address not provided',
+            city: data.location?.city || '',
+            state: data.location?.state || '',
+            zipCode: data.location?.zipCode || '',
+            specialInstructions: data.location?.specialInstructions || data.specialInstructions,
+          },
+          contacts: data.contacts || [],
+          requirements: data.requirements || [],
+          photos: data.photos || [],
+          completionNotes: data.completionNotes,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date(),
+          createdBy: data.createdBy || data.assignedBy,
+          specialInstructions: data.specialInstructions,
+          tools: data.tools,
+          materials: data.materials,
+          estimatedCost: data.estimatedCost,
+          actualCost: data.actualCost,
+          rejectionReason: data.rejectionReason,
+          rejectedAt: data.rejectedAt?.toDate(),
+          cancellationReason: data.cancellationReason,
+          cancelledAt: data.cancelledAt?.toDate(),
+          staffLocation: data.staffLocation,
+          notificationsEnabled: data.notificationsEnabled ?? true,
+          reminderSent: data.reminderSent ?? false,
+          acceptedAt: data.acceptedAt?.toDate(),
+          startedAt: data.startedAt?.toDate(),
+          completedAt: data.completedAt?.toDate(),
+          verifiedAt: data.verifiedAt?.toDate(),
+          actualDuration: data.actualDuration,
+        };
+        jobs.push(job);
+      });
+
+      console.log('✅ JobService: Found', jobs.length, 'pending jobs for staff', staffId);
+      return jobs;
+
+    } catch (error) {
+      console.error('❌ JobService: Error getting pending jobs:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get active jobs for a specific staff member (accepted and in_progress)
+   */
+  async getActiveJobs(staffId: string): Promise<Job[]> {
+    try {
+      console.log('🔍 JobService: Getting active jobs for staff:', staffId);
+
+      const jobsRef = collection(db, this.JOBS_COLLECTION);
+      const q = query(
+        jobsRef,
+        where('assignedTo', '==', staffId),
+        where('status', 'in', ['accepted', 'in_progress']),
+        orderBy('scheduledDate', 'asc')
+      );
+
+      const querySnapshot = await getDocs(q);
+      const jobs: Job[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const job: Job = this.mapFirestoreDataToJob(doc.id, data);
+        jobs.push(job);
+      });
+
+      console.log('✅ JobService: Found', jobs.length, 'active jobs for staff', staffId);
+      return jobs;
+
+    } catch (error) {
+      console.error('❌ JobService: Error getting active jobs:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Helper method to map Firestore data to Job object
+   */
+  private mapFirestoreDataToJob(id: string, data: any): Job {
+    return {
+      id,
+      title: data.title || 'Untitled Job',
+      description: data.description || '',
+      type: data.type || 'general',
+      status: data.status || 'pending',
+      priority: data.priority || 'medium',
+      assignedTo: data.assignedTo,
+      assignedBy: data.assignedBy || data.createdBy,
+      assignedAt: data.assignedAt?.toDate() || data.createdAt?.toDate() || new Date(),
+      scheduledDate: data.scheduledDate?.toDate() || new Date(),
+      estimatedDuration: data.estimatedDuration || 60,
+      propertyId: data.propertyId || '',
+      location: {
+        address: data.location?.address || 'Address not provided',
+        city: data.location?.city || '',
+        state: data.location?.state || '',
+        zipCode: data.location?.zipCode || '',
+        coordinates: data.location?.coordinates,
+        accessCodes: data.location?.accessCodes,
+        specialInstructions: data.location?.specialInstructions || data.specialInstructions,
+      },
+      contacts: data.contacts || [],
+      requirements: data.requirements || [],
+      photos: data.photos || [],
+      completionNotes: data.completionNotes,
+      createdAt: data.createdAt?.toDate() || new Date(),
+      updatedAt: data.updatedAt?.toDate() || new Date(),
+      createdBy: data.createdBy || data.assignedBy,
+      specialInstructions: data.specialInstructions,
+      tools: data.tools,
+      materials: data.materials,
+      estimatedCost: data.estimatedCost,
+      actualCost: data.actualCost,
+      rejectionReason: data.rejectionReason,
+      rejectedAt: data.rejectedAt?.toDate(),
+      cancellationReason: data.cancellationReason,
+      cancelledAt: data.cancelledAt?.toDate(),
+      staffLocation: data.staffLocation,
+      notificationsEnabled: data.notificationsEnabled ?? true,
+      reminderSent: data.reminderSent ?? false,
+      acceptedAt: data.acceptedAt?.toDate(),
+      startedAt: data.startedAt?.toDate(),
+      completedAt: data.completedAt?.toDate(),
+      verifiedAt: data.verifiedAt?.toDate(),
+      actualDuration: data.actualDuration,
+    };
+  }
+
+  /**
    * Get today's jobs for a staff member
    */
   async getTodaysJobs(staffId: string): Promise<JobListResponse> {
@@ -185,6 +348,162 @@ class JobService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to accept job',
+      };
+    }
+  }
+
+  /**
+   * Decline a job assignment
+   */
+  async declineJob(jobId: string, staffId: string, reason?: string): Promise<JobResponse> {
+    try {
+      console.log('❌ JobService: Declining job:', jobId, 'for staff:', staffId);
+
+      const jobRef = doc(db, this.JOBS_COLLECTION, jobId);
+      const jobDoc = await getDoc(jobRef);
+
+      if (!jobDoc.exists()) {
+        return {
+          success: false,
+          error: 'Job not found',
+        };
+      }
+
+      const jobData = jobDoc.data();
+
+      // Verify the job is assigned to this staff member
+      if (jobData.assignedTo !== staffId) {
+        return {
+          success: false,
+          error: 'Job not assigned to this staff member',
+        };
+      }
+
+      // Update job status to rejected
+      await updateDoc(jobRef, {
+        status: 'rejected',
+        rejectedAt: serverTimestamp(),
+        rejectionReason: reason || 'No reason provided',
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log('✅ JobService: Job declined successfully');
+      return {
+        success: true,
+        message: 'Job declined successfully',
+      };
+    } catch (error) {
+      console.error('❌ JobService: Error declining job:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to decline job',
+      };
+    }
+  }
+
+  /**
+   * Complete a job with photos
+   */
+  async completeJob(jobId: string, staffId: string, photos: string[], completionNotes?: string): Promise<JobResponse> {
+    try {
+      console.log('✅ JobService: Completing job:', jobId, 'for staff:', staffId);
+
+      if (!photos || photos.length === 0) {
+        return {
+          success: false,
+          error: 'At least one photo is required to complete the job',
+        };
+      }
+
+      const jobRef = doc(db, this.JOBS_COLLECTION, jobId);
+      const jobDoc = await getDoc(jobRef);
+
+      if (!jobDoc.exists()) {
+        return {
+          success: false,
+          error: 'Job not found',
+        };
+      }
+
+      const jobData = jobDoc.data();
+
+      // Verify the job is assigned to this staff member
+      if (jobData.assignedTo !== staffId) {
+        return {
+          success: false,
+          error: 'Job not assigned to this staff member',
+        };
+      }
+
+      // Verify the job is in an acceptable state for completion
+      if (!['accepted', 'in_progress'].includes(jobData.status)) {
+        return {
+          success: false,
+          error: 'Job cannot be completed in its current state',
+        };
+      }
+
+      // Update job status to completed
+      await updateDoc(jobRef, {
+        status: 'completed',
+        completedAt: serverTimestamp(),
+        photos: photos,
+        completionNotes: completionNotes || '',
+        actualDuration: jobData.startedAt ?
+          Math.round((Date.now() - jobData.startedAt.toDate().getTime()) / (1000 * 60)) :
+          jobData.estimatedDuration,
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log('✅ JobService: Job completed successfully');
+      return {
+        success: true,
+        message: 'Job completed successfully',
+      };
+    } catch (error) {
+      console.error('❌ JobService: Error completing job:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to complete job',
+      };
+    }
+  }
+
+  /**
+   * Upload photos for a job
+   */
+  async uploadJobPhotos(jobId: string, photos: string[]): Promise<JobResponse> {
+    try {
+      console.log('📸 JobService: Uploading photos for job:', jobId);
+
+      const jobRef = doc(db, this.JOBS_COLLECTION, jobId);
+      const jobDoc = await getDoc(jobRef);
+
+      if (!jobDoc.exists()) {
+        return {
+          success: false,
+          error: 'Job not found',
+        };
+      }
+
+      const existingPhotos = jobDoc.data().photos || [];
+      const updatedPhotos = [...existingPhotos, ...photos];
+
+      await updateDoc(jobRef, {
+        photos: updatedPhotos,
+        updatedAt: serverTimestamp(),
+      });
+
+      console.log('✅ JobService: Photos uploaded successfully');
+      return {
+        success: true,
+        message: 'Photos uploaded successfully',
+      };
+    } catch (error) {
+      console.error('❌ JobService: Error uploading photos:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to upload photos',
       };
     }
   }

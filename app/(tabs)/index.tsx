@@ -21,9 +21,21 @@ import { Card } from '@/components/ui/Card';
 import { SyncStatusIndicator } from '@/components/sync/SyncStatusIndicator';
 import { useSync } from '@/hooks/useSync';
 import { webhookService } from '@/services/webhookService';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  where,
+  // Fix: Keep required imports for test functions
+  getDocs,
+  doc,
+  getDoc,
+  onSnapshot,
+  updateDoc,
+  serverTimestamp
+} from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { authService } from '@/services/authService';
+// Fix: Remove unused authService import
+// import { authService } from '@/services/authService';
 import UserTestScreen from '@/components/UserTestScreen';
 import {
   Home,
@@ -68,6 +80,7 @@ export default function DashboardScreen() {
   const [showUserTest, setShowUserTest] = useState(false);
 
   // Staff Dashboard State
+  // Note: These are used in loadStaffDashboardData function
   const [todaysJobs, setTodaysJobs] = useState<Job[]>([]);
   const [pendingJobs, setPendingJobs] = useState<Job[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
@@ -120,6 +133,8 @@ export default function DashboardScreen() {
   useEffect(() => {
     if (isStaffUser && user?.id) {
       loadStaffDashboardData();
+      // Set up real-time listener for test job
+      setupTestJobListener();
     } else {
       loadDashboardData();
     }
@@ -176,6 +191,155 @@ export default function DashboardScreen() {
       console.error('Error loading staff dashboard data:', error);
     } finally {
       setJobsLoading(false);
+    }
+  };
+
+  // 🧪 TEST: Real-time listener for test job from web app
+  const setupTestJobListener = () => {
+    if (!user?.id) return;
+
+    console.log('🔔 Setting up test job listener for staff:', user.id);
+    console.log('🎯 Listening for test job: test_job_001');
+    console.log('👤 Target staff ID: iJxnTcy4xWZIoDVNnl5AgYSVPku2');
+
+    // Listen for jobs assigned to the specific test staff ID
+    const jobsRef = collection(db, 'jobs');
+    const q = query(
+      jobsRef,
+      where('assignedStaffId', '==', 'iJxnTcy4xWZIoDVNnl5AgYSVPku2'),
+      where('status', '==', 'pending')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log('📡 Firebase snapshot received:', snapshot.size, 'pending jobs');
+
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const jobData = change.doc.data();
+          const jobId = change.doc.id;
+
+          console.log('🆕 NEW TEST JOB DETECTED!');
+          console.log('📋 Job ID:', jobId);
+          console.log('📋 Job Data:', jobData);
+
+          // Show toast notification
+          Alert.alert(
+            '🎯 TEST JOB RECEIVED!',
+            `Job: ${jobData.title || 'Untitled'}\nLocation: ${jobData.location || 'Unknown'}\nFrom: Web App`,
+            [{ text: 'OK' }]
+          );
+
+          // Add to pending jobs for display
+          const newJob: Job = {
+            id: jobId,
+            title: jobData.title || 'Test Job from Web App',
+            description: jobData.description || 'Test job assignment from web application',
+            type: jobData.type || 'general',
+            status: 'pending',
+            priority: jobData.priority || 'medium',
+            assignedTo: jobData.assignedStaffId,
+            assignedBy: jobData.assignedBy || 'web-app-admin',
+            assignedAt: jobData.assignedAt?.toDate() || new Date(),
+            scheduledDate: jobData.scheduledDate?.toDate() || new Date(),
+            estimatedDuration: jobData.estimatedDuration || 60,
+            propertyId: jobData.propertyId || 'test-property-001',
+            location: {
+              address: jobData.location?.address || '123 Test Street',
+              city: jobData.location?.city || 'Miami',
+              state: jobData.location?.state || 'FL',
+              zipCode: jobData.location?.zipCode || '33101',
+              specialInstructions: jobData.location?.specialInstructions || 'Test job from web app'
+            },
+            contacts: jobData.contacts || [{
+              name: 'Test Contact',
+              phone: '+1 (555) 123-4567',
+              email: 'test@example.com',
+              role: 'property_manager',
+              preferredContactMethod: 'phone'
+            }],
+            requirements: jobData.requirements || [],
+            photos: jobData.photos || [],
+            createdAt: jobData.createdAt?.toDate() || new Date(),
+            updatedAt: jobData.updatedAt?.toDate() || new Date(),
+            createdBy: jobData.createdBy || 'web-app-admin',
+            notificationsEnabled: jobData.notificationsEnabled ?? true,
+            reminderSent: jobData.reminderSent ?? false,
+          };
+
+          setPendingJobs(prev => [newJob, ...prev]);
+        }
+      });
+    }, (error) => {
+      console.error('❌ Error in test job listener:', error);
+    });
+
+    // Store unsubscribe function for cleanup
+    return unsubscribe;
+  };
+
+  // 🧪 TEST: Accept job function for test jobs
+  const acceptTestJob = async (jobId: string) => {
+    try {
+      console.log('✅ Accepting test job:', jobId);
+
+      // Update job status in Firebase
+      const jobRef = doc(db, 'jobs', jobId);
+      await updateDoc(jobRef, {
+        status: 'accepted',
+        acceptedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      console.log('✅ Job accepted successfully in Firebase');
+
+      // Show success message
+      Alert.alert(
+        '✅ Job Accepted!',
+        'The test job has been accepted and moved to Active Jobs.',
+        [{ text: 'OK' }]
+      );
+
+      // Remove from pending jobs
+      setPendingJobs(prev => prev.filter(job => job.id !== jobId));
+
+      // Reload staff dashboard to refresh data
+      loadStaffDashboardData();
+
+    } catch (error) {
+      console.error('❌ Error accepting test job:', error);
+      Alert.alert('Error', 'Failed to accept job. Please try again.');
+    }
+  };
+
+  // 🧪 TEST: Decline job function for test jobs
+  const declineTestJob = async (jobId: string) => {
+    try {
+      console.log('❌ Declining test job:', jobId);
+
+      // Update job status in Firebase
+      const jobRef = doc(db, 'jobs', jobId);
+      await updateDoc(jobRef, {
+        status: 'rejected',
+        rejectedAt: serverTimestamp(),
+        rejectionReason: 'Declined from mobile app test',
+        updatedAt: serverTimestamp()
+      });
+
+      console.log('❌ Job declined successfully in Firebase');
+
+      // Show success message
+      Alert.alert(
+        '❌ Job Declined',
+        'The test job has been declined.',
+        [{ text: 'OK' }]
+      );
+
+      // Remove from pending jobs
+      setPendingJobs(prev => prev.filter(job => job.id !== jobId));
+
+    } catch (error) {
+      console.error('❌ Error declining test job:', error);
+      Alert.alert('Error', 'Failed to decline job. Please try again.');
     }
   };
 
@@ -268,7 +432,7 @@ export default function DashboardScreen() {
     color: string;
     trend?: number;
   }) => (
-    <Card style={[styles.statCard, { width: (screenWidth - 60) / 2 }]}>
+    <Card style={[styles.statCard, { width: (screenWidth - 60) / 2 }] as any}>
       <View style={styles.statHeader}>
         <View style={[styles.statIcon, { backgroundColor: `${color}20` }]}>
           {icon}
@@ -352,9 +516,10 @@ export default function DashboardScreen() {
         [{ text: 'OK' }]
       );
 
-      const { collection, query, where, getDocs, doc, getDoc } = await import('firebase/firestore');
-      const { db } = await import('@/lib/firebase');
-      const { authService } = await import('@/services/authService');
+      // These are already imported at the top of the file
+      // const { collection, query, where, getDocs, doc, getDoc } = await import('firebase/firestore');
+      // const { db } = await import('@/lib/firebase');
+      // const { authService } = await import('@/services/authService');
 
       // Test 1: Find user by ID
       const userId = 'VPPtbGl8WhMicZURHOgQ9BUzJd02';
@@ -420,6 +585,9 @@ export default function DashboardScreen() {
         user={user}
         refreshing={refreshing}
         onRefresh={onRefresh}
+        pendingJobs={pendingJobs}
+        onAcceptJob={acceptTestJob}
+        onDeclineJob={declineTestJob}
       />
     );
   }

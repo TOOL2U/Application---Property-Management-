@@ -202,26 +202,6 @@ class AuthService {
   }
 
   /**
-   * Validate user session
-   */
-  async validateSession(userId: string): Promise<boolean> {
-    try {
-      const staffAccountsRef = collection(db, this.COLLECTION_NAME);
-      const q = query(
-        staffAccountsRef,
-        where('__name__', '==', userId),
-        where('isActive', '==', true)
-      );
-
-      const querySnapshot = await getDocs(q);
-      return !querySnapshot.empty;
-    } catch (error) {
-      console.error('❌ AuthService: Session validation error:', error);
-      return false;
-    }
-  }
-
-  /**
    * Get user by ID
    */
   async getUserById(userId: string): Promise<StaffAccount | null> {
@@ -245,8 +225,9 @@ class AuthService {
       return {
         id: userDoc.id,
         email: userData.email,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
+        name: userData.name, // Fixed: use 'name' instead of firstName/lastName
+        phone: userData.phone,
+        address: userData.address,
         role: userData.role,
         department: userData.department,
         isActive: userData.isActive,
@@ -652,12 +633,14 @@ class AuthService {
    */
   async signOut(): Promise<void> {
     try {
-      console.log('👋 Signing out user');
+      console.log('👋 AuthService: Starting sign out process...');
       await this.clearSession();
-      console.log('✅ Sign out completed');
+      console.log('✅ AuthService: Sign out completed successfully');
     } catch (error) {
-      console.error('❌ Sign out error:', error);
-      throw new Error('Failed to sign out');
+      console.error('❌ AuthService: Sign out error:', error);
+      // Don't throw error here - we want to ensure sign out always succeeds
+      // even if there are issues clearing the session
+      console.log('⚠️ AuthService: Sign out completed with warnings');
     }
   }
 }

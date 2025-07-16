@@ -4,13 +4,23 @@
  * Updates job status from mobile app to webapp
  */
 
-import type { NextApiRequest, NextApiResponse } from 'next';
+// Compatible API types for job assignment updates
+interface ApiRequest {
+  method?: string;
+  body: any;
+}
+
+interface ApiResponse<T = any> {
+  status: (code: number) => ApiResponse<T>;
+  json: (data: T) => void;
+}
+
 import { adminJobAssignmentService } from '@/lib/firebaseAdmin';
 import type { JobStatusUpdate, JobStatusUpdateResponse } from '@/types/jobAssignment';
 
 export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<JobStatusUpdateResponse>
+  req: ApiRequest,
+  res: ApiResponse<JobStatusUpdateResponse>
 ) {
   // Only allow POST requests
   if (req.method !== 'POST') {
@@ -60,7 +70,7 @@ export default async function handler(
       });
     }
 
-    const currentJob = { id: jobDoc.id, ...jobDoc.data() };
+    const currentJob = { id: jobDoc.id, ...jobDoc.data() } as any;
 
     // Verify staff ownership
     if (currentJob.staffId !== statusUpdate.staffId) {
@@ -134,7 +144,7 @@ export default async function handler(
 
     // Get updated job
     const updatedJobDoc = await firestore.collection('job_assignments').doc(statusUpdate.jobId).get();
-    const updatedJob = { id: updatedJobDoc.id, ...updatedJobDoc.data() };
+    const updatedJob = { id: updatedJobDoc.id, ...updatedJobDoc.data() } as any;
 
     // Log the status change event
     await firestore.collection('job_events').add({
@@ -152,8 +162,6 @@ export default async function handler(
 
     // Send notification to admin/webapp about status change
     try {
-      const messaging = adminJobAssignmentService.getMessaging();
-      
       // Get admin/manager FCM tokens (you would implement this based on your admin user system)
       // For now, we'll just log the notification
       let notificationTitle = '';

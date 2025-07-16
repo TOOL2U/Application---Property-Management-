@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -6,16 +6,19 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 export default function Index() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   useEffect(() => {
-    if (!isLoading) {
+    // Only perform initial routing, not logout routing
+    if (!isLoading && !hasInitialized) {
       if (isAuthenticated) {
         router.replace('/(tabs)');
       } else {
         router.replace('/(auth)/login');
       }
+      setHasInitialized(true);
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, hasInitialized]);
 
   return (
     <View style={styles.container}>

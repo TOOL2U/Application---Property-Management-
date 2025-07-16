@@ -21,16 +21,27 @@ console.log('🔥 Firebase Config:', {
   projectId: firebaseConfig.projectId,
   authDomain: firebaseConfig.authDomain,
   hasApiKey: !!firebaseConfig.apiKey,
+  environment: Platform.OS,
 });
 
-// Initialize Firebase
+// Initialize Firebase with error handling
 let app;
-if (getApps().length === 0) {
-  app = initializeApp(firebaseConfig);
-  console.log('✅ Firebase app initialized');
-} else {
-  app = getApp();
-  console.log('✅ Firebase app already initialized');
+try {
+  if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig);
+    console.log('✅ Firebase app initialized successfully');
+  } else {
+    app = getApp();
+    console.log('✅ Firebase app already initialized');
+  }
+} catch (error) {
+  console.error('❌ Firebase initialization error:', error);
+  // Try to get existing app or create with fallback config
+  try {
+    app = getApp();
+  } catch {
+    app = initializeApp(firebaseConfig);
+  }
 }
 
 // Initialize Firebase Auth with simpler approach for React Native

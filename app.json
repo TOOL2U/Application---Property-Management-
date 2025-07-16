@@ -33,12 +33,21 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "serviceWorkerPath": "firebase-messaging-sw.js",
+      "config": {
+        "firebase": {
+          "notification": {
+            "serviceWorkerPath": "firebase-messaging-sw.js"
+          }
+        }
+      }
     },
     "notification": {
       "icon": "./assets/icon.png",
       "color": "#8b5cf6",
-      "vapidPublicKey": "BH7mKJZQk1kGGJOhrvY-cNpsyvwRAj-Btdd_WeZ4lHoMGfxSMokvAzJtBqsRBHdHBmy5CjjBQsV7mpNNvGwrBHI"
+      "vapidPublicKey": "BH7mKJZQk1kGGJOhrvY-cNpsyvwRAj-Btdd_WeZ4lHoMGfxSMokvAzJtBqsRBHdHBmy5CjjBQsV7mpNNvGwrBHI",
+      "serviceWorkerPath": "firebase-messaging-sw.js"
     },
     "plugins": [
       "expo-router",

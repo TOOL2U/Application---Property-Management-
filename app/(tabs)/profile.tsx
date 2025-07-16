@@ -24,11 +24,9 @@ import {
   Mail,
   Shield,
   ChevronRight,
-  Star,
-  Award,
+  // Fix: Keep TrendingUp as it's used in StatCard
   TrendingUp,
-  Calendar,
-  Zap,
+  // Star, Award, Calendar, Zap, - removed unused
 } from 'lucide-react-native';
 import { NeumorphicTheme } from '@/constants/NeumorphicTheme';
 import { NeumorphicCard, NeumorphicButton } from '@/components/ui/NeumorphicComponents';
@@ -84,18 +82,28 @@ export default function ProfileScreen() {
               console.log('🚪 Starting sign out process from profile screen...');
               setLocalLoading(true);
               
+              // Check auth state before sign out
+              console.log('🔍 Pre-signout auth state:', { 
+                isAuthenticated: user !== null, 
+                userEmail: user?.email,
+                isLoading: authLoading 
+              });
+              
               // Perform sign out
               await signOut();
               
+              // Check auth state after sign out
+              console.log('🔍 Post-signout auth state:', { 
+                isAuthenticated: user !== null, 
+                userEmail: user?.email,
+                isLoading: authLoading 
+              });
+              
               console.log('✅ Sign out completed successfully');
               
-              // Wait a moment for the auth state to properly clear
-              setTimeout(() => {
-                // Navigate to login screen after successful sign out
-                // Using replace to prevent going back to the authenticated area
-                router.replace('/(auth)/login');
-                console.log('🔄 Navigation to login screen triggered');
-              }, 100);
+              // Navigate directly to login
+              console.log('🔄 Navigating to login screen...');
+              router.replace('/(auth)/login');
               
             } catch (error) {
               console.error('❌ Sign out error:', error);
@@ -112,18 +120,6 @@ export default function ProfileScreen() {
       ]
     );
   };
-
-  const ProfileSection = ({ title, children }: {
-    title: string;
-    children: React.ReactNode;
-  }) => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionContent}>
-        {children}
-      </View>
-    </View>
-  );
 
   const ProfileItem = ({ 
     icon: Icon, 
@@ -218,7 +214,7 @@ export default function ProfileScreen() {
               </LinearGradient>
               <View style={styles.userInfo}>
                 <Text style={styles.userName}>
-                  {user?.firstName || 'Sia'} {user?.lastName || 'Moon'}
+                  {user?.name || 'Sia Moon'}
                 </Text>
                 <Text style={styles.userRole}>
                   {user?.role === 'admin' ? 'Administrator' : 'Property Manager'}

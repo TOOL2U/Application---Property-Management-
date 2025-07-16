@@ -99,7 +99,8 @@ export async function testLogin(email: string, password: string) {
       return {
         success: true,
         user: result.user,
-        message: `Successfully logged in as ${result.user?.firstName} ${result.user?.lastName}`
+        // Fix: Use 'name' property instead of firstName/lastName
+        message: `Successfully logged in as ${result.user?.name || result.user?.email}`
       };
     } else {
       console.log('❌ Login failed:', result.error);

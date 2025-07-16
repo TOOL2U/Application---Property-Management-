@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { Notification } from 'expo-notifications';
 import { X, Bell } from 'lucide-react-native';
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from '@/constants/Design';
+import { useDesignTokens } from '@/constants/Design';
 
 interface NotificationBannerProps {
   notification: Notification;
@@ -17,6 +17,54 @@ export default function NotificationBanner({
 }: NotificationBannerProps) {
   const [slideAnim] = useState(new Animated.Value(-100));
   const [fadeAnim] = useState(new Animated.Value(0));
+  const { colors, Typography, Spacing, BorderRadius, Shadows } = useDesignTokens();
+
+  const styles = StyleSheet.create({
+    container: {
+      position: 'absolute',
+      top: 0,
+      left: Spacing.mobile.screenPadding,
+      right: Spacing.mobile.screenPadding,
+      zIndex: 1000,
+    },
+    content: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      backgroundColor: colors.surface,
+      borderRadius: BorderRadius.md,
+      padding: Spacing[4],
+      borderLeftWidth: 4,
+      borderLeftColor: colors.primary,
+      ...Shadows.default,
+    },
+    iconContainer: {
+      width: 36,
+      height: 36,
+      borderRadius: BorderRadius.default,
+      backgroundColor: `${colors.primary}20`,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: Spacing[3],
+    },
+    textContainer: {
+      flex: 1,
+      marginRight: Spacing[2],
+    },
+    title: {
+      ...Typography.sizes.base,
+      fontWeight: Typography.weights.semibold,
+      color: colors.text.primary,
+      marginBottom: Spacing[1],
+    },
+    body: {
+      ...Typography.sizes.sm,
+      color: colors.text.secondary,
+      lineHeight: 18,
+    },
+    dismissButton: {
+      padding: Spacing[1],
+    },
+  });
 
   useEffect(() => {
     // Slide down and fade in
@@ -82,7 +130,7 @@ export default function NotificationBanner({
         activeOpacity={0.9}
       >
         <View style={styles.iconContainer}>
-          <Bell size={20} color={Colors.primary} />
+          <Bell size={20} color={colors.primary} />
         </View>
         
         <View style={styles.textContainer}>
@@ -99,56 +147,9 @@ export default function NotificationBanner({
           style={styles.dismissButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <X size={18} color={Colors.text.tertiary} />
+          <X size={18} color={colors.text.tertiary} />
         </TouchableOpacity>
       </TouchableOpacity>
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: 60, // Below status bar and dynamic island
-    left: Spacing.mobile.screenPadding,
-    right: Spacing.mobile.screenPadding,
-    zIndex: 1000,
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.4,
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.primary,
-    ...Shadows.notification,
-  },
-  iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.default,
-    backgroundColor: `${Colors.primary}20`,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing.3,
-  },
-  textContainer: {
-    flex: 1,
-    marginRight: Spacing.2,
-  },
-  title: {
-    ...Typography.sizes.base,
-    fontWeight: Typography.weights.semibold,
-    color: Colors.text.primary,
-    marginBottom: Spacing.1,
-  },
-  body: {
-    ...Typography.sizes.sm,
-    color: Colors.text.secondary,
-    lineHeight: 18,
-  },
-  dismissButton: {
-    padding: Spacing.1,
-  },
-});
