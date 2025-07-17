@@ -3,20 +3,67 @@ import { Tabs } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffAuth } from '@/hooks/useStaffAuth';
-import {
-  Home,
-  Briefcase,
-  Users,
-  User,
-  Settings,
-  MapPin,
-  Calendar,
-  DollarSign,
-  Building,
-  Wrench,
-  History,
-  Play,
-} from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { View, Text } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import * as Animatable from 'react-native-animatable';
+import { AITheme } from '@/constants/AITheme';
+
+// Modern AI-inspired tab icon component
+const AITabIcon = ({
+  name,
+  focused,
+  color,
+  size = 24,
+  label
+}: {
+  name: keyof typeof Ionicons.glyphMap;
+  focused: boolean;
+  color: string;
+  size?: number;
+  label?: string;
+}) => (
+  <Animatable.View
+    animation={focused ? 'pulse' : undefined}
+    duration={1000}
+    iterationCount="infinite"
+    className="items-center justify-center"
+  >
+    {/* Glow effect background for active tab */}
+    {focused && (
+      <View className="absolute inset-0 rounded-full bg-purple-500/20 blur-sm" />
+    )}
+    
+    {/* Icon container with gradient background when active */}
+    <View className={`
+      items-center justify-center rounded-xl p-2
+      ${focused ? 'bg-purple-500/10' : ''}
+    `}>
+      <Ionicons
+        name={focused ? name : (name.includes('-outline') ? name : `${name}-outline` as keyof typeof Ionicons.glyphMap)}
+        size={size}
+        color={color}
+        style={{
+          shadowColor: focused ? AITheme.colors.brand.primary : 'transparent',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: focused ? 0.8 : 0,
+          shadowRadius: focused ? 12 : 0,
+        }}
+      />
+    </View>
+    
+    {/* Optional label with modern typography */}
+    {label && (
+      <Text className={`
+        text-xs mt-1 font-medium tracking-wider
+        ${focused ? 'text-purple-400' : 'text-gray-400'}
+      `}>
+        {label}
+      </Text>
+    )}
+  </Animatable.View>
+);
 
 export default function TabLayout() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -28,12 +75,13 @@ export default function TabLayout() {
     // This ensures immediate redirect on sign out
     if (!isLoading && !isAuthenticated) {
       console.log('🚨 Tab layout detected unauthenticated user, redirecting to login...');
+      // Use replace to prevent back navigation to tabs
       router.replace('/(auth)/login');
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, router]);
 
-  // Don't render tabs if not authenticated
-  if (!isAuthenticated) {
+  // Don't render tabs if not authenticated or still loading
+  if (!isAuthenticated || isLoading) {
     return null;
   }
 
@@ -59,24 +107,40 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#1a1a2e',
-          borderTopColor: 'rgba(139, 92, 246, 0.2)',
-          borderTopWidth: 1,
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 70,
-          shadowColor: '#8b5cf6',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 8,
+          backgroundColor: AITheme.colors.background.secondary,
+          borderTopWidth: 0,
+          paddingBottom: 24,
+          paddingTop: 12,
+          height: 84,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          ...AITheme.shadows.xl,
         },
-        tabBarActiveTintColor: '#8b5cf6',
-        tabBarInactiveTintColor: '#64748b',
+        tabBarBackground: () => (
+          <BlurView intensity={20} className="flex-1 overflow-hidden rounded-t-3xl">
+            <LinearGradient
+              colors={AITheme.gradients.surface}
+              className="flex-1"
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+          </BlurView>
+        ),
+        tabBarActiveTintColor: AITheme.colors.brand.primary,
+        tabBarInactiveTintColor: AITheme.colors.text.muted,
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '600',
           letterSpacing: 0.5,
+          marginTop: 4,
+          fontFamily: AITheme.typography.fonts.primary,
+        },
+        tabBarIconStyle: {
+          marginBottom: 0,
         },
       }}
     >
@@ -85,8 +149,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => (
-            <Home size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <AITabIcon name="home" focused={focused} color={color} />
           ),
         }}
       />
@@ -96,8 +160,8 @@ export default function TabLayout() {
         name="jobs"
         options={{
           title: isStaffUser ? 'Active Jobs' : 'Jobs',
-          tabBarIcon: ({ color, size }) => (
-            <Briefcase size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <AITabIcon name="clipboard" focused={focused} color={color} />
           ),
         }}
       />
@@ -110,8 +174,8 @@ export default function TabLayout() {
             name="bookings"
             options={{
               title: 'Bookings',
-              tabBarIcon: ({ color, size }) => (
-                <Calendar size={size} color={color} />
+              tabBarIcon: ({ color, focused }) => (
+                <AITabIcon name="calendar" focused={focused} color={color} />
               ),
             }}
           />
@@ -119,8 +183,8 @@ export default function TabLayout() {
             name="assign-staff"
             options={{
               title: 'Assign Staff',
-              tabBarIcon: ({ color, size }) => (
-                <Users size={size} color={color} />
+              tabBarIcon: ({ color, focused }) => (
+                <AITabIcon name="people" focused={focused} color={color} />
               ),
             }}
           />
@@ -128,8 +192,8 @@ export default function TabLayout() {
             name="manage-jobs"
             options={{
               title: 'Manage Jobs',
-              tabBarIcon: ({ color, size }) => (
-                <Wrench size={size} color={color} />
+              tabBarIcon: ({ color, focused }) => (
+                <AITabIcon name="construct" focused={focused} color={color} />
               ),
             }}
           />
@@ -139,8 +203,8 @@ export default function TabLayout() {
             name="properties"
             options={{
               title: 'Properties',
-              tabBarIcon: ({ color, size }) => (
-                <Building size={size} color={color} />
+              tabBarIcon: ({ color, focused }) => (
+                <AITabIcon name="business" focused={focused} color={color} />
               ),
             }}
           />
@@ -148,8 +212,8 @@ export default function TabLayout() {
             name="tenants"
             options={{
               title: 'Tenants',
-              tabBarIcon: ({ color, size }) => (
-                <Users size={size} color={color} />
+              tabBarIcon: ({ color, focused }) => (
+                <AITabIcon name="people" focused={focused} color={color} />
               ),
             }}
           />
@@ -157,8 +221,8 @@ export default function TabLayout() {
             name="schedule"
             options={{
               title: 'Schedule',
-              tabBarIcon: ({ color, size }) => (
-                <Calendar size={size} color={color} />
+              tabBarIcon: ({ color, focused }) => (
+                <AITabIcon name="time" focused={focused} color={color} />
               ),
             }}
           />
@@ -166,8 +230,8 @@ export default function TabLayout() {
             name="maintenance"
             options={{
               title: 'Maintenance',
-              tabBarIcon: ({ color, size }) => (
-                <Wrench size={size} color={color} />
+              tabBarIcon: ({ color, focused }) => (
+                <AITabIcon name="build" focused={focused} color={color} />
               ),
             }}
           />
@@ -175,8 +239,8 @@ export default function TabLayout() {
             name="payments"
             options={{
               title: 'Payments',
-              tabBarIcon: ({ color, size }) => (
-                <DollarSign size={size} color={color} />
+              tabBarIcon: ({ color, focused }) => (
+                <AITabIcon name="card" focused={focused} color={color} />
               ),
             }}
           />
@@ -184,8 +248,8 @@ export default function TabLayout() {
             name="map"
             options={{
               title: 'Map',
-              tabBarIcon: ({ color, size }) => (
-                <MapPin size={size} color={color} />
+              tabBarIcon: ({ color, focused }) => (
+                <AITabIcon name="map" focused={focused} color={color} />
               ),
             }}
           />
@@ -193,8 +257,8 @@ export default function TabLayout() {
             name="history"
             options={{
               title: 'History',
-              tabBarIcon: ({ color, size }) => (
-                <History size={size} color={color} />
+              tabBarIcon: ({ color, focused }) => (
+                <AITabIcon name="time" focused={focused} color={color} />
               ),
             }}
           />
@@ -206,11 +270,23 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <User size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <AITabIcon name="person" focused={focused} color={color} />
           ),
         }}
       />
+
+      {/* Developers Tab - Always visible for easy navigation */}
+      <Tabs.Screen
+        name="developers"
+        options={{
+          title: 'Developers',
+          tabBarIcon: ({ color, focused }) => (
+            <AITabIcon name="code" focused={focused} color={color} />
+          ),
+        }}
+      />
+
     </Tabs>
   );
 }

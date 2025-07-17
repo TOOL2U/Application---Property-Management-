@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 
 export default function Index() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -21,17 +21,8 @@ export default function Index() {
   }, [isAuthenticated, isLoading, hasInitialized]);
 
   return (
-    <View style={styles.container}>
-      <ActivityIndicator size="large" color="#4f46e5" />
+    <View className="flex-1 justify-center items-center bg-dark-bg">
+      <ActivityIndicator size="large" color="#8b5cf6" />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1a1a2e',
-  },
-});

@@ -30,6 +30,8 @@ export default function EnhancedStaffDashboard({
       testPendingJobs={pendingJobs}
       onTestAcceptJob={onAcceptJob}
       onTestDeclineJob={onDeclineJob}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
     />
   );
 }

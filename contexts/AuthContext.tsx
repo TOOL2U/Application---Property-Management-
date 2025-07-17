@@ -1,7 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authService, StaffAccount, AuthSession } from '../services/authService';
+import { authService, StaffAccount } from '../services/authService';
+import { sharedAuthService } from '../services/sharedAuthService';
 import { AppState, AppStateStatus } from 'react-native';
 import { Storage } from '../utils/storage';
+import {
+  SHARED_STAFF_CREDENTIALS,
+  StaffProfile,
+  getSavedStaffId,
+  getStaffProfile,
+  clearSavedStaffData
+} from '../services/staffProfileService';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 
 // Storage keys
 const STORAGE_KEY = '@staff_auth_user';
@@ -22,10 +32,16 @@ interface StaffUser {
 
 interface AuthContextType {
   user: StaffUser | null;
+  selectedStaff: StaffProfile | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInShared: () => Promise<void>;
+  selectStaffProfile: (staffProfile: StaffProfile) => Promise<void>;
+  setUserFromStaffAccount: (staffAccount: StaffAccount) => Promise<void>;
   signOut: () => Promise<void>;
+  signOutToProfileSelection: () => Promise<void>;
   isAuthenticated: boolean;
+  isStaffSelected: boolean;
   error: string | null;
   clearError: () => void;
   userRole: string | null;
@@ -41,6 +57,7 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<StaffUser | null>(null);
+  const [selectedStaff, setSelectedStaff] = useState<StaffProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
@@ -199,11 +216,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await authService.signOut();
       console.log('✅ AuthService: Sign out completed');
 
+      // Also clear shared auth service data
+      await sharedAuthService.signOutShared();
+      console.log('✅ SharedAuthService: Sign out completed');
+
       // Clear all auth state immediately
       setUser(null);
+      setSelectedStaff(null);
       setUserRole(null);
       setError(null);
       setIsSessionValid(false);
+
+      // Clear saved staff data
+      await clearSavedStaffData();
 
       console.log('✅ AuthContext: Sign out completed - all auth state cleared');
       console.log('🔍 AuthContext: Auth state after sign out:', {
@@ -212,7 +237,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isSessionValid: false,
         isAuthenticated: false
       });
-      
+
     } catch (error) {
       console.error('❌ AuthContext: Sign out error:', error);
 
@@ -221,7 +246,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUserRole(null);
       setIsSessionValid(false);
       setError('Sign out completed with warnings');
-      
+
       console.log('⚠️ AuthContext: Sign out completed with warnings - auth state cleared anyway');
     } finally {
       setIsLoading(false);
@@ -270,12 +295,177 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setError(null);
   };
 
+  /**
+   * Sign in with shared Firebase Auth credentials
+   */
+  const signInShared = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      console.log('🔐 AuthContext: Attempting shared Firebase Auth login...');
+
+      // Use Firebase Auth with shared credentials
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        SHARED_STAFF_CREDENTIALS.email,
+        SHARED_STAFF_CREDENTIALS.password
+      );
+
+      if (userCredential.user) {
+        console.log('✅ Shared Firebase login successful');
+
+        // Check if there's a saved staff profile
+        const savedStaffId = await getSavedStaffId();
+        if (savedStaffId) {
+          const staffProfile = await getStaffProfile(savedStaffId);
+          if (staffProfile) {
+            await selectStaffProfile(staffProfile);
+            console.log('✅ Auto-selected saved staff profile:', staffProfile.name);
+          }
+        }
+      } else {
+        throw new Error('Shared login failed');
+      }
+    } catch (error) {
+      console.error('❌ AuthContext: Shared authentication error:', error);
+      setError(error instanceof Error ? error.message : 'Shared authentication failed');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Select staff profile after PIN validation
+   */
+  const selectStaffProfile = async (staffProfile: StaffProfile): Promise<void> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      console.log('👤 AuthContext: Selecting staff profile:', staffProfile.name);
+
+      setSelectedStaff(staffProfile);
+      setUser({
+        id: staffProfile.id,
+        email: staffProfile.email,
+        name: staffProfile.name,
+        role: staffProfile.role,
+        department: staffProfile.department,
+        isActive: staffProfile.isActive,
+        lastLogin: staffProfile.lastLogin
+      });
+      setUserRole(staffProfile.role);
+
+      // Store selected staff data
+      await Storage.setItem(STORAGE_KEY, JSON.stringify({
+        id: staffProfile.id,
+        email: staffProfile.email,
+        name: staffProfile.name,
+        role: staffProfile.role,
+        department: staffProfile.department,
+        isActive: staffProfile.isActive,
+        lastLogin: staffProfile.lastLogin
+      }));
+
+      console.log('✅ Staff profile selected successfully:', staffProfile.name);
+    } catch (error) {
+      console.error('❌ Staff profile selection error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to select staff profile');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Set user from staff account after PIN verification
+   */
+  const setUserFromStaffAccount = async (staffAccount: StaffAccount) => {
+    try {
+      console.log('👤 AuthContext: Setting user from staff account:', staffAccount.name);
+
+      const staffUser: StaffUser = {
+        id: staffAccount.id,
+        email: staffAccount.email,
+        name: staffAccount.name,
+        phone: staffAccount.phone,
+        address: staffAccount.address,
+        role: staffAccount.role,
+        department: staffAccount.department,
+        isActive: staffAccount.isActive,
+        lastLogin: staffAccount.lastLogin
+      };
+
+      setUser(staffUser);
+      setUserRole(staffUser.role);
+      setIsSessionValid(true);
+
+      // Store user data for session persistence
+      await Storage.setItem(STORAGE_KEY, JSON.stringify(staffUser));
+
+      console.log('✅ AuthContext: User set successfully from staff account');
+      console.log('👤 User role:', staffUser.role);
+    } catch (error) {
+      console.error('❌ AuthContext: Failed to set user from staff account:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Sign out to profile selection (keeps shared Firebase Auth active)
+   */
+  const signOutToProfileSelection = async () => {
+    try {
+      setIsLoading(true);
+      console.log('🔄 AuthContext: Signing out to profile selection...');
+      console.log('🔍 AuthContext: Current user before sign out:', user?.email);
+
+      // Clear individual staff session but keep shared Firebase Auth
+      await authService.signOut();
+      console.log('✅ AuthService: Individual session cleared');
+
+      // Clear selected staff data but keep shared auth active
+      await sharedAuthService.clearSelectedStaff();
+      console.log('✅ SharedAuthService: Selected staff cleared');
+
+      // Clear user state but keep Firebase Auth session
+      setUser(null);
+      setUserRole(null);
+      setError(null);
+      setIsSessionValid(false);
+
+      console.log('✅ AuthContext: Signed out to profile selection - shared auth preserved');
+
+    } catch (error) {
+      console.error('❌ AuthContext: Sign out to profile selection error:', error);
+
+      // Even if there's an error, clear the user state
+      setUser(null);
+      setUserRole(null);
+      setIsSessionValid(false);
+      setError('Sign out completed with warnings');
+
+      console.log('⚠️ AuthContext: Sign out completed with warnings - user state cleared anyway');
+    } finally {
+      setIsLoading(false);
+      console.log('🏁 AuthContext: Sign out to profile selection finished');
+    }
+  };
+
   const value: AuthContextType = {
     user,
+    selectedStaff,
     isLoading,
     signIn,
+    signInShared,
+    selectStaffProfile,
+    setUserFromStaffAccount,
     signOut,
+    signOutToProfileSelection,
     isAuthenticated: !!user,
+    isStaffSelected: !!selectedStaff,
     error,
     clearError,
     userRole,

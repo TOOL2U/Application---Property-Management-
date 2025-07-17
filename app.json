@@ -56,7 +56,9 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Sia Moon Staff to use your location to help navigate to properties and share your location for task management."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-web-browser"
     ],
     "scheme": "sia-moon-staff",
     "experiments": {

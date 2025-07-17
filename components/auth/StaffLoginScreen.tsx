@@ -2,21 +2,23 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
-  StyleSheet,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   ActivityIndicator,
   Dimensions,
+  TextInput as RNTextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
+import * as Animatable from 'react-native-animatable';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SiaMoonCard, SiaMoonButton, SiaMoonGradientButton, SiaMoonText } from '@/components/ui/SiaMoonUI';
+import { Eye, EyeOff, Mail, Lock, Sparkles } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -33,7 +35,7 @@ export default function StaffLoginScreen() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { signIn, isLoading, error, clearError, isAuthenticated } = useAuth();
+  const { signIn, signInShared, isLoading, error, clearError, isAuthenticated } = useAuth();
   const router = useRouter();
 
   // Redirect if already authenticated
@@ -78,23 +80,41 @@ export default function StaffLoginScreen() {
     }
 
     setIsSubmitting(true);
-    
+
     try {
-      await signIn(email.trim().toLowerCase(), password);
-      
-      // Success - navigation will be handled by useEffect
-      Alert.alert(
-        'Login Successful',
-        'Welcome to Sia Moon Property Management!',
-        [{ text: 'Continue', style: 'default' }]
-      );
-      
+      // Check if using shared credentials
+      const isSharedLogin = email.trim().toLowerCase() === 'staff@siamoon.com' && password === 'staff123';
+
+      if (isSharedLogin) {
+        // Use shared authentication flow
+        await signInShared();
+
+        // Navigate to profile selection
+        router.replace('/(auth)/select-profile');
+
+        Alert.alert(
+          'Authentication Successful',
+          'Please select your profile to continue.',
+          [{ text: 'Continue', style: 'default' }]
+        );
+      } else {
+        // Use individual authentication flow (legacy)
+        await signIn(email.trim().toLowerCase(), password);
+
+        // Success - navigation will be handled by useEffect
+        Alert.alert(
+          'Login Successful',
+          'Welcome to Sia Moon Property Management!',
+          [{ text: 'Continue', style: 'default' }]
+        );
+      }
+
     } catch (error) {
       console.error('Login error:', error);
-      
+
       // Handle specific error types
       const errorMessage = error instanceof Error ? error.message : 'Login failed';
-      
+
       if (errorMessage.includes('Too many failed attempts')) {
         Alert.alert(
           'Account Temporarily Locked',
@@ -117,275 +137,177 @@ export default function StaffLoginScreen() {
   const isButtonDisabled = isSubmitting || isLoading || !isFormValid;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoid}
+    <View className="flex-1 bg-dark-bg">
+      <LinearGradient
+        colors={['#0a0a0a', '#1a1a1a', '#8b5cf6']}
+        locations={[0, 0.7, 1]}
+        className="flex-1"
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <LinearGradient
-            colors={['#1a1a2e', '#16213e', '#0f3460']}
-            style={styles.gradient}
+        <SafeAreaView className="flex-1">
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            className="flex-1"
           >
-            {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.logoContainer}>
-                <Ionicons name="business" size={48} color="#8b5cf6" />
-              </View>
-              <Text style={styles.title}>Sia Moon</Text>
-              <Text style={styles.subtitle}>Property Management</Text>
-              <Text style={styles.description}>Staff Portal</Text>
-            </View>
-
-            {/* Login Form */}
-            <View style={styles.formContainer}>
-              {/* Email Input */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Email Address</Text>
-                <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
-                  <Ionicons name="mail-outline" size={20} color="#8b5cf6" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Enter your email"
-                    placeholderTextColor="#6b7280"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    editable={!isSubmitting && !isLoading}
-                  />
-                </View>
-                {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-              </View>
-
-              {/* Password Input */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Password</Text>
-                <View style={[styles.inputWrapper, errors.password && styles.inputError]}>
-                  <Ionicons name="lock-closed-outline" size={20} color="#8b5cf6" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Enter your password"
-                    placeholderTextColor="#6b7280"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    editable={!isSubmitting && !isLoading}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                    style={styles.eyeIcon}
-                    disabled={isSubmitting || isLoading}
+            <ScrollView
+              className="flex-1"
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 20 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Header */}
+              <Animatable.View
+                animation="fadeInDown"
+                duration={1000}
+                className="items-center mb-12"
+              >
+                <View className="w-24 h-24 rounded-3xl items-center justify-center mb-8"
+                  style={{
+                    shadowColor: '#8b5cf6',
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 16,
+                    elevation: 12,
+                  }}
+                >
+                  <LinearGradient
+                    colors={['#8b5cf6', '#7c3aed']}
+                    className="w-full h-full rounded-3xl items-center justify-center"
                   >
-                    <Ionicons
-                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                      size={20}
-                      color="#8b5cf6"
-                    />
+                    <Sparkles size={32} color="white" />
+                  </LinearGradient>
+                </View>
+
+                <Text className="text-3xl font-bold tracking-tight text-white text-center mb-2">
+                  Sia Moon Property
+                </Text>
+                <Text className="text-base text-text-secondary text-center">
+                  AI-Powered Staff Management
+                </Text>
+              </Animatable.View>
+
+              {/* Login Form */}
+              <Animatable.View
+                animation="fadeInUp"
+                duration={800}
+                delay={300}
+              >
+                <SiaMoonCard variant="glass" className="mb-6"
+                  style={{
+                    shadowColor: '#000000',
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 16,
+                    elevation: 12,
+                  }}
+                >
+                  {/* Email Input */}
+                  <View className="mb-4">
+                    <SiaMoonText variant="caption" color="secondary" className="mb-2 ml-1">
+                      Email Address
+                    </SiaMoonText>
+                    <View className={`flex-row items-center bg-dark-surface rounded-xl border ${errors.email ? 'border-error' : 'border-dark-border'} px-4 py-3`}>
+                      <Mail size={20} color={errors.email ? '#ef4444' : '#71717a'} />
+                      <RNTextInput
+                        value={email}
+                        onChangeText={setEmail}
+                        placeholder="Enter your email address"
+                        placeholderTextColor="#71717a"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        editable={!isSubmitting && !isLoading}
+                        className="flex-1 ml-3 text-text-primary text-base"
+                        style={{ fontFamily: 'Inter' }}
+                      />
+                    </View>
+                    {errors.email && (
+                      <Text className="text-error text-xs mt-1 ml-1">{errors.email}</Text>
+                    )}
+                  </View>
+
+                  {/* Password Input */}
+                  <View className="mb-6">
+                    <SiaMoonText variant="caption" color="secondary" className="mb-2 ml-1">
+                      Password
+                    </SiaMoonText>
+                    <View className={`flex-row items-center bg-dark-surface rounded-xl border ${errors.password ? 'border-error' : 'border-dark-border'} px-4 py-3`}>
+                      <Lock size={20} color={errors.password ? '#ef4444' : '#71717a'} />
+                      <RNTextInput
+                        value={password}
+                        onChangeText={setPassword}
+                        placeholder="Enter your password"
+                        placeholderTextColor="#71717a"
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        editable={!isSubmitting && !isLoading}
+                        className="flex-1 ml-3 text-text-primary text-base"
+                        style={{ fontFamily: 'Inter' }}
+                      />
+                      <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                        className="ml-2 p-1"
+                      >
+                        {showPassword ? (
+                          <EyeOff size={20} color="#71717a" />
+                        ) : (
+                          <Eye size={20} color="#71717a" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                    {errors.password && (
+                      <Text className="text-error text-xs mt-1 ml-1">{errors.password}</Text>
+                    )}
+                  </View>
+                  {/* General Error */}
+                  {(errors.general || error) && (
+                    <View className="flex-row items-center bg-error/20 border border-error/30 rounded-xl p-3 mb-4">
+                      <View className="w-5 h-5 rounded-full bg-error items-center justify-center mr-3">
+                        <Text className="text-white text-xs font-bold">!</Text>
+                      </View>
+                      <SiaMoonText variant="caption" color="error" className="flex-1">
+                        {errors.general || error}
+                      </SiaMoonText>
+                    </View>
+                  )}
+
+                  {/* Login Button */}
+                  <SiaMoonGradientButton
+                    title={(isSubmitting || isLoading) ? 'Signing In...' : 'Sign In'}
+                    onPress={handleLogin}
+                    disabled={isButtonDisabled}
+                    loading={isSubmitting || isLoading}
+                    fullWidth
+                    size="lg"
+                    gradientColors={['#8b5cf6', '#7c3aed']}
+                  />
+                </SiaMoonCard>
+
+                {/* Help Text */}
+                <View className="items-center mt-6">
+                  <SiaMoonText variant="caption" color="muted" className="mb-3 text-center">
+                    Having trouble signing in?
+                  </SiaMoonText>
+                  <TouchableOpacity
+                    onPress={() => Alert.alert(
+                      'Contact Support',
+                      'Please contact your administrator for assistance with your account.',
+                      [{ text: 'OK', style: 'default' }]
+                    )}
+                    className="px-4 py-2 rounded-lg bg-dark-surface/50 border border-dark-border"
+                  >
+                    <SiaMoonText variant="caption" color="brand" className="font-medium">
+                      Contact Support
+                    </SiaMoonText>
                   </TouchableOpacity>
                 </View>
-                {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-              </View>
-
-              {/* General Error */}
-              {(errors.general || error) && (
-                <View style={styles.generalErrorContainer}>
-                  <Ionicons name="alert-circle-outline" size={20} color="#ef4444" />
-                  <Text style={styles.generalErrorText}>
-                    {errors.general || error}
-                  </Text>
-                </View>
-              )}
-
-              {/* Login Button */}
-              <TouchableOpacity
-                style={[styles.loginButton, isButtonDisabled && styles.loginButtonDisabled]}
-                onPress={handleLogin}
-                disabled={isButtonDisabled}
-              >
-                <LinearGradient
-                  colors={isButtonDisabled ? ['#6b7280', '#4b5563'] : ['#8b5cf6', '#7c3aed']}
-                  style={styles.loginButtonGradient}
-                >
-                  {(isSubmitting || isLoading) ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : (
-                    <Text style={styles.loginButtonText}>Sign In</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* Help Text */}
-              <View style={styles.helpContainer}>
-                <Text style={styles.helpText}>
-                  Having trouble signing in?
-                </Text>
-                <TouchableOpacity
-                  onPress={() => Alert.alert(
-                    'Contact Support',
-                    'Please contact your administrator for assistance with your account.',
-                    [{ text: 'OK', style: 'default' }]
-                  )}
-                >
-                  <Text style={styles.helpLink}>Contact Support</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </LinearGradient>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+              </Animatable.View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </LinearGradient>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1a1a2e',
-  },
-  keyboardAvoid: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  gradient: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: height * 0.08,
-    marginBottom: 48,
-  },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    borderWidth: 2,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 8,
-    letterSpacing: 1,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#8b5cf6',
-    marginBottom: 4,
-    fontWeight: '600',
-  },
-  description: {
-    fontSize: 14,
-    color: '#9ca3af',
-    fontWeight: '400',
-  },
-  formContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  inputContainer: {
-    marginBottom: 24,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 8,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
-    paddingHorizontal: 16,
-    height: 56,
-  },
-  inputError: {
-    borderColor: '#ef4444',
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#ffffff',
-    height: '100%',
-  },
-  eyeIcon: {
-    padding: 4,
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#ef4444',
-    marginTop: 8,
-    marginLeft: 4,
-  },
-  generalErrorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-  },
-  generalErrorText: {
-    fontSize: 14,
-    color: '#ef4444',
-    marginLeft: 8,
-    flex: 1,
-  },
-  loginButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 32,
-  },
-  loginButtonDisabled: {
-    opacity: 0.6,
-  },
-  loginButtonGradient: {
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 56,
-  },
-  loginButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    letterSpacing: 0.5,
-  },
-  helpContainer: {
-    alignItems: 'center',
-  },
-  helpText: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginBottom: 8,
-  },
-  helpLink: {
-    fontSize: 14,
-    color: '#8b5cf6',
-    fontWeight: '600',
-  },
-});
+

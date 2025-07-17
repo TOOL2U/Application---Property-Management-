@@ -9,16 +9,9 @@ import { Platform } from 'react-native';
 import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-// Conditional import for admin services (only on server side)
+// Admin services are handled server-side only
+// Client-side push notifications use Expo's FCM integration
 let adminService: any = null;
-if (Platform.OS === 'web' && typeof window === 'undefined') {
-  // Only import admin services on server side
-  try {
-    adminService = require('@/lib/firebaseAdmin').adminJobAssignmentService;
-  } catch (error) {
-    console.warn('Admin services not available in client environment');
-  }
-}
 import type { 
   JobAssignment, 
   JobNotificationPayload, 
@@ -56,19 +49,31 @@ class PushNotificationService {
         return await this.initializeWebPushNotifications(staffId);
       }
 
+      // Skip push notifications for non-mobile platforms during development
+      if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
+        console.log('⚠️ Push notifications not supported on platform:', Platform.OS);
+        return false;
+      }
+
       // Check if device supports push notifications (mobile only)
       if (!Device.isDevice) {
         console.warn('⚠️ Push notifications only work on physical devices');
         return false;
       }
 
-      // Request permissions
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
+      // Request permissions with error handling
+      let finalStatus: string;
+      try {
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        finalStatus = existingStatus;
 
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
+        if (existingStatus !== 'granted') {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+      } catch (permissionError) {
+        console.error('❌ Error requesting notification permissions:', permissionError);
+        return false;
       }
 
       if (finalStatus !== 'granted') {
@@ -76,16 +81,28 @@ class PushNotificationService {
         return false;
       }
 
-      // Get Expo push token
-      const token = await Notifications.getExpoPushTokenAsync({
-        projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'operty-b54dc',
-      });
+      // Get Expo push token with proper error handling
+      try {
+        const projectId = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'operty-b54dc';
 
-      this.expoPushToken = token.data;
-      console.log('✅ Expo push token obtained:', this.expoPushToken);
+        if (!projectId) {
+          console.error('❌ No Firebase project ID found for push notifications');
+          return false;
+        }
 
-      // Save token to staff profile
-      await this.saveTokenToStaffProfile(staffId, this.expoPushToken);
+        const token = await Notifications.getExpoPushTokenAsync({
+          projectId: projectId,
+        });
+
+        this.expoPushToken = token.data;
+        console.log('✅ Expo push token obtained:', this.expoPushToken);
+
+        // Save token to staff profile
+        await this.saveTokenToStaffProfile(staffId, this.expoPushToken);
+      } catch (tokenError) {
+        console.error('❌ Error getting Expo push token:', tokenError);
+        // Continue without token - we can still set up listeners
+      }
 
       // Set up notification listeners
       this.setupNotificationListeners();
@@ -139,29 +156,14 @@ class PushNotificationService {
         await navigator.serviceWorker.ready;
         console.log('✅ Service worker registered and ready:', registration);
 
-        // Now try to get Expo push token
-        try {
-          const token = await Notifications.getExpoPushTokenAsync({
-            projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'operty-b54dc',
-          });
+        // Skip Expo push token for web during development
+        // Web push notifications will use service worker instead
+        console.log('⚠️ Skipping Expo push token for web platform - using service worker notifications');
 
-          this.expoPushToken = token.data;
-          console.log('✅ Web Expo push token obtained:', this.expoPushToken);
+        // Set up notification listeners for web
+        this.setupWebNotificationListeners();
 
-          // Save token to staff profile
-          await this.saveTokenToStaffProfile(staffId, this.expoPushToken);
-
-          // Set up notification listeners for web
-          this.setupWebNotificationListeners();
-
-          return true;
-        } catch (tokenError) {
-          console.error('❌ Error getting web push token (continuing without Expo token):', tokenError);
-
-          // Continue without Expo token - we can still receive notifications via service worker
-          this.setupWebNotificationListeners();
-          return true;
-        }
+        return true;
       } catch (swError) {
         console.error('❌ Service worker registration failed:', swError);
         return false;

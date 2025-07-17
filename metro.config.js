@@ -1,4 +1,5 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
 
 const config = getDefaultConfig(__dirname);
 
@@ -18,4 +19,9 @@ config.resolver.alias = {
 // Configure resolver to handle Node.js modules in web environment
 config.resolver.platforms = ['native', 'web', 'default'];
 
-module.exports = config;
+// Enable web-specific settings
+config.server = {
+  port: 8083,
+};
+
+module.exports = withNativeWind(config, { input: './global.css' });

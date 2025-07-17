@@ -4,7 +4,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { Alert, AppState, AppStateStatus } from 'react-native';
+import { Alert, AppState, AppStateStatus, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffAuth } from '@/hooks/useStaffAuth';
@@ -240,9 +240,21 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   const requestPushPermissions = async (): Promise<boolean> => {
     try {
+      // Skip push permissions for web platform during development
+      if (Platform.OS === 'web') {
+        console.log('⚠️ Skipping push permissions for web platform');
+        return false;
+      }
+
+      // Skip push permissions for non-mobile platforms
+      if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
+        console.log('⚠️ Push permissions not supported on platform:', Platform.OS);
+        return false;
+      }
+
       const { status } = await Notifications.requestPermissionsAsync();
       const granted = status === 'granted';
-      
+
       setState(prev => ({
         ...prev,
         pushNotificationsEnabled: granted,

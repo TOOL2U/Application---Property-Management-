@@ -36,19 +36,38 @@ export function useNotifications(userId?: string) {
   // Register for push notifications
   const registerForPushNotifications = async (): Promise<string | null> => {
     try {
+      // Skip push notifications for web platform during development
+      if (Platform.OS === 'web') {
+        console.log('⚠️ Skipping push token registration for web platform');
+        return null;
+      }
+
+      // Skip push notifications for non-mobile platforms
+      if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
+        console.log('⚠️ Push notifications not supported on platform:', Platform.OS);
+        return null;
+      }
+
       if (!Device.isDevice) {
         console.log('Push notifications only work on physical devices');
         return null;
       }
 
-      // Check existing permissions
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
+      // Check existing permissions with error handling
+      let finalStatus: string;
+      try {
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        finalStatus = existingStatus;
 
-      // Request permissions if not granted
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
+        // Request permissions if not granted
+        if (existingStatus !== 'granted') {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+      } catch (permissionError) {
+        console.error('Error requesting notification permissions:', permissionError);
+        setError('Failed to request push notification permissions');
+        return null;
       }
 
       setPermissionStatus(finalStatus);
@@ -58,21 +77,29 @@ export function useNotifications(userId?: string) {
         return null;
       }
 
-      // Get push token
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-      
-      if (!projectId) {
-        console.log('No project ID found, using demo token');
-        return 'demo-push-token-' + Math.random().toString(36).substr(2, 9);
-      }
+      // Get push token with proper error handling
+      try {
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId ??
+                         Constants.easConfig?.projectId ??
+                         process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID;
 
-      const token = await Notifications.getExpoPushTokenAsync({ projectId });
-      console.log('Expo push token:', token.data);
-      
-      // Store token locally
-      await AsyncStorage.setItem('expoPushToken', token.data);
-      
-      return token.data;
+        if (!projectId) {
+          console.log('No project ID found, using demo token');
+          return 'demo-push-token-' + Math.random().toString(36).substr(2, 9);
+        }
+
+        const token = await Notifications.getExpoPushTokenAsync({ projectId });
+        console.log('Expo push token:', token.data);
+
+        // Store token locally
+        await AsyncStorage.setItem('expoPushToken', token.data);
+
+        return token.data;
+      } catch (tokenError) {
+        console.error('Error getting Expo push token:', tokenError);
+        setError('Failed to get push token');
+        return null;
+      }
     } catch (error) {
       console.error('Error registering for push notifications:', error);
       setError('Failed to register for push notifications');

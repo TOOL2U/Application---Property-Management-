@@ -27,6 +27,9 @@ export interface StaffAccount {
   lastLogin?: any;
   createdAt?: any;
   updatedAt?: any;
+  // New fields for PIN-protected profiles
+  pin?: string; // 4-digit PIN code
+  photo?: string; // Profile photo URL
   // Internal fields (not exposed to client)
   passwordHash?: string;
 }

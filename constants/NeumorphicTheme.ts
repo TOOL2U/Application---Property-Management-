@@ -1,164 +1,158 @@
 /**
- * Neumorphic Dark Theme Design System
- * Professional property management application styling
+ * Sia Moon AI-Inspired Design System
+ * Modern dark-themed property management application styling
+ * Optimized for professional workflows with AI-enhanced UX
  */
 
 import { Dimensions } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-export const NeumorphicTheme = {
-  // Color Palette - Dark Neumorphic
+export const SiaMoonTheme = {
+  // AI-Inspired Color Palette - Dark First Design
   colors: {
-    // Background layers
+    // Background System - Deep blacks with subtle variations
     background: {
-      primary: '#0a0a0a',
-      secondary: '#111111',
-      tertiary: '#1a1a1a',
-      elevated: '#1f1f1f',
+      primary: '#0a0a0a',      // Deep black - main background
+      secondary: '#111111',     // Dark gray - secondary background
+      tertiary: '#1a1a1a',     // Card/surface colors
+      elevated: '#1f1f1f',     // Elevated surfaces
     },
-    
+
     // Surface colors for cards and components
     surface: {
-      primary: 'rgba(255, 255, 255, 0.08)',
-      secondary: 'rgba(255, 255, 255, 0.05)',
-      elevated: 'rgba(255, 255, 255, 0.12)',
-      pressed: 'rgba(255, 255, 255, 0.15)',
+      primary: '#1a1a1a',      // Main card background
+      secondary: '#111111',     // Secondary surfaces
+      elevated: '#1f1f1f',     // Elevated cards
+      pressed: '#252525',      // Pressed state
+      border: '#333333',       // Subtle borders
     },
-    
-    // Text hierarchy
+
+    // Text Hierarchy - High contrast for accessibility
     text: {
-      primary: '#ffffff',
-      secondary: '#e5e5e5',
-      tertiary: '#9ca3af',
-      quaternary: '#6b7280',
-      disabled: '#4b5563',
+      primary: '#ffffff',      // Primary text - pure white
+      secondary: '#a1a1aa',    // Secondary text - zinc-400
+      muted: '#71717a',        // Muted text - zinc-500
+      disabled: '#52525b',     // Disabled text - zinc-600
+      inverse: '#0a0a0a',      // Inverse text for light backgrounds
     },
-    
-    // Brand colors
+
+    // Brand Colors - Purple-focused with AI accent
     brand: {
-      primary: '#8b5cf6',
-      primaryHover: '#7c3aed',
-      primaryLight: '#a78bfa',
-      primaryDark: '#6d28d9',
+      primary: '#8b5cf6',      // Purple-500 - primary accent
+      primaryHover: '#7c3aed',  // Purple-600 - hover states
+      primaryLight: '#a78bfa',  // Purple-400 - light variant
+      primaryDark: '#6d28d9',   // Purple-700 - dark variant
+      primaryMuted: 'rgba(139, 92, 246, 0.1)', // Muted backgrounds
     },
-    
-    // Semantic colors
+
+    // Semantic Colors - Optimized for dark theme
     semantic: {
-      success: '#10b981',
-      warning: '#f59e0b',
-      error: '#ef4444',
-      info: '#3b82f6',
+      success: '#22c55e',      // Green-500
+      successMuted: 'rgba(34, 197, 94, 0.1)',
+      warning: '#f59e0b',      // Amber-500
+      warningMuted: 'rgba(245, 158, 11, 0.1)',
+      error: '#ef4444',        // Red-500
+      errorMuted: 'rgba(239, 68, 68, 0.1)',
+      info: '#3b82f6',         // Blue-500
+      infoMuted: 'rgba(59, 130, 246, 0.1)',
     },
-    
-    // Status colors
+
+    // Status Colors - Job and task states
     status: {
-      pending: '#f59e0b',
-      inProgress: '#3b82f6',
-      completed: '#10b981',
-      cancelled: '#ef4444',
-      urgent: '#ef4444',
+      pending: '#f59e0b',      // Amber-500
+      inProgress: '#3b82f6',   // Blue-500
+      completed: '#22c55e',    // Green-500
+      cancelled: '#ef4444',    // Red-500
+      urgent: '#ef4444',       // Red-500
+      draft: '#71717a',        // Zinc-500
     },
-    
-    // Priority colors
+
+    // Priority Colors - Task prioritization
     priority: {
-      low: '#10b981',
-      medium: '#8b5cf6',
-      high: '#f59e0b',
-      urgent: '#ef4444',
+      low: '#22c55e',          // Green-500
+      medium: '#f59e0b',       // Amber-500
+      high: '#fb923c',         // Orange-400
+      urgent: '#ef4444',       // Red-500
     },
-    
-    // Border colors
+
+    // Border System - Subtle to prominent
     border: {
-      light: 'rgba(255, 255, 255, 0.1)',
-      medium: 'rgba(255, 255, 255, 0.2)',
-      strong: 'rgba(255, 255, 255, 0.3)',
+      subtle: '#333333',       // Subtle borders
+      default: '#404040',      // Default borders
+      strong: '#525252',       // Strong borders
+      brand: '#8b5cf6',        // Brand-colored borders
     },
   },
-  
-  // Gradients for neumorphic effects
+
+  // AI-Inspired Gradients - Purple to blue spectrum
   gradients: {
-    // Card gradients
-    cardLight: ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)'],
-    cardElevated: ['rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.08)'],
-    cardPressed: ['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.1)'],
-    
-    // Background gradients
-    backgroundMain: ['#0a0a0a', '#111111', '#1a1a1a'],
-    backgroundSecondary: ['#111111', '#1a1a1a', '#1f1f1f'],
-    
-    // Brand gradients
-    brandPrimary: ['#8b5cf6', '#7c3aed'],
-    brandSecondary: ['#a78bfa', '#8b5cf6'],
-    
-    // Status gradients
-    success: ['#10b981', '#059669'],
+    // Primary brand gradients
+    primary: ['#8b5cf6', '#7c3aed'],           // Purple gradient
+    primaryToBlue: ['#8b5cf6', '#3b82f6'],     // Purple to blue
+    primaryToPink: ['#8b5cf6', '#ec4899'],     // Purple to pink
+
+    // Background gradients - Subtle depth
+    background: ['#0a0a0a', '#111111'],
+    backgroundElevated: ['#111111', '#1a1a1a'],
+    backgroundHeader: ['#0a0a0a', '#1a1a1a', '#111111'],
+
+    // Card gradients - Glassmorphism effect
+    card: ['rgba(26, 26, 26, 0.8)', 'rgba(17, 17, 17, 0.6)'],
+    cardElevated: ['rgba(31, 31, 31, 0.9)', 'rgba(26, 26, 26, 0.7)'],
+    cardPressed: ['rgba(17, 17, 17, 0.9)', 'rgba(26, 26, 26, 0.8)'],
+
+    // Status gradients - Enhanced visibility
+    success: ['#22c55e', '#16a34a'],
     warning: ['#f59e0b', '#d97706'],
     error: ['#ef4444', '#dc2626'],
     info: ['#3b82f6', '#2563eb'],
+
+    // Special AI-themed gradients
+    aiAccent: ['#8b5cf6', '#3b82f6', '#06b6d4'],  // Purple-blue-cyan
+    neonGlow: ['#8b5cf6', '#a78bfa', '#c4b5fd'],  // Purple glow effect
   },
-  
-  // Shadows for neumorphic depth
+
+  // Modern Shadow System - Optimized for dark theme
   shadows: {
-    // Neumorphic shadows (inset and outset)
-    neumorphic: {
-      // Fix: Add missing small shadow property
-      small: {
-        shadowColor: 'rgba(255, 255, 255, 0.05)',
-        shadowOffset: { width: -1, height: -1 },
-        shadowOpacity: 1,
-        shadowRadius: 2,
-      },
-      light: {
-        shadowColor: 'rgba(255, 255, 255, 0.1)',
-        shadowOffset: { width: -2, height: -2 },
-        shadowOpacity: 1,
-        shadowRadius: 4,
-      },
-      dark: {
-        shadowColor: '#000000',
-        shadowOffset: { width: 2, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-      },
+    // Card shadows - Subtle depth
+    card: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 4,
     },
-    
-    // Standard elevation shadows
-    elevation: {
-      small: {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 2,
-      },
-      medium: {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 4,
-      },
-      large: {
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.4,
+
+    // Elevated shadows - More prominent
+    elevated: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+
+    // Large shadows - Maximum depth
+    large: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.4,
+      shadowRadius: 24,
+      elevation: 16,
+    },
+
+    // Glow effects - AI-inspired
+    glow: {
+      primary: {
+        shadowColor: '#8b5cf6',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
         shadowRadius: 16,
         elevation: 8,
       },
-    },
-    
-    // Glow effects
-    glow: {
-      brand: {
-        shadowColor: '#8b5cf6',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.4,
-        shadowRadius: 12,
-        elevation: 6,
-      },
       success: {
-        shadowColor: '#10b981',
+        shadowColor: '#22c55e',
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.4,
         shadowRadius: 12,
@@ -178,6 +172,15 @@ export const NeumorphicTheme = {
         shadowRadius: 12,
         elevation: 6,
       },
+    },
+
+    // Inner shadows for pressed states
+    inner: {
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.6,
+      shadowRadius: 4,
+      elevation: -2,
     },
   },
   
@@ -212,24 +215,27 @@ export const NeumorphicTheme = {
     32: 128,
   },
   
-  // Typography system
+  // Typography System - Inter font with tight spacing
   typography: {
     fontFamily: {
-      primary: 'System',
-      mono: 'Menlo',
+      primary: 'Inter',
+      mono: 'SF Mono',
+      system: 'System',
     },
-    
+
+    // Font sizes with optimized line heights
     sizes: {
-      xs: { fontSize: 12, lineHeight: 16 },
-      sm: { fontSize: 14, lineHeight: 20 },
-      base: { fontSize: 16, lineHeight: 24 },
-      lg: { fontSize: 18, lineHeight: 28 },
-      xl: { fontSize: 20, lineHeight: 28 },
-      '2xl': { fontSize: 24, lineHeight: 32 },
-      '3xl': { fontSize: 30, lineHeight: 36 },
-      '4xl': { fontSize: 36, lineHeight: 40 },
+      xs: { fontSize: 12, lineHeight: 16, letterSpacing: 0.5 },
+      sm: { fontSize: 14, lineHeight: 20, letterSpacing: 0.25 },
+      base: { fontSize: 16, lineHeight: 24, letterSpacing: 0 },
+      lg: { fontSize: 18, lineHeight: 28, letterSpacing: -0.25 },
+      xl: { fontSize: 20, lineHeight: 28, letterSpacing: -0.5 },
+      '2xl': { fontSize: 24, lineHeight: 32, letterSpacing: -0.75 },
+      '3xl': { fontSize: 30, lineHeight: 36, letterSpacing: -1 },
+      '4xl': { fontSize: 36, lineHeight: 40, letterSpacing: -1.25 },
     },
-    
+
+    // Font weights - Inter optimized
     weights: {
       light: '300',
       normal: '400',
@@ -237,6 +243,17 @@ export const NeumorphicTheme = {
       semibold: '600',
       bold: '700',
       extrabold: '800',
+      black: '900',
+    },
+
+    // Semantic text styles
+    styles: {
+      h1: { fontSize: 30, lineHeight: 36, fontWeight: '700', letterSpacing: -1 },
+      h2: { fontSize: 20, lineHeight: 28, fontWeight: '600', letterSpacing: -0.5 },
+      h3: { fontSize: 18, lineHeight: 28, fontWeight: '500', letterSpacing: -0.25 },
+      body: { fontSize: 16, lineHeight: 24, fontWeight: '400', letterSpacing: 0 },
+      caption: { fontSize: 14, lineHeight: 20, fontWeight: '400', letterSpacing: 0.25 },
+      button: { fontSize: 16, lineHeight: 24, fontWeight: '600', letterSpacing: 0 },
     },
   },
   
@@ -283,24 +300,40 @@ export const NeumorphicTheme = {
     },
   },
   
-  // Animation timings
+  // Animation System - Smooth and responsive
   animation: {
+    // Duration presets
     duration: {
-      fast: 150,
-      normal: 250,
-      slow: 350,
+      instant: 0,
+      fast: 200,
+      normal: 300,
+      slow: 500,
+      slower: 700,
     },
-    
+
+    // Cubic bezier easing curves
     easing: {
-      default: [0.25, 0.46, 0.45, 0.94],
-      easeOut: [0.0, 0.0, 0.2, 1],
-      easeIn: [0.4, 0.0, 1, 1],
-      spring: [0.68, -0.55, 0.265, 1.55],
+      default: 'cubic-bezier(0.4, 0.0, 0.2, 1)',
+      easeOut: 'cubic-bezier(0.0, 0.0, 0.2, 1)',
+      easeIn: 'cubic-bezier(0.4, 0.0, 1, 1)',
+      easeInOut: 'cubic-bezier(0.4, 0.0, 0.2, 1)',
+      spring: 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+      bounce: 'cubic-bezier(0.68, -0.6, 0.32, 1.6)',
     },
-    
+
+    // Transform presets
     scale: {
-      press: 0.96,
+      press: 0.95,
       hover: 1.02,
+      active: 0.98,
+    },
+
+    // Opacity presets
+    opacity: {
+      hidden: 0,
+      visible: 1,
+      muted: 0.6,
+      disabled: 0.4,
     },
   },
   
@@ -326,5 +359,8 @@ export const NeumorphicTheme = {
   },
 } as const;
 
-export type NeumorphicThemeType = typeof NeumorphicTheme;
-export default NeumorphicTheme;
+// Export with both names for backward compatibility
+export const NeumorphicTheme = SiaMoonTheme;
+export type NeumorphicThemeType = typeof SiaMoonTheme;
+export type SiaMoonThemeType = typeof SiaMoonTheme;
+export default SiaMoonTheme;

@@ -1,17 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   Alert,
-  Dimensions,
-  ActivityIndicator,
+  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import * as Animatable from 'react-native-animatable';
 import { useAuth } from '@/contexts/AuthContext';
 import { useJobNotifications } from '@/hooks/useJobNotifications';
 import {
@@ -19,20 +17,19 @@ import {
   Bell,
   MapPin,
   Settings,
-  LogOut,
   Phone,
   Mail,
   Shield,
   ChevronRight,
-  // Fix: Keep TrendingUp as it's used in StatCard
   TrendingUp,
-  // Star, Award, Calendar, Zap, - removed unused
+  Award,
+  Clock,
+  Star,
+  Wrench,
+  CheckCircle,
 } from 'lucide-react-native';
-import { NeumorphicTheme } from '@/constants/NeumorphicTheme';
-import { NeumorphicCard, NeumorphicButton } from '@/components/ui/NeumorphicComponents';
-import { useRouter } from 'expo-router';
-
-const { width: screenWidth } = Dimensions.get('window');
+import { AITheme } from '@/constants/AITheme';
+import { BlurHeader } from '@/components/ui/BlurHeader';
 
 // Property Management Staff Profile Data
 const mockStaffProfile = {
@@ -57,76 +54,50 @@ const mockStaffProfile = {
 };
 
 export default function ProfileScreen() {
-  const { user, signOut, isLoading: authLoading } = useAuth();
+  const { user, signOut, signOutToProfileSelection, isLoading: authLoading } = useAuth();
   const { expoPushToken, simulateJobNotification } = useJobNotifications();
-  const [localLoading, setLocalLoading] = useState(false);
-  const router = useRouter();
-  
-  // Combined loading state
-  const isLoading = authLoading || localLoading;
 
   const handleSignOut = () => {
     Alert.alert(
       'Sign Out',
-      'Are you sure you want to sign out? You can sign back in with either a staff or admin account.',
+      'Choose how you want to sign out:',
       [
-        { 
-          text: 'Cancel', 
-          style: 'cancel' 
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Sign Out',
-          style: 'destructive',
+          text: 'Switch Profile',
           onPress: async () => {
             try {
-              console.log('🚪 Starting sign out process from profile screen...');
-              setLocalLoading(true);
-              
-              // Check auth state before sign out
-              console.log('🔍 Pre-signout auth state:', { 
-                isAuthenticated: user !== null, 
-                userEmail: user?.email,
-                isLoading: authLoading 
-              });
-              
-              // Perform sign out
-              await signOut();
-              
-              // Check auth state after sign out
-              console.log('🔍 Post-signout auth state:', { 
-                isAuthenticated: user !== null, 
-                userEmail: user?.email,
-                isLoading: authLoading 
-              });
-              
-              console.log('✅ Sign out completed successfully');
-              
-              // Navigate directly to login
-              console.log('🔄 Navigating to login screen...');
-              router.replace('/(auth)/login');
-              
+              await signOutToProfileSelection();
             } catch (error) {
-              console.error('❌ Sign out error:', error);
-              Alert.alert(
-                'Sign Out Error',
-                'There was an error signing out. Please try again.',
-                [{ text: 'OK' }]
-              );
-            } finally {
-              setLocalLoading(false);
+              Alert.alert('Error', 'Failed to switch profile.');
             }
           }
         },
+        {
+          text: 'Complete Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+              console.log('✅ Sign out completed successfully');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to sign out.');
+            }
+          }
+        }
       ]
     );
   };
 
-  const ProfileItem = ({ 
-    icon: Icon, 
-    label, 
-    value, 
-    onPress, 
-    showChevron = false 
+
+
+  // Enhanced ProfileItem component with AI theme
+  const ProfileItem = ({
+    icon: Icon,
+    label,
+    value,
+    onPress,
+    showChevron = false
   }: {
     icon: any;
     label: string;
@@ -135,644 +106,514 @@ export default function ProfileScreen() {
     showChevron?: boolean;
   }) => (
     <TouchableOpacity
-      style={styles.profileItem}
       onPress={onPress}
       disabled={!onPress}
+      className="flex-row items-center justify-between p-4 border-b border-white/10"
+      style={{
+        backgroundColor: onPress ? 'rgba(255, 255, 255, 0.02)' : 'transparent',
+      }}
     >
-      <View style={styles.profileItemLeft}>
-        <View style={styles.profileItemIcon}>
-          <Icon size={20} color={NeumorphicTheme.colors.text.secondary} />
+      <View className="flex-row items-center flex-1">
+        <View
+          className="w-10 h-10 rounded-xl items-center justify-center mr-3"
+          style={{ backgroundColor: 'rgba(139, 92, 246, 0.15)' }}
+        >
+          <Icon size={20} color="#8b5cf6" />
         </View>
-        <View style={styles.profileItemText}>
-          <Text style={styles.profileItemLabel}>{label}</Text>
+        <View className="flex-1">
+          <Text className="text-white text-base font-medium mb-1">
+            {label}
+          </Text>
           {value && (
-            <Text style={styles.profileItemValue}>{value}</Text>
+            <Text className="text-gray-400 text-sm">
+              {value}
+            </Text>
           )}
         </View>
       </View>
       {showChevron && (
-        <ChevronRight size={16} color={NeumorphicTheme.colors.text.tertiary} />
+        <ChevronRight size={16} color="#6b7280" />
       )}
     </TouchableOpacity>
   );
 
-  const StatCard = ({ title, value, icon, color, trend }: {
+  // Enhanced StatCard component with AI theme
+  const StatCard = ({
+    title,
+    value,
+    IconComponent,
+    color,
+    trend,
+    index = 0
+  }: {
     title: string;
     value: number | string;
-    icon: string;
+    IconComponent: any;
     color: string;
     trend?: number;
+    index?: number;
   }) => (
-    <NeumorphicCard style={styles.statCard}>
-      <View style={styles.statContent}>
-        <View style={[styles.statIcon, { backgroundColor: `${color}20` }]}>
-          <View style={[styles.statIconInner, { backgroundColor: color }]} />
-        </View>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statLabel}>{title}</Text>
-        {trend && (
-          <View style={styles.statTrend}>
-            <TrendingUp size={12} color={trend > 0 ? NeumorphicTheme.colors.semantic.success : NeumorphicTheme.colors.semantic.error} />
-            <Text style={[styles.statTrendText, { color: trend > 0 ? NeumorphicTheme.colors.semantic.success : NeumorphicTheme.colors.semantic.error }]}>
-              {trend > 0 ? '+' : ''}{trend}%
-            </Text>
-          </View>
+    <Animatable.View
+      animation="fadeInUp"
+      duration={600}
+      delay={index * 100}
+      className="flex-1"
+    >
+      <View className="overflow-hidden rounded-2xl border border-white/10">
+        {Platform.OS !== 'web' ? (
+          <BlurView intensity={30} tint="dark" className="absolute inset-0" />
+        ) : (
+          <View
+            className="absolute inset-0"
+            style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+          />
         )}
+        <LinearGradient
+          colors={[`${color}15`, `${color}08`]}
+          className="p-4 items-center"
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View
+            className="w-12 h-12 rounded-2xl items-center justify-center mb-3"
+            style={{ backgroundColor: `${color}20` }}
+          >
+            <IconComponent size={24} color={color} />
+          </View>
+          <Text className="text-white font-bold text-xl mb-1">
+            {value}
+          </Text>
+          <Text className="text-gray-400 text-sm text-center">
+            {title}
+          </Text>
+          {trend && (
+            <View className="flex-row items-center mt-2">
+              <TrendingUp
+                size={12}
+                color={trend > 0 ? '#10b981' : '#ef4444'}
+              />
+              <Text
+                className="text-xs font-medium ml-1"
+                style={{ color: trend > 0 ? '#10b981' : '#ef4444' }}
+              >
+                {trend > 0 ? '+' : ''}{trend}%
+              </Text>
+            </View>
+          )}
+        </LinearGradient>
       </View>
-    </NeumorphicCard>
+    </Animatable.View>
   );
 
   return (
-    <View style={styles.container}>
-      {/* Background Gradient */}
+    <View className="flex-1" style={{ backgroundColor: '#0a0a0a' }}>
+      {/* Enhanced Dark-to-Blue Gradient Background */}
       <LinearGradient
-        colors={NeumorphicTheme.gradients.backgroundMain}
-        style={styles.backgroundGradient}
+        colors={[
+          '#000000', // Pure black at top
+          '#0a0a0a', // Very dark gray
+          '#1a1a2e', // Dark blue-gray
+          '#16213e', // Darker blue
+          '#0f3460', // Deep blue
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        className="absolute inset-0"
       />
 
-      <SafeAreaView style={styles.safeArea}>
-        {/* Header with Glassmorphism */}
-        <BlurView intensity={20} style={styles.header}>
-          <View style={styles.headerContent}>
-            <Text style={styles.title}>Profile</Text>
-            <Text style={styles.subtitle}>Manage your account</Text>
-          </View>
-          <View style={styles.headerIcon}>
-            <User size={24} color={NeumorphicTheme.colors.brand.primary} />
-          </View>
-        </BlurView>
+      {/* Secondary gradient overlay for depth */}
+      <LinearGradient
+        colors={[
+          'rgba(139, 92, 246, 0.1)', // Purple overlay
+          'transparent',
+          'rgba(59, 130, 246, 0.15)', // Blue overlay
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        className="absolute inset-0"
+      />
 
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {/* Enhanced User Card */}
-          <NeumorphicCard style={styles.userCard}>
-            <View style={styles.userCardContent}>
-              <LinearGradient
-                colors={NeumorphicTheme.gradients.brandPrimary}
-                style={styles.avatarGradient}
-              >
-                <User size={32} color="#ffffff" />
-              </LinearGradient>
-              <View style={styles.userInfo}>
-                <Text style={styles.userName}>
-                  {user?.name || 'Sia Moon'}
-                </Text>
-                <Text style={styles.userRole}>
-                  {user?.role === 'admin' ? 'Administrator' : 'Property Manager'}
-                </Text>
-                <View style={styles.statusBadge}>
-                  <View style={styles.statusDot} />
-                  <Text style={styles.userStatus}>Active</Text>
+      {/* BlurHeader Component */}
+      <BlurHeader
+        title="Profile"
+        subtitle={`${user?.role || 'Staff'} • Account Management`}
+        intensity={70}
+        tint="light"
+        showNotificationButton={false}
+        showSettingsButton={true}
+        onSettingsPress={() => Alert.alert('Settings', 'Settings panel coming soon...')}
+        rightComponent={
+          <View className="w-10 h-10 rounded-full bg-white/10 items-center justify-center">
+            <User size={20} color="white" />
+          </View>
+        }
+      />
+
+      <ScrollView
+        className="flex-1 px-4"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+      >
+        {/* Enhanced User Card */}
+        <Animatable.View
+          animation="fadeInUp"
+          duration={600}
+          delay={200}
+          className="mb-6"
+        >
+          <View className="overflow-hidden rounded-2xl border border-white/10">
+            {Platform.OS !== 'web' ? (
+              <BlurView intensity={40} tint="dark" className="absolute inset-0" />
+            ) : (
+              <View
+                className="absolute inset-0"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)' }}
+              />
+            )}
+            <LinearGradient
+              colors={['rgba(139, 92, 246, 0.1)', 'rgba(59, 130, 246, 0.05)']}
+              className="p-6"
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View className="flex-row items-center">
+                <LinearGradient
+                  colors={['#8b5cf6', '#7c3aed']}
+                  className="w-16 h-16 rounded-2xl items-center justify-center mr-4"
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <User size={32} color="#ffffff" />
+                </LinearGradient>
+                <View className="flex-1">
+                  <Text className="text-white text-xl font-bold mb-1">
+                    {user?.name || 'Sia Moon'}
+                  </Text>
+                  <Text className="text-purple-300 text-base mb-2">
+                    {user?.role === 'admin' ? 'Administrator' : 'Property Manager'}
+                  </Text>
+                  <View className="flex-row items-center bg-green-500/20 px-3 py-1 rounded-full self-start">
+                    <View className="w-2 h-2 rounded-full bg-green-400 mr-2" />
+                    <Text className="text-green-400 text-sm font-medium">Active</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          </NeumorphicCard>
+            </LinearGradient>
+          </View>
+        </Animatable.View>
 
-          {/* Property Management Performance Stats */}
-          <View style={styles.statsGrid}>
-            <View style={styles.statCardContainer}>
-              <StatCard
-                title="Maintenance Jobs"
-                value={mockStaffProfile.maintenanceJobsCompleted}
-                icon="wrench"
-                color={NeumorphicTheme.colors.semantic.success}
-                trend={15}
+        {/* Performance Stats Grid */}
+        <Animatable.View
+          animation="fadeInUp"
+          duration={600}
+          delay={300}
+          className="mb-8"
+        >
+          <Text className="text-white text-xl font-bold mb-6 tracking-tight">
+            Performance Overview
+          </Text>
+
+          <View className="flex-row gap-3 mb-4">
+            <StatCard
+              title="Maintenance Jobs"
+              value={mockStaffProfile.maintenanceJobsCompleted}
+              IconComponent={Wrench}
+              color="#10b981"
+              trend={15}
+              index={0}
+            />
+            <StatCard
+              title="Inspections"
+              value={mockStaffProfile.inspectionsCompleted}
+              IconComponent={CheckCircle}
+              color="#3b82f6"
+              trend={8}
+              index={1}
+            />
+          </View>
+
+          <View className="flex-row gap-3">
+            <StatCard
+              title="Tenant Rating"
+              value={mockStaffProfile.tenantSatisfactionRating}
+              IconComponent={Star}
+              color="#f59e0b"
+              trend={5}
+              index={2}
+            />
+            <StatCard
+              title="Response Time"
+              value={mockStaffProfile.averageResponseTime}
+              IconComponent={Clock}
+              color="#ef4444"
+              trend={-12}
+              index={3}
+            />
+          </View>
+        </Animatable.View>
+
+        {/* Specializations Section */}
+        <Animatable.View
+          animation="fadeInUp"
+          duration={600}
+          delay={400}
+          className="mb-8"
+        >
+          <View className="overflow-hidden rounded-2xl border border-white/10">
+            {Platform.OS !== 'web' ? (
+              <BlurView intensity={30} tint="dark" className="absolute inset-0" />
+            ) : (
+              <View
+                className="absolute inset-0"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
               />
+            )}
+            <View className="p-6">
+              <Text className="text-white text-lg font-semibold mb-4">
+                Specializations
+              </Text>
+              <View className="flex-row flex-wrap gap-2">
+                {mockStaffProfile.specializations.map((spec, index) => (
+                  <View
+                    key={index}
+                    className="bg-purple-500/20 px-3 py-2 rounded-xl border border-purple-500/30"
+                  >
+                    <Text className="text-purple-300 text-sm font-medium">
+                      {spec}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </View>
-            <View style={styles.statCardContainer}>
-              <StatCard
-                title="Inspections"
-                value={mockStaffProfile.inspectionsCompleted}
-                icon="clipboard-check"
-                color={NeumorphicTheme.colors.semantic.info}
-                trend={8}
+          </View>
+        </Animatable.View>
+
+        {/* Certifications Section */}
+        <Animatable.View
+          animation="fadeInUp"
+          duration={600}
+          delay={500}
+          className="mb-8"
+        >
+          <View className="overflow-hidden rounded-2xl border border-white/10">
+            {Platform.OS !== 'web' ? (
+              <BlurView intensity={30} tint="dark" className="absolute inset-0" />
+            ) : (
+              <View
+                className="absolute inset-0"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
               />
+            )}
+            <View className="p-6">
+              <Text className="text-white text-lg font-semibold mb-4">
+                Certifications
+              </Text>
+              <View className="gap-3">
+                {mockStaffProfile.certifications.map((cert, index) => (
+                  <View
+                    key={index}
+                    className="bg-white/5 p-4 rounded-xl border border-white/10"
+                  >
+                    <View className="flex-row justify-between items-center mb-2">
+                      <Text className="text-white font-medium flex-1">
+                        {cert.name}
+                      </Text>
+                      <View className="bg-green-500/20 px-2 py-1 rounded-lg">
+                        <Text className="text-green-400 text-xs font-medium">
+                          Valid
+                        </Text>
+                      </View>
+                    </View>
+                    <Text className="text-gray-400 text-sm">
+                      Expires: {new Date(cert.expiryDate).toLocaleDateString()}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </View>
-            <View style={styles.statCardContainer}>
-              <StatCard
-                title="Tenant Rating"
-                value={mockStaffProfile.tenantSatisfactionRating}
-                icon="star"
-                color={NeumorphicTheme.colors.semantic.warning}
-                trend={5}
+          </View>
+        </Animatable.View>
+
+        {/* Contact Information */}
+        <Animatable.View
+          animation="fadeInUp"
+          duration={600}
+          delay={600}
+          className="mb-8"
+        >
+          <View className="overflow-hidden rounded-2xl border border-white/10">
+            {Platform.OS !== 'web' ? (
+              <BlurView intensity={30} tint="dark" className="absolute inset-0" />
+            ) : (
+              <View
+                className="absolute inset-0"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
               />
-            </View>
-            <View style={styles.statCardContainer}>
-              <StatCard
-                title="Response Time"
-                value={mockStaffProfile.averageResponseTime}
-                icon="clock-fast"
-                color={NeumorphicTheme.colors.semantic.error}
-                trend={-12}
+            )}
+            <View className="p-6">
+              <Text className="text-white text-lg font-semibold mb-4">
+                Contact Information
+              </Text>
+              <ProfileItem
+                icon={Mail}
+                label="Email"
+                value={user?.email || 'sia.moon@property.com'}
+              />
+              <ProfileItem
+                icon={Phone}
+                label="Phone"
+                value="+1 (555) 123-4567"
               />
             </View>
           </View>
+        </Animatable.View>
 
-          {/* Specializations Section */}
-          <NeumorphicCard style={styles.specializationsCard}>
-            <Text style={styles.sectionTitle}>Specializations</Text>
-            <View style={styles.specializationsList}>
-              {mockStaffProfile.specializations.map((spec, index) => (
-                <View key={index} style={styles.specializationChip}>
-                  <Text style={styles.specializationText}>{spec}</Text>
-                </View>
-              ))}
-            </View>
-          </NeumorphicCard>
-
-          {/* Certifications Section */}
-          <NeumorphicCard style={styles.certificationsCard}>
-            <Text style={styles.sectionTitle}>Certifications</Text>
-            <View style={styles.certificationsList}>
-              {mockStaffProfile.certifications.map((cert, index) => (
-                <View key={index} style={styles.certificationItem}>
-                  <View style={styles.certificationHeader}>
-                    <Text style={styles.certificationName}>{cert.name}</Text>
-                    <View style={styles.certificationStatus}>
-                      <Text style={styles.certificationStatusText}>Valid</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.certificationExpiry}>
-                    Expires: {new Date(cert.expiryDate).toLocaleDateString()}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </NeumorphicCard>
-
-          {/* Contact Information */}
-          <NeumorphicCard style={styles.contactCard}>
-            <Text style={styles.sectionTitle}>Contact Information</Text>
-            <ProfileItem
-              icon={Mail}
-              label="Email"
-              value={user?.email || 'sia.moon@property.com'}
-            />
-            <ProfileItem
-              icon={Phone}
-              label="Phone"
-              value="+1 (555) 123-4567"
-            />
-          </NeumorphicCard>
-
-          {/* App Settings */}
-          <NeumorphicCard style={styles.settingsCard}>
-            <Text style={styles.sectionTitle}>App Settings</Text>
-            <ProfileItem
-              icon={Bell}
-              label="Notifications"
-              value={expoPushToken ? "Enabled" : "Disabled"}
-              onPress={() => {
-                Alert.alert(
-                  'Notifications',
-                  expoPushToken
-                    ? 'Push notifications are enabled'
-                    : 'Push notifications are disabled. Please enable them in your device settings.',
-                  [{ text: 'OK' }]
-                );
-              }}
-              showChevron
-            />
-            <ProfileItem
-              icon={MapPin}
-              label="Location Services"
-              value="Enabled"
-              onPress={() => {
-                Alert.alert(
-                  'Location Services',
-                  'Location access is required for navigation to job sites.',
-                  [{ text: 'OK' }]
-                );
-              }}
-              showChevron
-            />
-          </NeumorphicCard>
-
-          {/* Developer Tools */}
-          <NeumorphicCard style={styles.developerCard}>
-            <Text style={styles.sectionTitle}>Developer Tools</Text>
-            <ProfileItem
-              icon={Settings}
-              label="Test Notification"
-              onPress={simulateJobNotification}
-              showChevron
-            />
-            <ProfileItem
-              icon={Shield}
-              label="Push Token"
-              value={expoPushToken ? "Active" : "Not Available"}
-              onPress={() => {
-                if (expoPushToken) {
+        {/* App Settings */}
+        <Animatable.View
+          animation="fadeInUp"
+          duration={600}
+          delay={700}
+          className="mb-8"
+        >
+          <View className="overflow-hidden rounded-2xl border border-white/10">
+            {Platform.OS !== 'web' ? (
+              <BlurView intensity={30} tint="dark" className="absolute inset-0" />
+            ) : (
+              <View
+                className="absolute inset-0"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+              />
+            )}
+            <View className="p-6">
+              <Text className="text-white text-lg font-semibold mb-4">
+                App Settings
+              </Text>
+              <ProfileItem
+                icon={Bell}
+                label="Notifications"
+                value={expoPushToken ? "Enabled" : "Disabled"}
+                onPress={() => {
                   Alert.alert(
-                    'Push Token',
-                    expoPushToken.substring(0, 50) + '...',
+                    'Notifications',
+                    expoPushToken
+                      ? 'Push notifications are enabled'
+                      : 'Push notifications are disabled. Please enable them in your device settings.',
                     [{ text: 'OK' }]
                   );
-                }
-              }}
-              showChevron
-            />
-            <ProfileItem
-              icon={User}
-              label="Account Type"
-              value={user?.role === 'admin' ? 'Administrator' : 'Staff Member'}
-            />
-          </NeumorphicCard>
-
-          {/* Enhanced Sign Out Button */}
-          <View style={styles.signOutSection}>
-            <NeumorphicButton
-              title={isLoading ? "Signing Out..." : "Sign Out"}
-              onPress={handleSignOut}
-              variant="error"
-              size="large"
-              disabled={isLoading}
-              icon={<LogOut size={20} color="#ffffff" />}
-              style={styles.signOutButton}
-            />
-            {isLoading && (
-              <View style={styles.loadingIndicator}>
-                <ActivityIndicator 
-                  size="small" 
-                  color={NeumorphicTheme.colors.semantic.error} 
-                />
-              </View>
-            )}
-            <Text style={styles.signOutHint}>
-              You can sign back in with staff or admin credentials
-            </Text>
-            <View style={styles.accountOptions}>
-              <Text style={styles.accountOptionsTitle}>Test Accounts:</Text>
-              <Text style={styles.accountOption}>• Staff: staff@siamoon.com / password</Text>
-              <Text style={styles.accountOption}>• Admin: admin@siamoon.com / admin</Text>
+                }}
+                showChevron
+              />
+              <ProfileItem
+                icon={MapPin}
+                label="Location Services"
+                value="Enabled"
+                onPress={() => {
+                  Alert.alert(
+                    'Location Services',
+                    'Location access is required for navigation to job sites.',
+                    [{ text: 'OK' }]
+                  );
+                }}
+                showChevron
+              />
             </View>
           </View>
+        </Animatable.View>
 
-          {/* App Info */}
-          <View style={styles.appInfo}>
-            <Text style={styles.appInfoText}>Sia Moon Property Management</Text>
-            <Text style={styles.appInfoText}>Mobile App v2.0.0</Text>
-            <Text style={styles.appInfoText}>
-              Current User: {user?.email || 'Not logged in'}
-            </Text>
+        {/* Developer Tools */}
+        <Animatable.View
+          animation="fadeInUp"
+          duration={600}
+          delay={800}
+          className="mb-8"
+        >
+          <View className="overflow-hidden rounded-2xl border border-white/10">
+            {Platform.OS !== 'web' ? (
+              <BlurView intensity={30} tint="dark" className="absolute inset-0" />
+            ) : (
+              <View
+                className="absolute inset-0"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+              />
+            )}
+            <View className="p-6">
+              <Text className="text-white text-lg font-semibold mb-4">
+                Developer Tools
+              </Text>
+              <ProfileItem
+                icon={Settings}
+                label="Test Notification"
+                onPress={simulateJobNotification}
+                showChevron
+              />
+              <ProfileItem
+                icon={Shield}
+                label="Push Token"
+                value={expoPushToken ? "Active" : "Not Available"}
+                onPress={() => {
+                  if (expoPushToken) {
+                    Alert.alert(
+                      'Push Token',
+                      expoPushToken.substring(0, 50) + '...',
+                      [{ text: 'OK' }]
+                    );
+                  }
+                }}
+                showChevron
+              />
+              <ProfileItem
+                icon={User}
+                label="Account Type"
+                value={user?.role === 'admin' ? 'Administrator' : 'Staff Member'}
+              />
+            </View>
           </View>
-        </ScrollView>
-      </SafeAreaView>
+        </Animatable.View>
+
+        {/* App Info */}
+        <Animatable.View
+          animation="fadeInUp"
+          duration={600}
+          delay={900}
+          className="items-center py-6 px-4 mb-6"
+        >
+          <Text className="text-gray-500 text-sm text-center mb-1">
+            Sia Moon Property Management
+          </Text>
+          <Text className="text-gray-500 text-sm text-center mb-1">
+            Mobile App v2.0.0
+          </Text>
+          <Text className="text-gray-500 text-sm text-center">
+            Current User: {user?.email || 'Not logged in'}
+          </Text>
+        </Animatable.View>
+
+        {/* Sign Out Button */}
+        <Animatable.View
+          animation="fadeInUp"
+          duration={600}
+          delay={1000}
+          className="px-4 pb-6 items-center"
+        >
+          <TouchableOpacity
+            onPress={handleSignOut}
+            className="bg-red-500 px-8 py-4 rounded-2xl"
+            style={{
+              shadowColor: '#ef4444',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            }}
+          >
+            <Text className="text-white text-base font-bold text-center">
+              Sign Out
+            </Text>
+          </TouchableOpacity>
+        </Animatable.View>
+      </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: NeumorphicTheme.colors.background.primary,
-  },
-  backgroundGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: NeumorphicTheme.spacing[5],
-    paddingTop: NeumorphicTheme.spacing[4],
-    paddingBottom: NeumorphicTheme.spacing[6],
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  headerContent: {
-    flex: 1,
-  },
-  title: {
-    fontSize: NeumorphicTheme.typography.sizes['2xl'].fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.bold,
-    color: NeumorphicTheme.colors.text.primary,
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: NeumorphicTheme.typography.sizes.base.fontSize,
-    color: NeumorphicTheme.colors.text.tertiary,
-    letterSpacing: -0.2,
-    marginTop: NeumorphicTheme.spacing[1],
-  },
-  headerIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: NeumorphicTheme.borderRadius.md,
-    backgroundColor: `${NeumorphicTheme.colors.brand.primary}20`,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: `${NeumorphicTheme.colors.brand.primary}30`,
-  },
 
-  // Enhanced User Card
-  userCard: {
-    marginHorizontal: NeumorphicTheme.spacing[5],
-    marginTop: NeumorphicTheme.spacing[6],
-    padding: NeumorphicTheme.spacing[6],
-  },
-  userCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarGradient: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: NeumorphicTheme.spacing[4],
-    ...NeumorphicTheme.shadows.glow.brand,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: NeumorphicTheme.typography.sizes.xl.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.bold,
-    color: NeumorphicTheme.colors.text.primary,
-    marginBottom: NeumorphicTheme.spacing[1],
-    letterSpacing: -0.3,
-  },
-  userRole: {
-    fontSize: NeumorphicTheme.typography.sizes.base.fontSize,
-    color: NeumorphicTheme.colors.text.secondary,
-    marginBottom: NeumorphicTheme.spacing[2],
-    letterSpacing: -0.2,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: `${NeumorphicTheme.colors.semantic.success}20`,
-    paddingHorizontal: NeumorphicTheme.spacing[2],
-    paddingVertical: NeumorphicTheme.spacing[1],
-    borderRadius: NeumorphicTheme.borderRadius.sm,
-    alignSelf: 'flex-start',
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: NeumorphicTheme.colors.semantic.success,
-    marginRight: NeumorphicTheme.spacing[1],
-  },
-  userStatus: {
-    fontSize: NeumorphicTheme.typography.sizes.xs.fontSize,
-    color: NeumorphicTheme.colors.semantic.success,
-    fontWeight: NeumorphicTheme.typography.weights.medium,
-    letterSpacing: -0.1,
-  },
-
-  // Stats Grid
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: NeumorphicTheme.spacing[5],
-    paddingTop: NeumorphicTheme.spacing[6],
-    gap: NeumorphicTheme.spacing[3],
-  },
-  statCardContainer: {
-    width: (screenWidth - NeumorphicTheme.spacing[5] * 2 - NeumorphicTheme.spacing[3]) / 2,
-  },
-  statCard: {
-    padding: NeumorphicTheme.spacing[4],
-    alignItems: 'center',
-  },
-  statContent: {
-    alignItems: 'center',
-  },
-  statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: NeumorphicTheme.spacing[2],
-  },
-  statIconInner: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-  },
-  statValue: {
-    fontSize: NeumorphicTheme.typography.sizes['2xl'].fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.bold,
-    color: NeumorphicTheme.colors.text.primary,
-    marginBottom: NeumorphicTheme.spacing[1],
-  },
-  statLabel: {
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    color: NeumorphicTheme.colors.text.tertiary,
-    textAlign: 'center',
-  },
-  statTrend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: NeumorphicTheme.spacing[1],
-    gap: NeumorphicTheme.spacing[1],
-  },
-  statTrendText: {
-    fontSize: NeumorphicTheme.typography.sizes.xs.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.medium,
-  },
-
-  // Cards
-  specializationsCard: {
-    marginHorizontal: NeumorphicTheme.spacing[5],
-    marginTop: NeumorphicTheme.spacing[6],
-    padding: NeumorphicTheme.spacing[4],
-  },
-  certificationsCard: {
-    marginHorizontal: NeumorphicTheme.spacing[5],
-    marginTop: NeumorphicTheme.spacing[6],
-    padding: NeumorphicTheme.spacing[4],
-  },
-  contactCard: {
-    marginHorizontal: NeumorphicTheme.spacing[5],
-    marginTop: NeumorphicTheme.spacing[6],
-    padding: NeumorphicTheme.spacing[4],
-  },
-  settingsCard: {
-    marginHorizontal: NeumorphicTheme.spacing[5],
-    marginTop: NeumorphicTheme.spacing[6],
-    padding: NeumorphicTheme.spacing[4],
-  },
-  developerCard: {
-    marginHorizontal: NeumorphicTheme.spacing[5],
-    marginTop: NeumorphicTheme.spacing[6],
-    padding: NeumorphicTheme.spacing[4],
-  },
-
-  // Specializations
-  specializationsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: NeumorphicTheme.spacing[2],
-    marginTop: NeumorphicTheme.spacing[3],
-  },
-  specializationChip: {
-    backgroundColor: `${NeumorphicTheme.colors.brand.primary}20`,
-    paddingHorizontal: NeumorphicTheme.spacing[3],
-    paddingVertical: NeumorphicTheme.spacing[2],
-    borderRadius: NeumorphicTheme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: `${NeumorphicTheme.colors.brand.primary}30`,
-  },
-  specializationText: {
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    color: NeumorphicTheme.colors.brand.primary,
-    fontWeight: NeumorphicTheme.typography.weights.medium,
-    letterSpacing: -0.1,
-  },
-
-  // Certifications
-  certificationsList: {
-    marginTop: NeumorphicTheme.spacing[3],
-    gap: NeumorphicTheme.spacing[3],
-  },
-  certificationItem: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    padding: NeumorphicTheme.spacing[3],
-    borderRadius: NeumorphicTheme.borderRadius.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  certificationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: NeumorphicTheme.spacing[1],
-  },
-  certificationName: {
-    fontSize: NeumorphicTheme.typography.sizes.base.fontSize,
-    color: NeumorphicTheme.colors.text.primary,
-    fontWeight: NeumorphicTheme.typography.weights.medium,
-    letterSpacing: -0.2,
-    flex: 1,
-  },
-  certificationStatus: {
-    backgroundColor: `${NeumorphicTheme.colors.semantic.success}20`,
-    paddingHorizontal: NeumorphicTheme.spacing[2],
-    paddingVertical: NeumorphicTheme.spacing[1],
-    borderRadius: NeumorphicTheme.borderRadius.sm,
-  },
-  certificationStatusText: {
-    fontSize: NeumorphicTheme.typography.sizes.xs.fontSize,
-    color: NeumorphicTheme.colors.semantic.success,
-    fontWeight: NeumorphicTheme.typography.weights.medium,
-  },
-  certificationExpiry: {
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    color: NeumorphicTheme.colors.text.tertiary,
-    letterSpacing: -0.1,
-  },
-
-  // Profile Items
-  sectionTitle: {
-    fontSize: NeumorphicTheme.typography.sizes.base.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.semibold,
-    color: NeumorphicTheme.colors.text.primary,
-    marginBottom: NeumorphicTheme.spacing[3],
-    letterSpacing: -0.2,
-  },
-  profileItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: NeumorphicTheme.spacing[4],
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  profileItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  profileItemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: NeumorphicTheme.borderRadius.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: NeumorphicTheme.spacing[3],
-  },
-  profileItemText: {
-    flex: 1,
-  },
-  profileItemLabel: {
-    fontSize: NeumorphicTheme.typography.sizes.base.fontSize,
-    color: NeumorphicTheme.colors.text.primary,
-    marginBottom: NeumorphicTheme.spacing[1],
-    letterSpacing: -0.2,
-  },
-  profileItemValue: {
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    color: NeumorphicTheme.colors.text.tertiary,
-    letterSpacing: -0.1,
-  },
-
-  // Sign Out Section
-  signOutSection: {
-    paddingHorizontal: NeumorphicTheme.spacing[5],
-    marginTop: NeumorphicTheme.spacing[6],
-    marginBottom: NeumorphicTheme.spacing[6],
-  },
-  signOutButton: {
-    marginBottom: NeumorphicTheme.spacing[3],
-  },
-  loadingIndicator: {
-    alignItems: 'center',
-    marginBottom: NeumorphicTheme.spacing[3],
-  },
-  signOutHint: {
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    color: NeumorphicTheme.colors.text.tertiary,
-    textAlign: 'center',
-    letterSpacing: -0.1,
-    marginBottom: NeumorphicTheme.spacing[4],
-  },
-  accountOptions: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    padding: NeumorphicTheme.spacing[4],
-    borderRadius: NeumorphicTheme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  accountOptionsTitle: {
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.medium,
-    color: NeumorphicTheme.colors.text.secondary,
-    marginBottom: NeumorphicTheme.spacing[2],
-  },
-  accountOption: {
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    color: NeumorphicTheme.colors.text.tertiary,
-    marginBottom: NeumorphicTheme.spacing[1],
-  },
-
-  // App Info
-  appInfo: {
-    alignItems: 'center',
-    paddingVertical: NeumorphicTheme.spacing[6],
-    paddingHorizontal: NeumorphicTheme.spacing[5],
-  },
-  appInfoText: {
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    color: NeumorphicTheme.colors.text.quaternary,
-    textAlign: 'center',
-    letterSpacing: -0.1,
-    marginBottom: NeumorphicTheme.spacing[1],
-  },
-});

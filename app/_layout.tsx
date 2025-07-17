@@ -1,13 +1,18 @@
 // Import Node.js polyfills first for web compatibility
 import '../polyfills/node-polyfills';
 
+// Import NativeWind CSS - temporarily disabled for debugging
+// import '../global.css';
+
 import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import { PaperProvider } from 'react-native-paper';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { SiaMoonPaperTheme } from '@/constants/PaperTheme';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import NotificationOverlay from '@/components/notifications/NotificationOverlay';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -53,11 +58,12 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <ErrorBoundary>
-          <AuthProvider>
-            <ErrorBoundary>
-              <NotificationProvider>
+      <PaperProvider theme={SiaMoonPaperTheme}>
+        <ThemeProvider>
+          <ErrorBoundary>
+            <AuthProvider>
+              <ErrorBoundary>
+                <NotificationProvider>
                 <StatusBar style="light" backgroundColor="#1a1a2e" />
                 <Stack
                   screenOptions={{
@@ -75,6 +81,7 @@ export default function RootLayout() {
           </AuthProvider>
         </ErrorBoundary>
       </ThemeProvider>
+      </PaperProvider>
     </ErrorBoundary>
   );
 }

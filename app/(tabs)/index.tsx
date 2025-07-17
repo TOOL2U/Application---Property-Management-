@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   RefreshControl,
   TouchableOpacity,
@@ -12,12 +11,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import * as Animatable from 'react-native-animatable';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffAuth } from '@/hooks/useStaffAuth';
 import { jobService } from '@/services/jobService';
 import { Job } from '@/types/job';
 import EnhancedStaffDashboard from '@/components/dashboard/EnhancedStaffDashboard';
-import { Card } from '@/components/ui/Card';
+import { BlurHeader } from '@/components/ui/BlurHeader';
 import { SyncStatusIndicator } from '@/components/sync/SyncStatusIndicator';
 import { useSync } from '@/hooks/useSync';
 import { webhookService } from '@/services/webhookService';
@@ -48,6 +49,7 @@ import {
   MapPin,
   Bell,
   Settings,
+  LogOut,
 } from 'lucide-react-native';
 import { NeumorphicTheme } from '@/constants/NeumorphicTheme';
 
@@ -78,6 +80,7 @@ export default function DashboardScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [showUserTest, setShowUserTest] = useState(false);
+  const [localLoading, setLocalLoading] = useState(false);
 
   // Staff Dashboard State
   // Note: These are used in loadStaffDashboardData function
@@ -86,6 +89,9 @@ export default function DashboardScreen() {
   const [jobsLoading, setJobsLoading] = useState(false);
 
   const isStaffUser = hasRole(['cleaner', 'maintenance', 'staff']);
+  
+  // Combined loading state for sign out
+  const isLoading = localLoading;
   const [stats, setStats] = useState<DashboardStats>({
     totalBookings: 24,
     activeBookings: 8,
@@ -192,6 +198,64 @@ export default function DashboardScreen() {
     } finally {
       setJobsLoading(false);
     }
+  };
+
+  const handleSignOut = () => {
+    console.log('🔴 Sign out button clicked in Dashboard');
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out? You can sign back in with either a staff or admin account.',
+      [
+        { 
+          text: 'Cancel', 
+          style: 'cancel' 
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('🚪 Starting sign out process from dashboard...');
+              setLocalLoading(true);
+              
+              // Check auth state before sign out
+              console.log('🔍 Pre-signout auth state:', { 
+                isAuthenticated: user !== null, 
+                userEmail: user?.email,
+                isLoading: localLoading 
+              });
+              
+              // Perform sign out
+              console.log('🔄 Calling signOut() function...');
+              await signOut();
+              
+              // Check auth state after sign out
+              console.log('🔍 Post-signout auth state:', { 
+                isAuthenticated: user !== null, 
+                userEmail: user?.email,
+                isLoading: localLoading 
+              });
+              
+              console.log('✅ Sign out completed successfully');
+              
+              // Don't manually navigate - let the tab layout handle it
+              // This prevents race conditions and ensures proper auth flow
+              console.log('🔄 Waiting for automatic redirect to login...');
+              
+            } catch (error) {
+              console.error('❌ Sign out error:', error);
+              Alert.alert(
+                'Sign Out Error',
+                'There was an error signing out. Please try again.',
+                [{ text: 'OK' }]
+              );
+            } finally {
+              setLocalLoading(false);
+            }
+          }
+        },
+      ]
+    );
   };
 
   // 🧪 TEST: Real-time listener for test job from web app
@@ -419,44 +483,63 @@ export default function DashboardScreen() {
     return `${diffDays}d ago`;
   };
 
-  const StatCard = ({ 
-    title, 
-    value, 
-    icon, 
-    color, 
-    trend 
-  }: { 
-    title: string; 
-    value: number; 
-    icon: React.ReactNode; 
+  const StatCard = ({
+    title,
+    value,
+    icon,
+    color,
+    trend,
+    index = 0
+  }: {
+    title: string;
+    value: number;
+    icon: React.ReactNode;
     color: string;
     trend?: number;
+    index?: number;
   }) => (
-    <Card style={[styles.statCard, { width: (screenWidth - 60) / 2 }] as any}>
-      <View style={styles.statHeader}>
-        <View style={[styles.statIcon, { backgroundColor: `${color}20` }]}>
-          {icon}
-        </View>
-        {trend !== undefined && (
-          <View style={[styles.trendIndicator, { 
-            backgroundColor: trend >= 0 ? `${NeumorphicTheme.colors.semantic.success}20` : `${NeumorphicTheme.colors.semantic.error}20` 
-          }]}>
-            <TrendingUp 
-              size={12} 
-              color={trend >= 0 ? NeumorphicTheme.colors.semantic.success : NeumorphicTheme.colors.semantic.error}
-              style={{ transform: [{ rotate: trend >= 0 ? '0deg' : '180deg' }] }}
-            />
-            <Text style={[styles.trendText, { 
-              color: trend >= 0 ? NeumorphicTheme.colors.semantic.success : NeumorphicTheme.colors.semantic.error 
-            }]}>
-              {Math.abs(trend)}%
-            </Text>
+    <Animatable.View
+      animation="fadeInUp"
+      duration={400}
+      delay={200 + (index * 100)}
+      className="shadow-lg"
+      style={{ width: (screenWidth - 60) / 2 }}
+    >
+      <View className="bg-dark-surface rounded-lg p-4">
+        <View className="flex-row justify-between items-center mb-3">
+          <View
+            className="w-10 h-10 rounded-full items-center justify-center"
+            style={{ backgroundColor: `${color}20` }}
+          >
+            {icon}
           </View>
-        )}
+          {trend !== undefined && (
+            <View
+              className="flex-row items-center px-2 py-1 rounded-sm gap-1"
+              style={{
+                backgroundColor: trend >= 0 ? `${NeumorphicTheme.colors.semantic.success}20` : `${NeumorphicTheme.colors.semantic.error}20`
+              }}
+            >
+              <TrendingUp
+                size={12}
+                color={trend >= 0 ? NeumorphicTheme.colors.semantic.success : NeumorphicTheme.colors.semantic.error}
+                style={{ transform: [{ rotate: trend >= 0 ? '0deg' : '180deg' }] }}
+              />
+              <Text
+                className="text-xs font-medium"
+                style={{
+                  color: trend >= 0 ? NeumorphicTheme.colors.semantic.success : NeumorphicTheme.colors.semantic.error
+                }}
+              >
+                {Math.abs(trend)}%
+              </Text>
+            </View>
+          )}
+        </View>
+        <Text className="text-2xl font-bold text-white mb-1">{value}</Text>
+        <Text className="text-sm text-gray-400">{title}</Text>
       </View>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
-    </Card>
+    </Animatable.View>
   );
 
   // Test webapp connection
@@ -593,62 +676,53 @@ export default function DashboardScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View className="flex-1 bg-dark-bg">
       {/* Background Gradient */}
       <LinearGradient
         colors={NeumorphicTheme.gradients.backgroundMain}
-        style={styles.backgroundGradient}
+        className="absolute inset-0"
       />
 
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={NeumorphicTheme.colors.brand.primary}
-              colors={[NeumorphicTheme.colors.brand.primary]}
-            />
-          }
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.greeting}>{getGreeting()}</Text>
-              <Text style={styles.userName}>
-                {user?.name || 'Staff Member'}
-              </Text>
-              <Text style={styles.userRole}>{user?.role} • {user?.department}</Text>
-            </View>
-            
-            <TouchableOpacity 
-              style={styles.profileButton}
-              onPress={() => {/* Navigate to profile */}}
-            >
-              <View style={styles.profileAvatar}>
-                <Text style={styles.profileInitials}>
-                  {user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2) || 'SM'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
+      {/* Enhanced BlurHeader */}
+      <BlurHeader
+        title={`${getGreeting()}, ${user?.name || 'Admin'}!`}
+        subtitle={`${user?.role} • Dashboard Overview`}
+        intensity={70}
+        tint="light"
+        showNotificationButton={true}
+        showSettingsButton={true}
+        onNotificationPress={() => Alert.alert('Notifications', 'Opening notifications...')}
+        onSettingsPress={() => Alert.alert('Settings', 'Opening settings...')}
+      />
+
+      <ScrollView
+        className="flex-1 px-4"
+        contentContainerStyle={{ paddingBottom: 32 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={NeumorphicTheme.colors.brand.primary}
+            colors={[NeumorphicTheme.colors.brand.primary]}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
 
           {/* Sync Status */}
           <SyncStatusIndicator showDetails={true} />
 
           {/* Quick Stats */}
-          <View style={styles.statsSection}>
-            <Text style={styles.sectionTitle}>Today's Overview</Text>
-            <View style={styles.statsGrid}>
+          <View className="mb-6">
+            <Text className="text-lg font-semibold text-white mb-4">Today's Overview</Text>
+            <View className="flex-row flex-wrap gap-3">
               <StatCard
                 title="Active Bookings"
                 value={stats.activeBookings}
                 icon={<Home size={20} color={NeumorphicTheme.colors.brand.primary} />}
                 color={NeumorphicTheme.colors.brand.primary}
                 trend={12}
+                index={0}
               />
               <StatCard
                 title="Pending Tasks"
@@ -656,6 +730,7 @@ export default function DashboardScreen() {
                 icon={<Clock size={20} color={NeumorphicTheme.colors.semantic.warning} />}
                 color={NeumorphicTheme.colors.semantic.warning}
                 trend={-5}
+                index={1}
               />
               <StatCard
                 title="Completed Tasks"
@@ -663,6 +738,7 @@ export default function DashboardScreen() {
                 icon={<CheckCircle size={20} color={NeumorphicTheme.colors.semantic.success} />}
                 color={NeumorphicTheme.colors.semantic.success}
                 trend={8}
+                index={2}
               />
               <StatCard
                 title="Maintenance Issues"
@@ -670,412 +746,151 @@ export default function DashboardScreen() {
                 icon={<AlertTriangle size={20} color={NeumorphicTheme.colors.semantic.error} />}
                 color={NeumorphicTheme.colors.semantic.error}
                 trend={-15}
+                index={3}
               />
             </View>
           </View>
 
           {/* Quick Actions */}
-          <View style={styles.quickActionsSection}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <View style={styles.quickActionsGrid}>
-              <TouchableOpacity style={styles.quickActionCard}>
+          <View className="mb-6">
+            <Text className="text-lg font-semibold text-white mb-4">Quick Actions</Text>
+            <View className="flex-row flex-wrap gap-3">
+              <TouchableOpacity className="bg-dark-surface rounded-lg p-4 items-center gap-2 shadow-lg" style={{ width: (screenWidth - 60) / 2 }}>
                 <Calendar size={24} color={NeumorphicTheme.colors.brand.primary} />
-                <Text style={styles.quickActionText}>View Schedule</Text>
+                <Text className="text-sm font-medium text-white">View Schedule</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.quickActionCard}>
+
+              <TouchableOpacity className="bg-dark-surface rounded-lg p-4 items-center gap-2 shadow-lg" style={{ width: (screenWidth - 60) / 2 }}>
                 <MapPin size={24} color={NeumorphicTheme.colors.semantic.info} />
-                <Text style={styles.quickActionText}>Properties</Text>
+                <Text className="text-sm font-medium text-white">Properties</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.quickActionCard}>
+
+              <TouchableOpacity className="bg-dark-surface rounded-lg p-4 items-center gap-2 shadow-lg" style={{ width: (screenWidth - 60) / 2 }}>
                 <Users size={24} color={NeumorphicTheme.colors.semantic.success} />
-                <Text style={styles.quickActionText}>Staff</Text>
+                <Text className="text-sm font-medium text-white">Staff</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.quickActionCard}
+
+              <TouchableOpacity
+                className="bg-dark-surface rounded-lg p-4 items-center gap-2 shadow-lg"
+                style={{ width: (screenWidth - 60) / 2 }}
                 onPress={testWebappConnection}
               >
                 <Settings size={24} color={NeumorphicTheme.colors.semantic.info} />
-                <Text style={styles.quickActionText}>Test Webapp</Text>
+                <Text className="text-sm font-medium text-white">Test Webapp</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.quickActionCard}
+
+              <TouchableOpacity
+                className="bg-dark-surface rounded-lg p-4 items-center gap-2 shadow-lg"
+                style={{ width: (screenWidth - 60) / 2 }}
                 onPress={() => setShowUserTest(true)}
               >
                 <Users size={24} color={NeumorphicTheme.colors.semantic.warning} />
-                <Text style={styles.quickActionText}>Test User Login</Text>
+                <Text className="text-sm font-medium text-white">Test User Login</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Recent Activity */}
-          <View style={styles.activitySection}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <Card style={styles.activityCard}>
+          <View className="mb-6">
+            <Text className="text-lg font-semibold text-white mb-4">Recent Activity</Text>
+            <View className="bg-dark-surface rounded-lg p-4 shadow-lg">
               {recentActivity.map((activity, index) => (
                 <View key={activity.id}>
-                  <View style={styles.activityItem}>
-                    <View style={styles.activityIcon}>
+                  <View className="flex-row items-start gap-3">
+                    <View className="w-8 h-8 rounded-full bg-dark-card items-center justify-center mt-1">
                       {getActivityIcon(activity.type, activity.status)}
                     </View>
-                    <View style={styles.activityContent}>
-                      <Text style={styles.activityTitle}>{activity.title}</Text>
-                      <Text style={styles.activityDescription}>{activity.description}</Text>
-                      <Text style={styles.activityTime}>{formatTimeAgo(activity.timestamp)}</Text>
+                    <View className="flex-1">
+                      <Text className="text-sm font-semibold text-white mb-1">{activity.title}</Text>
+                      <Text className="text-sm text-gray-400 mb-1">{activity.description}</Text>
+                      <Text className="text-xs text-gray-500">{formatTimeAgo(activity.timestamp)}</Text>
                     </View>
                   </View>
-                  {index < recentActivity.length - 1 && <View style={styles.activityDivider} />}
+                  {index < recentActivity.length - 1 && <View className="h-px bg-dark-card my-3" />}
                 </View>
               ))}
-            </Card>
+            </View>
           </View>
 
           {/* System Status */}
-          <Card style={styles.systemStatusCard}>
-            <Text style={styles.systemStatusTitle}>System Status</Text>
-            <View style={styles.systemStatusGrid}>
-              <View style={styles.systemStatusItem}>
-                <View style={[styles.statusDot, { 
-                  backgroundColor: isOnline ? NeumorphicTheme.colors.semantic.success : NeumorphicTheme.colors.semantic.error 
-                }]} />
-                <Text style={styles.systemStatusText}>
+          <View className="bg-dark-surface rounded-lg p-4 shadow-lg mb-6">
+            <Text className="text-base font-semibold text-white mb-3">System Status</Text>
+            <View className="flex-row flex-wrap gap-4 mb-3">
+              <View className="flex-row items-center gap-2">
+                <View
+                  className="w-2 h-2 rounded-full"
+                  style={{
+                    backgroundColor: isOnline ? NeumorphicTheme.colors.semantic.success : NeumorphicTheme.colors.semantic.error
+                  }}
+                />
+                <Text className="text-sm text-gray-400">
                   {isOnline ? 'Online' : 'Offline'}
                 </Text>
               </View>
-              
-              <View style={styles.systemStatusItem}>
-                <View style={[styles.statusDot, { 
-                  backgroundColor: isSyncing ? NeumorphicTheme.colors.semantic.warning : NeumorphicTheme.colors.semantic.success 
-                }]} />
-                <Text style={styles.systemStatusText}>
+
+              <View className="flex-row items-center gap-2">
+                <View
+                  className="w-2 h-2 rounded-full"
+                  style={{
+                    backgroundColor: isSyncing ? NeumorphicTheme.colors.semantic.warning : NeumorphicTheme.colors.semantic.success
+                  }}
+                />
+                <Text className="text-sm text-gray-400">
                   {isSyncing ? 'Syncing' : 'Synced'}
                 </Text>
               </View>
-              
-              <View style={styles.systemStatusItem}>
-                <View style={[styles.statusDot, { 
-                  backgroundColor: conflictCount > 0 ? NeumorphicTheme.colors.semantic.error : NeumorphicTheme.colors.semantic.success 
-                }]} />
-                <Text style={styles.systemStatusText}>
+
+              <View className="flex-row items-center gap-2">
+                <View
+                  className="w-2 h-2 rounded-full"
+                  style={{
+                    backgroundColor: conflictCount > 0 ? NeumorphicTheme.colors.semantic.error : NeumorphicTheme.colors.semantic.success
+                  }}
+                />
+                <Text className="text-sm text-gray-400">
                   {conflictCount > 0 ? `${conflictCount} Conflicts` : 'No Conflicts'}
                 </Text>
               </View>
             </View>
-            
+
             {lastSyncTime && (
-              <Text style={styles.lastSyncText}>
+              <Text className="text-xs text-gray-500 text-center">
                 Last sync: {formatTimeAgo(lastSyncTime)}
               </Text>
             )}
-          </Card>
+          </View>
 
           {/* Sign Out Button */}
-          <TouchableOpacity 
-            style={styles.signOutButton}
+          <TouchableOpacity
+            className="bg-red-500/20 border border-red-500/30 rounded-lg p-4 items-center"
             onPress={signOut}
           >
-            <Text style={styles.signOutText}>Sign Out</Text>
+            <Text className="text-base font-medium text-red-400">Sign Out</Text>
           </TouchableOpacity>
         </ScrollView>
-      </SafeAreaView>
-      
-      {/* User Test Modal */}
-      <Modal
-        visible={showUserTest}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowUserTest(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>User Authentication Test</Text>
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={() => setShowUserTest(false)}
-            >
-              <Text style={styles.modalCloseText}>✕</Text>
-            </TouchableOpacity>
+
+        {/* User Test Modal */}
+        <Modal
+          visible={showUserTest}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowUserTest(false)}
+        >
+          <View className="flex-1 bg-dark-bg">
+            <View className="flex-row justify-between items-center p-4 border-b border-gray-700">
+              <Text className="text-lg font-semibold text-white">User Authentication Test</Text>
+              <TouchableOpacity
+                className="w-8 h-8 rounded-full bg-dark-surface justify-center items-center"
+                onPress={() => setShowUserTest(false)}
+              >
+                <Text className="text-lg font-bold text-gray-400">✕</Text>
+              </TouchableOpacity>
+            </View>
+            <UserTestScreen />
           </View>
-          <UserTestScreen />
-        </View>
-      </Modal>
-    </View>
-  );
+        </Modal>
+      </View>
+    );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: NeumorphicTheme.colors.background.primary,
-  },
-  backgroundGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: NeumorphicTheme.spacing[4],
-    paddingBottom: NeumorphicTheme.spacing[8],
-  },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: NeumorphicTheme.spacing[6],
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  greeting: {
-    fontSize: NeumorphicTheme.typography.sizes.lg.fontSize,
-    color: NeumorphicTheme.colors.text.secondary,
-    marginBottom: NeumorphicTheme.spacing[1],
-  },
-  userName: {
-    fontSize: NeumorphicTheme.typography.sizes['2xl'].fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.bold,
-    color: NeumorphicTheme.colors.text.primary,
-    marginBottom: NeumorphicTheme.spacing[1],
-  },
-  userRole: {
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    color: NeumorphicTheme.colors.text.tertiary,
-  },
-  profileButton: {
-    marginLeft: NeumorphicTheme.spacing[4],
-  },
-  profileAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: NeumorphicTheme.colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...NeumorphicTheme.shadows.neumorphic.small,
-  },
-  profileInitials: {
-    fontSize: NeumorphicTheme.typography.sizes.lg.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.bold,
-    color: '#ffffff',
-  },
-
-  // Stats Section
-  statsSection: {
-    marginBottom: NeumorphicTheme.spacing[6],
-  },
-  sectionTitle: {
-    fontSize: NeumorphicTheme.typography.sizes.lg.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.semibold,
-    color: NeumorphicTheme.colors.text.primary,
-    marginBottom: NeumorphicTheme.spacing[4],
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: NeumorphicTheme.spacing[3],
-  },
-  statCard: {
-    padding: NeumorphicTheme.spacing[4],
-  },
-  statHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: NeumorphicTheme.spacing[3],
-  },
-  statIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  trendIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: NeumorphicTheme.spacing[2],
-    paddingVertical: NeumorphicTheme.spacing[1],
-    borderRadius: NeumorphicTheme.borderRadius.sm,
-    gap: NeumorphicTheme.spacing[1],
-  },
-  trendText: {
-    fontSize: NeumorphicTheme.typography.sizes.xs.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.medium,
-  },
-  statValue: {
-    fontSize: NeumorphicTheme.typography.sizes['2xl'].fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.bold,
-    color: NeumorphicTheme.colors.text.primary,
-    marginBottom: NeumorphicTheme.spacing[1],
-  },
-  statTitle: {
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    color: NeumorphicTheme.colors.text.secondary,
-  },
-
-  // Quick Actions
-  quickActionsSection: {
-    marginBottom: NeumorphicTheme.spacing[6],
-  },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: NeumorphicTheme.spacing[3],
-  },
-  quickActionCard: {
-    width: (screenWidth - 60) / 2,
-    backgroundColor: NeumorphicTheme.colors.background.secondary,
-    borderRadius: NeumorphicTheme.borderRadius.lg,
-    padding: NeumorphicTheme.spacing[4],
-    alignItems: 'center',
-    gap: NeumorphicTheme.spacing[2],
-    ...NeumorphicTheme.shadows.neumorphic.small,
-  },
-  quickActionText: {
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.medium,
-    color: NeumorphicTheme.colors.text.primary,
-  },
-
-  // Activity Section
-  activitySection: {
-    marginBottom: NeumorphicTheme.spacing[6],
-  },
-  activityCard: {
-    padding: NeumorphicTheme.spacing[4],
-  },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: NeumorphicTheme.spacing[3],
-  },
-  activityIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: NeumorphicTheme.colors.background.tertiary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: NeumorphicTheme.spacing[1],
-  },
-  activityContent: {
-    flex: 1,
-  },
-  activityTitle: {
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.semibold,
-    color: NeumorphicTheme.colors.text.primary,
-    marginBottom: NeumorphicTheme.spacing[1],
-  },
-  activityDescription: {
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    color: NeumorphicTheme.colors.text.secondary,
-    marginBottom: NeumorphicTheme.spacing[1],
-  },
-  activityTime: {
-    fontSize: NeumorphicTheme.typography.sizes.xs.fontSize,
-    color: NeumorphicTheme.colors.text.tertiary,
-  },
-  activityDivider: {
-    height: 1,
-    backgroundColor: NeumorphicTheme.colors.background.tertiary,
-    marginVertical: NeumorphicTheme.spacing[3],
-  },
-
-  // System Status
-  systemStatusCard: {
-    padding: NeumorphicTheme.spacing[4],
-    marginBottom: NeumorphicTheme.spacing[6],
-  },
-  systemStatusTitle: {
-    fontSize: NeumorphicTheme.typography.sizes.base.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.semibold,
-    color: NeumorphicTheme.colors.text.primary,
-    marginBottom: NeumorphicTheme.spacing[3],
-  },
-  systemStatusGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: NeumorphicTheme.spacing[4],
-    marginBottom: NeumorphicTheme.spacing[3],
-  },
-  systemStatusItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: NeumorphicTheme.spacing[2],
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  systemStatusText: {
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    color: NeumorphicTheme.colors.text.secondary,
-  },
-  lastSyncText: {
-    fontSize: NeumorphicTheme.typography.sizes.xs.fontSize,
-    color: NeumorphicTheme.colors.text.tertiary,
-    textAlign: 'center',
-  },
-
-  // Sign Out
-  signOutButton: {
-    backgroundColor: `${NeumorphicTheme.colors.semantic.error}20`,
-    borderWidth: 1,
-    borderColor: `${NeumorphicTheme.colors.semantic.error}30`,
-    borderRadius: NeumorphicTheme.borderRadius.lg,
-    padding: NeumorphicTheme.spacing[4],
-    alignItems: 'center',
-  },
-  signOutText: {
-    fontSize: NeumorphicTheme.typography.sizes.base.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.medium,
-    color: NeumorphicTheme.colors.semantic.error,
-  },
-
-  // Modal styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: NeumorphicTheme.colors.background.primary,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: NeumorphicTheme.spacing[4],
-    borderBottomWidth: 1,
-    borderBottomColor: NeumorphicTheme.colors.border.light,
-  },
-  modalTitle: {
-    fontSize: NeumorphicTheme.typography.sizes.lg.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.semibold,
-    color: NeumorphicTheme.colors.text.primary,
-  },
-  modalCloseButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: NeumorphicTheme.colors.background.secondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalCloseText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: NeumorphicTheme.colors.text.secondary,
-  },
-});

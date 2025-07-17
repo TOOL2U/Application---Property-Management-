@@ -2,6 +2,7 @@ import React from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   ViewStyle,
@@ -58,7 +59,7 @@ export const NeumorphicCard: React.FC<NeumorphicCardProps> = ({
     if (variant === 'elevated') {
       return NeumorphicTheme.gradients.cardElevated;
     }
-    return NeumorphicTheme.gradients.cardLight;
+    return NeumorphicTheme.gradients.card;
   };
 
   const cardContent = (
@@ -145,7 +146,7 @@ export const NeumorphicButton: React.FC<NeumorphicButtonProps> = ({
   const getButtonColors = () => {
     switch (variant) {
       case 'primary':
-        return NeumorphicTheme.gradients.brandPrimary;
+        return NeumorphicTheme.gradients.primary;
       case 'success':
         return NeumorphicTheme.gradients.success;
       case 'warning':
@@ -250,10 +251,10 @@ export const NeumorphicInput: React.FC<NeumorphicInputProps> = ({
         <BlurView intensity={6} style={styles.inputBlur}>
           <View style={styles.inputContent}>
             {icon && <View style={styles.inputIcon}>{icon}</View>}
-            <Text
+            <TextInput
               style={styles.inputText}
               placeholder={placeholder}
-              placeholderTextColor={NeumorphicTheme.colors.text.tertiary}
+              placeholderTextColor={NeumorphicTheme.colors.text.muted}
               value={value}
               onChangeText={onChangeText}
               secureTextEntry={secureTextEntry}
@@ -333,13 +334,13 @@ const styles = StyleSheet.create({
   neumorphicCard: {
     borderRadius: NeumorphicTheme.borderRadius.lg,
     overflow: 'hidden',
-    ...NeumorphicTheme.shadows.elevation.medium,
+    ...NeumorphicTheme.shadows.elevated,
   },
   cardGradient: {
     flex: 1,
     borderRadius: NeumorphicTheme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: NeumorphicTheme.colors.border.light,
+    borderColor: NeumorphicTheme.colors.border.subtle,
   },
   cardBlur: {
     flex: 1,
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
   neumorphicButton: {
     borderRadius: NeumorphicTheme.borderRadius.md,
     overflow: 'hidden',
-    ...NeumorphicTheme.shadows.elevation.small,
+    ...NeumorphicTheme.shadows.card,
   },
   buttonGradient: {
     borderRadius: NeumorphicTheme.borderRadius.md,
@@ -381,7 +382,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: NeumorphicTheme.borderRadius.md,
     borderWidth: 1,
-    borderColor: NeumorphicTheme.colors.border.light,
+    borderColor: NeumorphicTheme.colors.border.subtle,
   },
   inputBlur: {
     flex: 1,
