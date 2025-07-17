@@ -236,55 +236,29 @@ class ApiService {
   // Authentication methods
   async login(credentials: LoginCredentials): Promise<ApiResponse<AuthResponse>> {
     try {
-      // Demo login - accept any credentials for development
-      if (credentials.email && credentials.password) {
-        const demoUser: AuthResponse = {
-          token: 'demo_token_' + Date.now(),
-          refreshToken: 'demo_refresh_' + Date.now(),
-          user: {
-            id: 'demo_user_1',
-            email: credentials.email,
-            name: 'Demo Staff Member',
-            role: 'staff',
-          },
-        };
-
-        this.authToken = demoUser.token;
-        await this.storeAuthToken(demoUser.token);
-
-        if (demoUser.refreshToken) {
-          await AsyncStorage.setItem(REFRESH_TOKEN_KEY, demoUser.refreshToken);
-        }
-
+      if (!credentials.email || !credentials.password) {
         return {
-          success: true,
-          data: demoUser,
-          message: 'Demo login successful',
+          success: false,
+          error: 'Please enter email and password',
         };
       }
 
-      // If no credentials provided, return error
-      return {
-        success: false,
-        error: 'Please enter email and password',
-      };
-
-      // Real API call (commented out for demo)
-      /*
+      // Make real API call to authentication endpoint
       const response = await this.request<AuthResponse>('/auth/login', {
         method: 'POST',
         body: JSON.stringify(credentials),
       });
 
       if (response.success && response.data?.token) {
+        this.authToken = response.data.token;
         await this.storeAuthToken(response.data.token);
+        
         if (response.data.refreshToken) {
           await AsyncStorage.setItem(REFRESH_TOKEN_KEY, response.data.refreshToken);
         }
       }
 
       return response;
-      */
     } catch (error) {
       return {
         success: false,

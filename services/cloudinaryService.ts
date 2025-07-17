@@ -42,7 +42,7 @@ class CloudinaryService {
   constructor() {
     this.config = {
       cloudName: process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || 'doez7m1hy',
-      apiKey: process.env.EXPO_PUBLIC_CLOUDINARY_API_KEY || '316689738793838',
+      apiKey: process.env.CLOUDINARY_API_KEY || '316689738793838',
       uploadPreset: process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'villa_mobile_uploads',
     };
 
@@ -338,6 +338,100 @@ class CloudinaryService {
    */
   getConfig(): CloudinaryConfig {
     return { ...this.config };
+  }
+
+  /**
+   * Get the main app logo (white vector)
+   */
+  getLogoUrl(options: {
+    width?: number;
+    height?: number;
+    format?: string;
+    quality?: string | number;
+  } = {}): string {
+    const logoId = 'logo-white-vector-3svg_dmz2pf';
+    
+    return this.generateOptimizedUrl(logoId, {
+      format: options.format as any || 'auto',
+      quality: options.quality as any || 'auto',
+      width: options.width,
+      height: options.height,
+    });
+  }
+
+  /**
+   * Get logo for different use cases
+   */
+  getLogos() {
+    const logoId = 'logo-white-vector-3svg_dmz2pf';
+    
+    return {
+      // Main app icon (1024x1024)
+      appIcon: this.generateOptimizedUrl(logoId, {
+        width: 1024,
+        height: 1024,
+        format: 'png',
+        quality: 'auto',
+        crop: 'fill',
+      }),
+      
+      // Adaptive icon (Android - 1024x1024)
+      adaptiveIcon: this.generateOptimizedUrl(logoId, {
+        width: 1024,
+        height: 1024,
+        format: 'png',
+        quality: 'auto',
+        crop: 'fill',
+      }),
+      
+      // Favicon (32x32)
+      favicon: this.generateOptimizedUrl(logoId, {
+        width: 32,
+        height: 32,
+        format: 'png',
+        quality: 'auto',
+        crop: 'fill',
+      }),
+      
+      // Large favicon (192x192)
+      faviconLarge: this.generateOptimizedUrl(logoId, {
+        width: 192,
+        height: 192,
+        format: 'png',
+        quality: 'auto',
+        crop: 'fill',
+      }),
+      
+      // Splash screen (600x600)
+      splash: this.generateOptimizedUrl(logoId, {
+        width: 600,
+        height: 600,
+        format: 'png',
+        quality: 'auto',
+        crop: 'fill',
+      }),
+      
+      // Navigation/Header logo
+      header: this.generateOptimizedUrl(logoId, {
+        width: 200,
+        height: 60,
+        format: 'auto',
+        quality: 'auto',
+        crop: 'fit',
+      }),
+      
+      // Small logo for notifications
+      notification: this.generateOptimizedUrl(logoId, {
+        width: 64,
+        height: 64,
+        format: 'png',
+        quality: 'auto',
+        crop: 'fill',
+      }),
+      
+      // Original SVG (no transformations)
+      original: `https://res.cloudinary.com/doez7m1hy/image/upload/${logoId}`,
+    };
   }
 
   /**

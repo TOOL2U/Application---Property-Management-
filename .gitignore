@@ -10,6 +10,9 @@ expo-env.d.ts
 .env.production.local
 .env
 
+# Firebase Admin Credentials
+firebase-admin-key.json
+
 # Node modules
 node_modules/
 

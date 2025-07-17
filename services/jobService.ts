@@ -47,11 +47,43 @@ class JobService {
   private readonly LOCATION_UPDATES_COLLECTION = 'location_updates';
 
   /**
+   * Check if Firebase is ready with retry mechanism
+   */
+  private async waitForFirebaseInit(maxWaitMs: number = 5000): Promise<boolean> {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxWaitMs) {
+      if (db && typeof db.collection !== 'undefined') {
+        return true;
+      }
+
+      // Wait 100ms before checking again
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
+    return false;
+  }
+
+  /**
    * Get jobs assigned to a specific staff member
    */
   async getStaffJobs(staffId: string, filters?: JobFilter): Promise<JobListResponse> {
     try {
       console.log('🔍 JobService: Getting jobs for staff:', staffId);
+
+      // Check if Firebase is properly initialized with retry
+      const isFirebaseReady = await this.waitForFirebaseInit(2000);
+      if (!isFirebaseReady) {
+        console.warn('⚠️ JobService: Firebase Firestore is not ready after waiting');
+        return {
+          success: false,
+          jobs: [],
+          total: 0,
+          page: 1,
+          limit: 0,
+          error: 'Firebase Firestore is not ready. Please try again.',
+        };
+      }
 
       const jobsRef = collection(db, this.JOBS_COLLECTION);
       let q = query(
@@ -118,6 +150,13 @@ class JobService {
   async getPendingJobs(staffId: string): Promise<Job[]> {
     try {
       console.log('🔍 JobService: Getting pending jobs for staff:', staffId);
+
+      // Check if Firebase is properly initialized
+      const isFirebaseReady = await this.waitForFirebaseInit(2000);
+      if (!isFirebaseReady) {
+        console.warn('⚠️ JobService: Firebase Firestore is not ready for pending jobs');
+        return [];
+      }
 
       const jobsRef = collection(db, this.JOBS_COLLECTION);
       const q = query(
@@ -195,6 +234,13 @@ class JobService {
   async getActiveJobs(staffId: string): Promise<Job[]> {
     try {
       console.log('🔍 JobService: Getting active jobs for staff:', staffId);
+
+      // Check if Firebase is properly initialized
+      const isFirebaseReady = await this.waitForFirebaseInit(2000);
+      if (!isFirebaseReady) {
+        console.warn('⚠️ JobService: Firebase Firestore is not ready for active jobs');
+        return [];
+      }
 
       const jobsRef = collection(db, this.JOBS_COLLECTION);
       const q = query(
@@ -310,6 +356,16 @@ class JobService {
   async acceptJob(request: AcceptJobRequest): Promise<JobResponse> {
     try {
       console.log('✅ JobService: Accepting job:', request.jobId);
+
+      // Check if Firebase is properly initialized
+      const isFirebaseReady = await this.waitForFirebaseInit(2000);
+      if (!isFirebaseReady) {
+        console.warn('⚠️ JobService: Firebase Firestore is not ready for accepting job');
+        return {
+          success: false,
+          error: 'Firebase Firestore is not ready. Please try again.',
+        };
+      }
 
       const jobRef = doc(db, this.JOBS_COLLECTION, request.jobId);
       const jobDoc = await getDoc(jobRef);
@@ -514,6 +570,16 @@ class JobService {
   async startJob(jobId: string, staffId: string): Promise<JobResponse> {
     try {
       console.log('🚀 JobService: Starting job:', jobId);
+
+      // Check if Firebase is properly initialized
+      const isFirebaseReady = await this.waitForFirebaseInit(2000);
+      if (!isFirebaseReady) {
+        console.warn('⚠️ JobService: Firebase Firestore is not ready for starting job');
+        return {
+          success: false,
+          error: 'Firebase Firestore is not ready. Please try again.',
+        };
+      }
 
       const jobRef = doc(db, this.JOBS_COLLECTION, jobId);
       await updateDoc(jobRef, {
@@ -731,6 +797,14 @@ class JobService {
     callback: (jobs: Job[]) => void
   ): () => void {
     console.log('👂 JobService: Subscribing to real-time job updates for staff:', staffId);
+
+    // Check if Firebase is ready before setting up listener
+    if (!db) {
+      console.warn('⚠️ JobService: Firebase Firestore is not ready for real-time subscription');
+      return () => {
+        console.log('🔇 JobService: Dummy unsubscribe called (Firebase not ready)');
+      };
+    }
 
     const jobsRef = collection(db, this.JOBS_COLLECTION);
     const q = query(

@@ -20,7 +20,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { useAuth } from '@/contexts/AuthContext';
+import { usePINAuth } from "@/contexts/PINAuthContext";
+import { useStaffJobs } from '@/hooks/useStaffJobs';
 import { jobService } from '@/services/jobService';
 import type { Job } from '@/types/job';
 import {
@@ -43,40 +44,36 @@ import {
 const { width } = Dimensions.get('window');
 
 export default function ActiveJobsView() {
-  const { user } = useAuth();
-  const [activeJobs, setActiveJobs] = useState<Job[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { currentProfile } = usePINAuth();
+
+  // Use the enhanced staff jobs hook with filtering for active jobs
+  const {
+    activeJobs,
+    loading: isLoading,
+    refreshing,
+    error,
+    refreshJobs,
+    startJob,
+    completeJob,
+    clearError,
+  } = useStaffJobs({
+    filters: { status: ['accepted', 'in_progress'] },
+    enableRealtime: true,
+    enableCache: true,
+  });
+
   const [expandedJob, setExpandedJob] = useState<string | null>(null);
   const [uploadingPhotos, setUploadingPhotos] = useState<string | null>(null);
   const [completingJob, setCompletingJob] = useState<string | null>(null);
 
+  // Show error alert when error occurs
   useEffect(() => {
-    if (user?.id) {
-      loadActiveJobs();
+    if (error) {
+      Alert.alert('Error', error, [
+        { text: 'OK', onPress: clearError }
+      ]);
     }
-  }, [user?.id]);
-
-  const loadActiveJobs = async () => {
-    if (!user?.id) return;
-
-    try {
-      setIsLoading(true);
-      const jobs = await jobService.getActiveJobs(user.id);
-      setActiveJobs(jobs);
-    } catch (error) {
-      console.error('Error loading active jobs:', error);
-      Alert.alert('Error', 'Failed to load active jobs. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadActiveJobs();
-    setRefreshing(false);
-  };
+  }, [error, clearError]);
 
   const openMaps = (job: Job) => {
     const address = `${job.location.address}, ${job.location.city}, ${job.location.state} ${job.location.zipCode}`;
@@ -131,7 +128,7 @@ export default function ActiveJobsView() {
     }
   };
 
-  const completeJob = async (job: Job) => {
+  const handleCompleteJob = async (job: Job) => {
     if (!job.photos || job.photos.length === 0) {
       Alert.alert(
         'Photos Required',
@@ -152,18 +149,13 @@ export default function ActiveJobsView() {
           onPress: async () => {
             try {
               setCompletingJob(job.id);
-              const response = await jobService.completeJob(
-                job.id,
-                user!.id,
-                job.photos,
-                'Job completed by staff member'
-              );
 
-              if (response.success) {
+              const success = await completeJob(job.id, 'Job completed by staff member');
+
+              if (success) {
                 Alert.alert('Success', 'Job completed successfully!');
-                await loadActiveJobs(); // Refresh to remove completed job
               } else {
-                Alert.alert('Error', response.error || 'Failed to complete job');
+                Alert.alert('Error', 'Failed to complete job. Please try again.');
               }
             } catch (error) {
               console.error('Error completing job:', error);
@@ -330,7 +322,7 @@ export default function ActiveJobsView() {
                     styles.completeButton,
                     (!hasPhotos || completingJob === job.id) && styles.completeButtonDisabled
                   ]}
-                  onPress={() => completeJob(job)}
+                  onPress={() => handleCompleteJob(job)}
                   disabled={!hasPhotos || completingJob === job.id}
                 >
                   <LinearGradient
@@ -374,9 +366,9 @@ export default function ActiveJobsView() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor="#8b5cf6"
-              colors={['#8b5cf6']}
+              onRefresh={refreshJobs}
+              tintColor="#C6FF00"
+              colors={['#C6FF00']}
             />
           }
         >

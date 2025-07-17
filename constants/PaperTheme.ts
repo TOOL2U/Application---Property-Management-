@@ -125,11 +125,11 @@ export const SiaMoonPaperTheme: MD3Theme = {
   colors: {
     ...MD3DarkTheme.colors,
     
-    // Primary colors (matching primary-500 from tailwind.config.js)
-    primary: '#8b5cf6',
-    onPrimary: '#ffffff',
-    primaryContainer: '#6d28d9',
-    onPrimaryContainer: '#f3f1ff',
+    // Primary colors (matching neon green theme)
+    primary: '#C6FF00',
+    onPrimary: '#0B0F1A',  // Dark text for better contrast
+    primaryContainer: '#A3E635',
+    onPrimaryContainer: '#0B0F1A',
     
     // Secondary colors (using neon-pink)
     secondary: '#ec4899',
@@ -149,20 +149,20 @@ export const SiaMoonPaperTheme: MD3Theme = {
     errorContainer: '#dc2626',
     onErrorContainer: '#fef2f2',
     
-    // Background colors (matching dark theme)
-    background: '#0a0a0a',        // dark-bg
-    onBackground: '#ffffff',
-    surface: '#111111',           // dark-surface
-    onSurface: '#ffffff',
-    surfaceVariant: '#1a1a1a',    // dark-card
-    onSurfaceVariant: '#d1d5db',  // gray-300
+    // Background colors (matching new dark theme)
+    background: '#0B0F1A',        // Primary background
+    onBackground: '#F1F1F1',      // Primary text
+    surface: '#1C1F2A',           // Surface/card background
+    onSurface: '#F1F1F1',         // Primary text
+    surfaceVariant: '#1F2937',    // Secondary surfaces
+    onSurfaceVariant: '#A1A1AA',  // Secondary text
     
     // Outline colors
     outline: '#262626',           // dark-border
     outlineVariant: '#374151',    // gray-700
     
     // Surface tints
-    surfaceTint: '#8b5cf6',
+    surfaceTint: '#C6FF00',
     inverseSurface: '#f9fafb',
     inverseOnSurface: '#111827',
     inversePrimary: '#6366f1',
@@ -191,18 +191,18 @@ export const SiaMoonPaperTheme: MD3Theme = {
  * Color constants for easy access throughout the app
  */
 export const PaperColors = {
-  primary: '#8b5cf6',
-  neonPurple: '#8b5cf6',
-  neonPink: '#ec4899',
+  primary: '#C6FF00',
+  neonGreen: '#C6FF00',
+  neonLime: '#A3E635',
   neonBlue: '#3b82f6',
-  neonGreen: '#22c55e',
+  neonSuccess: '#22c55e',
   neonOrange: '#f59e0b',
   neonRed: '#ef4444',
-  
-  darkBg: '#0a0a0a',
-  darkSurface: '#111111',
-  darkCard: '#1a1a1a',
-  darkBorder: '#262626',
+
+  darkBg: '#0B0F1A',
+  darkSurface: '#1C1F2A',
+  darkCard: '#1F2937',
+  darkBorder: '#374151',
   
   white: '#ffffff',
   gray300: '#d1d5db',

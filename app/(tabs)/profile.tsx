@@ -1,87 +1,96 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   Alert,
-  Platform,
+  ActivityIndicator,
+  StatusBar,
+  Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import * as Animatable from 'react-native-animatable';
-import { useAuth } from '@/contexts/AuthContext';
-import { useJobNotifications } from '@/hooks/useJobNotifications';
-import {
-  User,
-  Bell,
-  MapPin,
-  Settings,
-  Phone,
-  Mail,
-  Shield,
-  ChevronRight,
-  TrendingUp,
-  Award,
-  Clock,
-  Star,
-  Wrench,
-  CheckCircle,
-} from 'lucide-react-native';
-import { AITheme } from '@/constants/AITheme';
-import { BlurHeader } from '@/components/ui/BlurHeader';
+import { usePINAuth } from "@/contexts/PINAuthContext";
+import { useRouter } from 'expo-router';
+import LogoutOverlay from '@/components/auth/LogoutOverlay';
 
-// Property Management Staff Profile Data
-const mockStaffProfile = {
-  maintenanceJobsCompleted: 127,
-  inspectionsCompleted: 34,
-  tenantSatisfactionRating: 4.6,
-  averageResponseTime: '2.1 hours',
-  efficiency: 91,
-  specializations: ['Plumbing', 'HVAC Systems', 'Electrical Repair', 'General Maintenance'],
-  certifications: [
-    { name: 'EPA 608 Certification', issueDate: '2023-03-15', expiryDate: '2026-03-15' },
-    { name: 'OSHA 10-Hour Safety', issueDate: '2023-01-20', expiryDate: '2026-01-20' },
-    { name: 'Property Management License', issueDate: '2022-08-10', expiryDate: '2025-08-10' },
-    { name: 'HVAC Technician License', issueDate: '2022-05-05', expiryDate: '2025-05-05' }
-  ],
-  monthlyPerformance: {
-    maintenanceCompleted: 23,
-    emergencyResponseTime: '1.8 hours',
-    tenantCompliments: 8,
-    workOrdersOnTime: 21
-  }
-};
+// User status options
+const statusOptions = [
+  { id: 'available', label: 'Available', color: '#22c55e', icon: 'checkmark-circle' },
+  { id: 'busy', label: 'Busy', color: '#f59e0b', icon: 'time' },
+  { id: 'offline', label: 'Offline', color: '#71717A', icon: 'moon' },
+] as const;
+
+type UserStatus = typeof statusOptions[number]['id'];
 
 export default function ProfileScreen() {
-  const { user, signOut, signOutToProfileSelection, isLoading: authLoading } = useAuth();
-  const { expoPushToken, simulateJobNotification } = useJobNotifications();
+  const { currentProfile, logout, isLoading } = usePINAuth();
+  const router = useRouter();
+  const [userStatus, setUserStatus] = useState<UserStatus>('available');
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const isStaffUser = currentProfile?.role && ['cleaner', 'maintenance', 'staff'].includes(currentProfile.role);
+  const isAdminOrManager = currentProfile?.role && ['admin', 'manager'].includes(currentProfile.role);
 
   const handleSignOut = () => {
     Alert.alert(
       'Sign Out',
-      'Choose how you want to sign out:',
+      'Are you sure you want to sign out? This will return you to the staff profile selection.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Switch Profile',
-          onPress: async () => {
-            try {
-              await signOutToProfileSelection();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to switch profile.');
-            }
-          }
-        },
-        {
-          text: 'Complete Sign Out',
+          text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
             try {
-              await signOut();
-              console.log('✅ Sign out completed successfully');
+              setIsSigningOut(true);
+              console.log('🚪 Profile: Starting beautiful logout process with AIS telecom styling...');
+
+              // Add beautiful fadeOut animation before logout
+              console.log('🎨 Profile: Starting fadeOut animation...');
+
+              // Small delay to show the signing out state
+              await new Promise(resolve => setTimeout(resolve, 300));
+
+              // Perform the comprehensive logout
+              await logout();
+              console.log('✅ Profile: Logout completed, preparing navigation...');
+
+              // Add smooth transition delay for better UX
+              await new Promise(resolve => setTimeout(resolve, 300));
+
+              // Navigate to profile selection screen and completely clear navigation stack
+              console.log('🔄 Profile: Navigating to profile selection with router.replace...');
+              router.replace('/(auth)/select-profile');
+
+              // Additional cleanup to ensure navigation stack is completely cleared
+              console.log('🧹 Profile: Ensuring navigation stack is completely cleared...');
+
+              console.log('✅ Profile: Beautiful logout process completed successfully');
+
             } catch (error) {
-              Alert.alert('Error', 'Failed to sign out.');
+              console.error('❌ Profile: Logout error:', error);
+
+              // Show user-friendly error message with AIS styling
+              const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+              Alert.alert(
+                'Logout Complete',
+                `You have been successfully signed out.\n\n${errorMessage ? `Note: ${errorMessage}` : ''}`,
+                [{
+                  text: 'Continue',
+                  onPress: () => {
+                    // Ensure navigation happens even if there were errors
+                    router.replace('/(auth)/select-profile');
+                  }
+                }]
+              );
+
+            } finally {
+              // Reset signing out state
+              setIsSigningOut(false);
             }
           }
         }
@@ -89,531 +98,397 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleStatusChange = () => {
+    const currentIndex = statusOptions.findIndex(option => option.id === userStatus);
+    const nextIndex = (currentIndex + 1) % statusOptions.length;
+    const nextStatus = statusOptions[nextIndex];
+
+    setUserStatus(nextStatus.id);
+    Alert.alert(
+      'Status Updated',
+      `Your status has been changed to ${nextStatus.label}`,
+      [{ text: 'OK' }]
+    );
+  };
+
+  const handleEditProfile = () => {
+    Alert.alert(
+      'Edit Profile',
+      'Profile editing functionality coming soon!',
+      [{ text: 'OK' }]
+    );
+  };
+
+  const getCurrentStatus = () => {
+    return statusOptions.find(option => option.id === userStatus) || statusOptions[0];
+  };
+
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'admin': return '#ef4444'; // red
+      case 'manager': return '#f59e0b'; // orange
+      case 'staff': return '#3b82f6'; // blue
+      case 'cleaner': return '#10b981'; // green
+      case 'maintenance': return '#8b5cf6'; // purple
+      default: return '#71717A'; // gray
+    }
+  };
 
 
-  // Enhanced ProfileItem component with AI theme
-  const ProfileItem = ({
-    icon: Icon,
-    label,
-    value,
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  // Action Button Component with AIS-inspired design
+  const ActionButton = ({
+    icon,
+    title,
+    subtitle,
     onPress,
-    showChevron = false
+    isSpecial = false,
+    showChevron = true,
+    isLoading = false,
+    disabled = false,
   }: {
-    icon: any;
-    label: string;
-    value?: string;
-    onPress?: () => void;
+    icon: keyof typeof Ionicons.glyphMap;
+    title: string;
+    subtitle: string;
+    onPress: () => void;
+    isSpecial?: boolean;
     showChevron?: boolean;
+    isLoading?: boolean;
+    disabled?: boolean;
   }) => (
     <TouchableOpacity
-      onPress={onPress}
-      disabled={!onPress}
-      className="flex-row items-center justify-between p-4 border-b border-white/10"
       style={{
-        backgroundColor: onPress ? 'rgba(255, 255, 255, 0.02)' : 'transparent',
+        backgroundColor: isSpecial ? '#C6FF00' : '#1C1F2A',
+        borderRadius: 16,
+        padding: 20,
+        marginBottom: 12,
+        opacity: disabled ? 0.5 : 1,
+        borderWidth: 1,
+        borderColor: '#374151',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
       }}
+      onPress={disabled ? undefined : onPress}
+      activeOpacity={disabled ? 1 : 0.8}
+      accessibilityLabel={title}
+      accessibilityHint={subtitle}
+      disabled={disabled}
     >
-      <View className="flex-row items-center flex-1">
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {/* Icon Container */}
         <View
-          className="w-10 h-10 rounded-xl items-center justify-center mr-3"
-          style={{ backgroundColor: 'rgba(139, 92, 246, 0.15)' }}
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 16,
+            backgroundColor: isSpecial ? 'rgba(11, 15, 26, 0.2)' : 'rgba(198, 255, 0, 0.2)'
+          }}
         >
-          <Icon size={20} color="#8b5cf6" />
-        </View>
-        <View className="flex-1">
-          <Text className="text-white text-base font-medium mb-1">
-            {label}
-          </Text>
-          {value && (
-            <Text className="text-gray-400 text-sm">
-              {value}
-            </Text>
+          {isLoading ? (
+            <ActivityIndicator
+              size="small"
+              color={isSpecial ? '#0B0F1A' : '#C6FF00'}
+            />
+          ) : (
+            <Ionicons
+              name={icon}
+              size={20}
+              color={isSpecial ? '#0B0F1A' : '#C6FF00'}
+            />
           )}
         </View>
+
+        {/* Text Container */}
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: '600',
+              color: isSpecial ? '#0B0F1A' : 'white',
+              fontFamily: 'Urbanist'
+            }}
+          >
+            {isLoading ? 'Signing out...' : title}
+          </Text>
+          <Text
+            style={{
+              fontSize: 14,
+              marginTop: 4,
+              color: isSpecial ? 'rgba(11, 15, 26, 0.7)' : '#9CA3AF',
+              fontFamily: 'Inter'
+            }}
+          >
+            {isLoading ? 'Please wait while we sign you out' : subtitle}
+          </Text>
+        </View>
+
+        {/* Chevron Icon or Loading */}
+        {showChevron && !isLoading && (
+          <Ionicons
+            name="chevron-forward"
+            size={20}
+            color={isSpecial ? '#0B0F1A' : '#9CA3AF'}
+          />
+        )}
+        {isLoading && (
+          <ActivityIndicator
+            size="small"
+            color={isSpecial ? '#0B0F1A' : '#9CA3AF'}
+          />
+        )}
       </View>
-      {showChevron && (
-        <ChevronRight size={16} color="#6b7280" />
-      )}
     </TouchableOpacity>
   );
 
-  // Enhanced StatCard component with AI theme
-  const StatCard = ({
-    title,
-    value,
-    IconComponent,
-    color,
-    trend,
-    index = 0
-  }: {
-    title: string;
-    value: number | string;
-    IconComponent: any;
-    color: string;
-    trend?: number;
-    index?: number;
-  }) => (
-    <Animatable.View
-      animation="fadeInUp"
-      duration={600}
-      delay={index * 100}
-      className="flex-1"
-    >
-      <View className="overflow-hidden rounded-2xl border border-white/10">
-        {Platform.OS !== 'web' ? (
-          <BlurView intensity={30} tint="dark" className="absolute inset-0" />
-        ) : (
-          <View
-            className="absolute inset-0"
-            style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
-          />
-        )}
-        <LinearGradient
-          colors={[`${color}15`, `${color}08`]}
-          className="p-4 items-center"
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View
-            className="w-12 h-12 rounded-2xl items-center justify-center mb-3"
-            style={{ backgroundColor: `${color}20` }}
-          >
-            <IconComponent size={24} color={color} />
-          </View>
-          <Text className="text-white font-bold text-xl mb-1">
-            {value}
-          </Text>
-          <Text className="text-gray-400 text-sm text-center">
-            {title}
-          </Text>
-          {trend && (
-            <View className="flex-row items-center mt-2">
-              <TrendingUp
-                size={12}
-                color={trend > 0 ? '#10b981' : '#ef4444'}
-              />
-              <Text
-                className="text-xs font-medium ml-1"
-                style={{ color: trend > 0 ? '#10b981' : '#ef4444' }}
-              >
-                {trend > 0 ? '+' : ''}{trend}%
-              </Text>
-            </View>
-          )}
-        </LinearGradient>
-      </View>
-    </Animatable.View>
-  );
-
   return (
-    <View className="flex-1" style={{ backgroundColor: '#0a0a0a' }}>
-      {/* Enhanced Dark-to-Blue Gradient Background */}
-      <LinearGradient
-        colors={[
-          '#000000', // Pure black at top
-          '#0a0a0a', // Very dark gray
-          '#1a1a2e', // Dark blue-gray
-          '#16213e', // Darker blue
-          '#0f3460', // Deep blue
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        className="absolute inset-0"
-      />
-
-      {/* Secondary gradient overlay for depth */}
-      <LinearGradient
-        colors={[
-          'rgba(139, 92, 246, 0.1)', // Purple overlay
-          'transparent',
-          'rgba(59, 130, 246, 0.15)', // Blue overlay
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        className="absolute inset-0"
-      />
-
-      {/* BlurHeader Component */}
-      <BlurHeader
-        title="Profile"
-        subtitle={`${user?.role || 'Staff'} • Account Management`}
-        intensity={70}
-        tint="light"
-        showNotificationButton={false}
-        showSettingsButton={true}
-        onSettingsPress={() => Alert.alert('Settings', 'Settings panel coming soon...')}
-        rightComponent={
-          <View className="w-10 h-10 rounded-full bg-white/10 items-center justify-center">
-            <User size={20} color="white" />
-          </View>
-        }
-      />
-
-      <ScrollView
-        className="flex-1 px-4"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
-      >
-        {/* Enhanced User Card */}
+    <View style={{ flex: 1, backgroundColor: '#0B0F1A' }}>
+      <StatusBar barStyle="light-content" backgroundColor="#0B0F1A" />
+      <SafeAreaView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 32 }}>
+        {/* Header */}
         <Animatable.View
-          animation="fadeInUp"
+          animation="fadeInDown"
           duration={600}
-          delay={200}
-          className="mb-6"
+          style={{ marginBottom: 24 }}
         >
-          <View className="overflow-hidden rounded-2xl border border-white/10">
-            {Platform.OS !== 'web' ? (
-              <BlurView intensity={40} tint="dark" className="absolute inset-0" />
-            ) : (
-              <View
-                className="absolute inset-0"
-                style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)' }}
-              />
-            )}
-            <LinearGradient
-              colors={['rgba(139, 92, 246, 0.1)', 'rgba(59, 130, 246, 0.05)']}
-              className="p-6"
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View className="flex-row items-center">
-                <LinearGradient
-                  colors={['#8b5cf6', '#7c3aed']}
-                  className="w-16 h-16 rounded-2xl items-center justify-center mr-4"
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <User size={32} color="#ffffff" />
-                </LinearGradient>
-                <View className="flex-1">
-                  <Text className="text-white text-xl font-bold mb-1">
-                    {user?.name || 'Sia Moon'}
-                  </Text>
-                  <Text className="text-purple-300 text-base mb-2">
-                    {user?.role === 'admin' ? 'Administrator' : 'Property Manager'}
-                  </Text>
-                  <View className="flex-row items-center bg-green-500/20 px-3 py-1 rounded-full self-start">
-                    <View className="w-2 h-2 rounded-full bg-green-400 mr-2" />
-                    <Text className="text-green-400 text-sm font-medium">Active</Text>
-                  </View>
-                </View>
-              </View>
-            </LinearGradient>
-          </View>
-        </Animatable.View>
-
-        {/* Performance Stats Grid */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
-          delay={300}
-          className="mb-8"
-        >
-          <Text className="text-white text-xl font-bold mb-6 tracking-tight">
-            Performance Overview
+          <Text style={{
+            color: 'white',
+            fontSize: 32,
+            fontWeight: 'bold',
+            fontFamily: 'Urbanist'
+          }}>
+            Profile
           </Text>
-
-          <View className="flex-row gap-3 mb-4">
-            <StatCard
-              title="Maintenance Jobs"
-              value={mockStaffProfile.maintenanceJobsCompleted}
-              IconComponent={Wrench}
-              color="#10b981"
-              trend={15}
-              index={0}
-            />
-            <StatCard
-              title="Inspections"
-              value={mockStaffProfile.inspectionsCompleted}
-              IconComponent={CheckCircle}
-              color="#3b82f6"
-              trend={8}
-              index={1}
-            />
-          </View>
-
-          <View className="flex-row gap-3">
-            <StatCard
-              title="Tenant Rating"
-              value={mockStaffProfile.tenantSatisfactionRating}
-              IconComponent={Star}
-              color="#f59e0b"
-              trend={5}
-              index={2}
-            />
-            <StatCard
-              title="Response Time"
-              value={mockStaffProfile.averageResponseTime}
-              IconComponent={Clock}
-              color="#ef4444"
-              trend={-12}
-              index={3}
-            />
-          </View>
-        </Animatable.View>
-
-        {/* Specializations Section */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
-          delay={400}
-          className="mb-8"
-        >
-          <View className="overflow-hidden rounded-2xl border border-white/10">
-            {Platform.OS !== 'web' ? (
-              <BlurView intensity={30} tint="dark" className="absolute inset-0" />
-            ) : (
-              <View
-                className="absolute inset-0"
-                style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
-              />
-            )}
-            <View className="p-6">
-              <Text className="text-white text-lg font-semibold mb-4">
-                Specializations
-              </Text>
-              <View className="flex-row flex-wrap gap-2">
-                {mockStaffProfile.specializations.map((spec, index) => (
-                  <View
-                    key={index}
-                    className="bg-purple-500/20 px-3 py-2 rounded-xl border border-purple-500/30"
-                  >
-                    <Text className="text-purple-300 text-sm font-medium">
-                      {spec}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          </View>
-        </Animatable.View>
-
-        {/* Certifications Section */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
-          delay={500}
-          className="mb-8"
-        >
-          <View className="overflow-hidden rounded-2xl border border-white/10">
-            {Platform.OS !== 'web' ? (
-              <BlurView intensity={30} tint="dark" className="absolute inset-0" />
-            ) : (
-              <View
-                className="absolute inset-0"
-                style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
-              />
-            )}
-            <View className="p-6">
-              <Text className="text-white text-lg font-semibold mb-4">
-                Certifications
-              </Text>
-              <View className="gap-3">
-                {mockStaffProfile.certifications.map((cert, index) => (
-                  <View
-                    key={index}
-                    className="bg-white/5 p-4 rounded-xl border border-white/10"
-                  >
-                    <View className="flex-row justify-between items-center mb-2">
-                      <Text className="text-white font-medium flex-1">
-                        {cert.name}
-                      </Text>
-                      <View className="bg-green-500/20 px-2 py-1 rounded-lg">
-                        <Text className="text-green-400 text-xs font-medium">
-                          Valid
-                        </Text>
-                      </View>
-                    </View>
-                    <Text className="text-gray-400 text-sm">
-                      Expires: {new Date(cert.expiryDate).toLocaleDateString()}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          </View>
-        </Animatable.View>
-
-        {/* Contact Information */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
-          delay={600}
-          className="mb-8"
-        >
-          <View className="overflow-hidden rounded-2xl border border-white/10">
-            {Platform.OS !== 'web' ? (
-              <BlurView intensity={30} tint="dark" className="absolute inset-0" />
-            ) : (
-              <View
-                className="absolute inset-0"
-                style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
-              />
-            )}
-            <View className="p-6">
-              <Text className="text-white text-lg font-semibold mb-4">
-                Contact Information
-              </Text>
-              <ProfileItem
-                icon={Mail}
-                label="Email"
-                value={user?.email || 'sia.moon@property.com'}
-              />
-              <ProfileItem
-                icon={Phone}
-                label="Phone"
-                value="+1 (555) 123-4567"
-              />
-            </View>
-          </View>
-        </Animatable.View>
-
-        {/* App Settings */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
-          delay={700}
-          className="mb-8"
-        >
-          <View className="overflow-hidden rounded-2xl border border-white/10">
-            {Platform.OS !== 'web' ? (
-              <BlurView intensity={30} tint="dark" className="absolute inset-0" />
-            ) : (
-              <View
-                className="absolute inset-0"
-                style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
-              />
-            )}
-            <View className="p-6">
-              <Text className="text-white text-lg font-semibold mb-4">
-                App Settings
-              </Text>
-              <ProfileItem
-                icon={Bell}
-                label="Notifications"
-                value={expoPushToken ? "Enabled" : "Disabled"}
-                onPress={() => {
-                  Alert.alert(
-                    'Notifications',
-                    expoPushToken
-                      ? 'Push notifications are enabled'
-                      : 'Push notifications are disabled. Please enable them in your device settings.',
-                    [{ text: 'OK' }]
-                  );
-                }}
-                showChevron
-              />
-              <ProfileItem
-                icon={MapPin}
-                label="Location Services"
-                value="Enabled"
-                onPress={() => {
-                  Alert.alert(
-                    'Location Services',
-                    'Location access is required for navigation to job sites.',
-                    [{ text: 'OK' }]
-                  );
-                }}
-                showChevron
-              />
-            </View>
-          </View>
-        </Animatable.View>
-
-        {/* Developer Tools */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
-          delay={800}
-          className="mb-8"
-        >
-          <View className="overflow-hidden rounded-2xl border border-white/10">
-            {Platform.OS !== 'web' ? (
-              <BlurView intensity={30} tint="dark" className="absolute inset-0" />
-            ) : (
-              <View
-                className="absolute inset-0"
-                style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
-              />
-            )}
-            <View className="p-6">
-              <Text className="text-white text-lg font-semibold mb-4">
-                Developer Tools
-              </Text>
-              <ProfileItem
-                icon={Settings}
-                label="Test Notification"
-                onPress={simulateJobNotification}
-                showChevron
-              />
-              <ProfileItem
-                icon={Shield}
-                label="Push Token"
-                value={expoPushToken ? "Active" : "Not Available"}
-                onPress={() => {
-                  if (expoPushToken) {
-                    Alert.alert(
-                      'Push Token',
-                      expoPushToken.substring(0, 50) + '...',
-                      [{ text: 'OK' }]
-                    );
-                  }
-                }}
-                showChevron
-              />
-              <ProfileItem
-                icon={User}
-                label="Account Type"
-                value={user?.role === 'admin' ? 'Administrator' : 'Staff Member'}
-              />
-            </View>
-          </View>
-        </Animatable.View>
-
-        {/* App Info */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
-          delay={900}
-          className="items-center py-6 px-4 mb-6"
-        >
-          <Text className="text-gray-500 text-sm text-center mb-1">
-            Sia Moon Property Management
-          </Text>
-          <Text className="text-gray-500 text-sm text-center mb-1">
-            Mobile App v2.0.0
-          </Text>
-          <Text className="text-gray-500 text-sm text-center">
-            Current User: {user?.email || 'Not logged in'}
+          <Text style={{
+            color: '#9CA3AF',
+            fontSize: 16,
+            marginTop: 4,
+            fontFamily: 'Inter'
+          }}>
+            Manage your account and preferences
           </Text>
         </Animatable.View>
 
-        {/* Sign Out Button */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
-          delay={1000}
-          className="px-4 pb-6 items-center"
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
         >
-          <TouchableOpacity
-            onPress={handleSignOut}
-            className="bg-red-500 px-8 py-4 rounded-2xl"
+          {/* Profile Header Section */}
+          <Animatable.View
+            animation="fadeInUp"
+            duration={600}
+            delay={0}
             style={{
-              shadowColor: '#ef4444',
+              backgroundColor: '#1C1F2A',
+              borderRadius: 16,
+              padding: 20,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: '#374151',
+              shadowColor: '#000',
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
               shadowRadius: 8,
               elevation: 8,
             }}
           >
-            <Text className="text-white text-base font-bold text-center">
-              Sign Out
-            </Text>
-          </TouchableOpacity>
-        </Animatable.View>
-      </ScrollView>
+            <View style={{ alignItems: 'center' }}>
+              {/* User Avatar */}
+              <LinearGradient
+                colors={['#C6FF00', '#A3E635']}
+                style={{
+                  width: 88,
+                  height: 88,
+                  borderRadius: 44,
+                  padding: 3,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16,
+                }}
+              >
+                <View style={{
+                  width: 82,
+                  height: 82,
+                  borderRadius: 41,
+                  backgroundColor: '#374151',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  {currentProfile?.avatar ? (
+                    <Image
+                      source={{ uri: currentProfile.avatar }}
+                      style={{ width: 82, height: 82, borderRadius: 41 }}
+                    />
+                  ) : (
+                    <Text style={{
+                      color: '#C6FF00',
+                      fontSize: 24,
+                      fontWeight: 'bold',
+                      fontFamily: 'Urbanist'
+                    }}>
+                      {getInitials(currentProfile?.name || 'Staff Member')}
+                    </Text>
+                  )}
+                </View>
+              </LinearGradient>
+
+              {/* User Information */}
+              <Text style={{
+                color: 'white',
+                fontSize: 20,
+                fontWeight: '600',
+                textAlign: 'center',
+                fontFamily: 'Urbanist'
+              }}>
+                {currentProfile?.name || 'Staff Member'}
+              </Text>
+              <Text style={{
+                color: '#9CA3AF',
+                fontSize: 16,
+                marginTop: 4,
+                textAlign: 'center',
+                fontFamily: 'Inter'
+              }}>
+                {currentProfile?.email || 'staff@property.com'}
+              </Text>
+
+              {/* Role Badge */}
+              <View
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                  marginTop: 12,
+                  backgroundColor: getRoleBadgeColor(currentProfile?.role || 'staff'),
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: '500',
+                    textTransform: 'capitalize',
+                    color: 'white',
+                    fontFamily: 'Inter'
+                  }}
+                >
+                  {currentProfile?.role || 'Staff'}
+                </Text>
+              </View>
+
+              {/* Status Indicator */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+                <View
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    marginRight: 8,
+                    backgroundColor: getCurrentStatus().color
+                  }}
+                />
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: '500',
+                    color: getCurrentStatus().color,
+                    fontFamily: 'Inter'
+                  }}
+                >
+                  {getCurrentStatus().label}
+                </Text>
+              </View>
+            </View>
+          </Animatable.View>
+
+          {/* Action Buttons Section */}
+          <View>
+            {/* Edit Profile Button */}
+            <Animatable.View
+              animation="fadeInUp"
+              duration={600}
+              delay={100}
+            >
+              <ActionButton
+                icon="person-outline"
+                title="Edit Profile"
+                subtitle="Update your personal information"
+                onPress={handleEditProfile}
+                disabled={isSigningOut || isLoading}
+              />
+            </Animatable.View>
+
+            {/* Change Status Button */}
+            <Animatable.View
+              animation="fadeInUp"
+              duration={600}
+              delay={200}
+            >
+              <ActionButton
+                icon="radio-button-on-outline"
+                title="Change Status"
+                subtitle={`Currently ${getCurrentStatus().label.toLowerCase()}`}
+                onPress={handleStatusChange}
+                disabled={isSigningOut || isLoading}
+              />
+            </Animatable.View>
+
+            {/* Admin-only features */}
+            {isAdminOrManager && (
+              <Animatable.View
+                animation="fadeInUp"
+                duration={600}
+                delay={300}
+              >
+                <ActionButton
+                  icon="settings-outline"
+                  title="Admin Settings"
+                  subtitle="Access administrative features"
+                  onPress={() => Alert.alert('Admin Settings', 'Admin settings features coming soon!')}
+                  disabled={isSigningOut || isLoading}
+                />
+              </Animatable.View>
+            )}
+
+            {/* Sign Out Button */}
+            <Animatable.View
+              animation="fadeInUp"
+              duration={600}
+              delay={isAdminOrManager ? 400 : 300}
+            >
+              <ActionButton
+                icon="log-out-outline"
+                title="Sign Out"
+                subtitle="Sign out of your account"
+                onPress={handleSignOut}
+                isSpecial={true}
+                showChevron={false}
+                isLoading={isSigningOut || isLoading}
+                disabled={isSigningOut || isLoading}
+              />
+            </Animatable.View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+
+      {/* Beautiful Logout Overlay with AIS Telecom Styling */}
+      <LogoutOverlay
+        visible={isSigningOut}
+        message="Signing out..."
+      />
     </View>
   );
 }
-
-

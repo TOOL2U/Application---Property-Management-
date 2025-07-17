@@ -16,38 +16,38 @@ module.exports = {
 
   theme: {
     extend: {
-      // Sia Moon AI-inspired color palette
+      // Neon Green Dark Theme Color Palette
       colors: {
-        // Background system
-        'dark-bg': '#0a0a0a',
-        'dark-surface': '#111111',
-        'dark-elevated': '#1a1a1a',
-        'dark-border': '#333333',
+        // Background system - Updated with new surface color
+        'dark-bg': '#0B0F1A',        // Primary background (deep navy-black)
+        'dark-surface': '#1C1F2A',   // Surface/card background (elevated surfaces)
+        'dark-elevated': '#1F2937',  // Secondary surfaces
+        'dark-border': '#374151',    // Border color
 
-        // Text hierarchy
-        'text-primary': '#ffffff',
-        'text-secondary': '#a1a1aa',
-        'text-muted': '#71717a',
+        // Text hierarchy - Updated typography colors
+        'text-primary': '#F1F1F1',   // Soft white for headings and important content
+        'text-secondary': '#A1A1AA', // Muted gray for descriptions and secondary content
+        'text-muted': '#71717A',     // Darker gray for subtle text
 
-        // Brand colors
-        'brand-primary': '#8b5cf6',
-        'brand-hover': '#7c3aed',
-        'brand-light': '#a78bfa',
-        'brand-dark': '#6d28d9',
+        // Brand colors - Neon green accent system
+        'brand-primary': '#C6FF00',  // Neon green primary accent
+        'brand-hover': '#A3E635',    // Lime green for hover/active states
+        'brand-light': '#D4FF3A',    // Lighter neon green
+        'brand-dark': '#84CC16',     // Darker lime for pressed states
 
-        // Semantic colors
+        // Semantic colors - Keep existing success/warning/error
         'success': '#22c55e',
         'warning': '#f59e0b',
         'error': '#ef4444',
         'info': '#3b82f6',
 
-        // Status colors
-        'status-pending': '#f59e0b',
+        // Status colors - Updated pending to use neon green
+        'status-pending': '#C6FF00',  // Neon green for pending status
         'status-progress': '#3b82f6',
         'status-completed': '#22c55e',
         'status-cancelled': '#ef4444',
 
-        // Priority colors
+        // Priority colors - Keep existing
         'priority-low': '#22c55e',
         'priority-medium': '#f59e0b',
         'priority-high': '#fb923c',
@@ -92,36 +92,36 @@ module.exports = {
     extend: {
       // Custom color palette for your property management app
       colors: {
-        // Primary brand colors
+        // Primary brand colors - Neon green scale
         primary: {
-          50: '#f3f1ff',
-          100: '#ebe5ff',
-          200: '#d9ceff',
-          300: '#bea6ff',
-          400: '#9f75ff',
-          500: '#8b5cf6',
-          600: '#7c3aed',
-          700: '#6d28d9',
-          800: '#5b21b6',
-          900: '#4c1d95',
+          50: '#f7ffe0',
+          100: '#ecfccb',
+          200: '#d9f99d',
+          300: '#bef264',
+          400: '#a3e635',
+          500: '#C6FF00',  // Main neon green
+          600: '#84cc16',
+          700: '#65a30d',
+          800: '#4d7c0f',
+          900: '#365314',
         },
 
-        // Neon accent colors for dark theme
+        // Neon accent colors for dark theme - Updated with neon green
         neon: {
-          purple: '#8b5cf6',
-          pink: '#ec4899',
+          green: '#C6FF00',  // Primary neon green
+          lime: '#A3E635',   // Secondary lime green
           blue: '#3b82f6',
-          green: '#22c55e',
+          cyan: '#06b6d4',
           orange: '#f59e0b',
           red: '#ef4444',
         },
 
-        // Dark theme colors
+        // Dark theme colors - Updated backgrounds
         dark: {
-          bg: '#0a0a0a',
-          surface: '#111111',
-          card: '#1a1a1a',
-          border: '#262626',
+          bg: '#0B0F1A',     // Primary background
+          surface: '#1C1F2A', // Surface/card background
+          card: '#1F2937',   // Secondary surfaces
+          border: '#374151', // Border color
         },
 
         // Status colors
@@ -148,13 +148,14 @@ module.exports = {
         '4xl': '2rem',
       },
 
-      // Custom shadows (for web)
+      // Custom shadows (for web) - Updated with neon green glow effects
       boxShadow: {
-        'neon-purple': '0 0 20px rgba(139, 92, 246, 0.5)',
-        'neon-pink': '0 0 20px rgba(236, 72, 153, 0.5)',
-        'neon-green': '0 0 20px rgba(34, 197, 94, 0.5)',
-        'neon-blue': '0 0 20px rgba(59, 130, 246, 0.5)',
-        'glassmorphism': '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+        'neon-green': '0 0 20px rgba(198, 255, 0, 0.5)',      // Primary neon green glow
+        'neon-lime': '0 0 20px rgba(163, 230, 53, 0.5)',      // Secondary lime glow
+        'neon-blue': '0 0 20px rgba(59, 130, 246, 0.5)',      // Blue glow
+        'neon-success': '0 0 20px rgba(34, 197, 94, 0.5)',    // Success green glow
+        'glassmorphism': '0 8px 32px 0 rgba(28, 31, 42, 0.37)', // Updated glass effect
+        'glow-primary': '0 0 20px rgba(198, 255, 0, 0.4)',    // Primary brand glow
       },
 
       // Custom animations

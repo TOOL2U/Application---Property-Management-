@@ -15,7 +15,7 @@ interface AuthActions {
   refreshAuth: () => Promise<boolean>;
 }
 
-export function useAuth(): AuthState & AuthActions {
+export function usePINAuth(): AuthState & AuthActions {
   const [state, setState] = useState<AuthState>({
     isAuthenticated: false,
     isLoading: true,
@@ -157,4 +157,4 @@ export function useAuth(): AuthState & AuthActions {
   };
 }
 
-export default useAuth;
+export default usePINAuth;

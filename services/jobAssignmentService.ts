@@ -19,7 +19,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getFirebaseFirestore } from '@/lib/firebase';
 import type {
   JobAssignment,
   JobAssignmentRequest,
@@ -83,8 +83,9 @@ class JobAssignmentService {
       };
 
       // Add to Firestore
-      const jobsCollection = collection(db, 'job_assignments');
-      const docRef = await addDoc(jobsCollection, jobAssignment);
+  const db = await getFirebaseFirestore();
+  const jobsCollection = collection(db, 'job_assignments');
+  const docRef = await addDoc(jobsCollection, jobAssignment);
 
       const createdJob: JobAssignment = {
         id: docRef.id,
@@ -134,8 +135,9 @@ class JobAssignmentService {
     try {
       console.log('📱 Updating job status from mobile:', update.jobId, update.status);
 
-      const jobRef = doc(db, 'job_assignments', update.jobId);
-      const jobDoc = await getDoc(jobRef);
+  const db = await getFirebaseFirestore();
+  const jobRef = doc(db, 'job_assignments', update.jobId);
+  const jobDoc = await getDoc(jobRef);
 
       if (!jobDoc.exists()) {
         return {
@@ -250,17 +252,16 @@ class JobAssignmentService {
     try {
       console.log('📋 Getting jobs for staff:', staffId);
 
+      const db = await getFirebaseFirestore();
       const jobsCollection = collection(db, 'job_assignments');
       let q = query(
         jobsCollection,
         where('staffId', '==', staffId),
         orderBy('scheduledFor', 'desc')
       );
-
       if (statusFilter && statusFilter.length > 0) {
         q = query(q, where('status', 'in', statusFilter));
       }
-
       const querySnapshot = await getDocs(q);
       const jobs: JobAssignment[] = [];
 
@@ -299,34 +300,34 @@ class JobAssignmentService {
   ): () => void {
     console.log('🔄 Setting up real-time listener for staff jobs:', staffId);
 
-    const jobsCollection = collection(db, 'job_assignments');
-    let q = query(
-      jobsCollection,
-      where('staffId', '==', staffId),
-      orderBy('scheduledFor', 'desc')
-    );
-
-    if (statusFilter && statusFilter.length > 0) {
-      q = query(q, where('status', 'in', statusFilter));
-    }
-
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const jobs: JobAssignment[] = [];
-      querySnapshot.forEach((doc) => {
-        jobs.push({ id: doc.id, ...doc.data() } as JobAssignment);
+  // Return a no-op unsubscribe immediately; real unsubscribe is set up asynchronously
+  (async () => {
+      const db = await getFirebaseFirestore();
+      const jobsCollection = collection(db, 'job_assignments');
+      let q = query(
+        jobsCollection,
+        where('staffId', '==', staffId),
+        orderBy('scheduledFor', 'desc')
+      );
+      if (statusFilter && statusFilter.length > 0) {
+        q = query(q, where('status', 'in', statusFilter));
+      }
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const jobs: JobAssignment[] = [];
+        querySnapshot.forEach((doc) => {
+          jobs.push({ id: doc.id, ...doc.data() } as JobAssignment);
+        });
+        console.log('🔄 Real-time update: received', jobs.length, 'jobs for staff', staffId);
+        callback(jobs);
+      }, (error) => {
+        console.error('❌ Error in real-time listener:', error);
       });
-      
-      console.log('🔄 Real-time update: received', jobs.length, 'jobs for staff', staffId);
-      callback(jobs);
-    }, (error) => {
-      console.error('❌ Error in real-time listener:', error);
-    });
-
-    // Store unsubscriber
-    const listenerId = `staff_jobs_${staffId}`;
-    this.unsubscribers.set(listenerId, unsubscribe);
-
-    return unsubscribe;
+      // Store unsubscriber
+      const listenerId = `staff_jobs_${staffId}`;
+      this.unsubscribers.set(listenerId, unsubscribe);
+      // No return here; see above
+    })();
+    return () => {};
   }
 
   /**
@@ -335,25 +336,27 @@ class JobAssignmentService {
   subscribeToJob(jobId: string, callback: (job: JobAssignment | null) => void): () => void {
     console.log('🔄 Setting up real-time listener for job:', jobId);
 
-    const jobRef = doc(db, 'job_assignments', jobId);
-    
-    const unsubscribe = onSnapshot(jobRef, (doc) => {
-      if (doc.exists()) {
-        const job = { id: doc.id, ...doc.data() } as JobAssignment;
-        console.log('🔄 Real-time update: job', jobId, 'status:', job.status);
-        callback(job);
-      } else {
-        callback(null);
-      }
-    }, (error) => {
-      console.error('❌ Error in job listener:', error);
-    });
-
-    // Store unsubscriber
-    const listenerId = `job_${jobId}`;
-    this.unsubscribers.set(listenerId, unsubscribe);
-
-    return unsubscribe;
+  // Return a no-op unsubscribe immediately; real unsubscribe is set up asynchronously
+  (async () => {
+      const db = await getFirebaseFirestore();
+      const jobRef = doc(db, 'job_assignments', jobId);
+      const unsubscribe = onSnapshot(jobRef, (doc) => {
+        if (doc.exists()) {
+          const job = { id: doc.id, ...doc.data() } as JobAssignment;
+          console.log('🔄 Real-time update: job', jobId, 'status:', job.status);
+          callback(job);
+        } else {
+          callback(null);
+        }
+      }, (error) => {
+        console.error('❌ Error in job listener:', error);
+      });
+      // Store unsubscriber
+      const listenerId = `job_${jobId}`;
+      this.unsubscribers.set(listenerId, unsubscribe);
+      // No return here; see above
+    })();
+    return () => {};
   }
 
   /**
@@ -373,7 +376,8 @@ class JobAssignmentService {
 
     try {
       // Check if staff exists
-      const staffDoc = await getDoc(doc(db, 'staff_accounts', request.staffId));
+  const db = await getFirebaseFirestore();
+  const staffDoc = await getDoc(doc(db, 'staff_accounts', request.staffId));
       validation.staffExists = staffDoc.exists();
       if (!validation.staffExists) {
         validation.errors.push('Staff member not found');
@@ -390,7 +394,6 @@ class JobAssignmentService {
         where('staffId', '==', request.staffId),
         where('status', 'in', ['assigned', 'accepted', 'in_progress'])
       );
-      
       const conflictSnapshot = await getDocs(conflictQuery);
       conflictSnapshot.forEach((doc) => {
         const job = doc.data() as JobAssignment;
@@ -448,8 +451,9 @@ class JobAssignmentService {
    */
   private async logJobEvent(event: JobUpdateEvent): Promise<void> {
     try {
-      const eventsCollection = collection(db, 'job_events');
-      await addDoc(eventsCollection, event);
+  const db = await getFirebaseFirestore();
+  const eventsCollection = collection(db, 'job_events');
+  await addDoc(eventsCollection, event);
     } catch (error) {
       console.error('❌ Error logging job event:', error);
     }

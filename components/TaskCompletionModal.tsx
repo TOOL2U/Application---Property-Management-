@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Task } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useTaskCompletion, PhotoUpload } from '@/hooks/useTaskCompletion';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -40,7 +40,7 @@ const { width } = Dimensions.get('window');
 const photoSize = (width - 80) / 3; // 3 photos per row with padding
 
 export function TaskCompletionModal({ visible, task, onClose, onSubmit }: TaskCompletionModalProps) {
-  const { user } = useAuth();
+  const { currentProfile } = usePINAuth();
   const { submitting, uploadProgress, error, submitTaskCompletion } = useTaskCompletion();
   
   const [photos, setPhotos] = useState<PhotoUpload[]>([]);

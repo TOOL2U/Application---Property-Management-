@@ -1,60 +1,55 @@
 import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
-import { auth } from '@/lib/firebase';
+import { View, ActivityIndicator, Text } from 'react-native';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 
 export default function AuthLayout() {
-  const { isAuthenticated, isStaffSelected, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = usePINAuth();
   const router = useRouter();
-  const [isSharedAuthActive, setIsSharedAuthActive] = useState(false);
 
+  // Simplified: Let PIN screens handle their own navigation
+  // Only redirect on app startup if user is already authenticated
   useEffect(() => {
-    // Check if shared Firebase Auth is active
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      const isSharedAuth = user?.email === 'staff@siamoon.com';
-      setIsSharedAuthActive(isSharedAuth);
-
-      console.log('🔍 AuthLayout: Firebase Auth state changed:', {
-        userEmail: user?.email,
-        isSharedAuth,
-        isAuthenticated,
-        isStaffSelected,
-        isLoading
-      });
-    });
-
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    if (isLoading) return;
-
-    // If user is fully authenticated (has selected profile), go to tabs
-    if (isAuthenticated && isStaffSelected) {
-      console.log('🚀 AuthLayout: User authenticated with staff selected, redirecting to tabs');
-      router.replace('/(tabs)');
+    if (!isLoading && isAuthenticated) {
+      console.log('🚀 AuthLayout: User is authenticated, redirecting to tabs');
+  router.replace('/');
     }
-    // If shared auth is active but no profile selected, go to profile selection
-    else if (isSharedAuthActive && !isStaffSelected) {
-      console.log('🔄 AuthLayout: Shared auth active, redirecting to profile selection');
-      router.replace('/(auth)/select-staff-profile');
-    }
-    // Otherwise, stay on login screen
-    else {
-      console.log('🔐 AuthLayout: No auth, staying on login');
-    }
-  }, [isAuthenticated, isStaffSelected, isLoading, isSharedAuthActive]);
+  }, [isAuthenticated, isLoading, router]);
+
+  // Show loading screen while authentication state is being determined
+  if (isLoading) {
+    return (
+      <View style={{
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#0B0F1A'
+      }}>
+        <ActivityIndicator size="large" color="#C6FF00" />
+        <Text style={{
+          color: '#FFFFFF',
+          marginTop: 20,
+          fontSize: 16,
+          fontFamily: 'Inter'
+        }}>
+          Verifying authentication...
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: '#1a1a2e' },
+        contentStyle: { backgroundColor: '#0B0F1A' },
+        animation: 'fade',
       }}
     >
-      <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen name="select-staff-profile" options={{ headerShown: false }} />
+      <Stack.Screen name="select-profile" options={{ headerShown: false }} />
+      <Stack.Screen name="enter-pin" options={{ headerShown: false }} />
+      <Stack.Screen name="create-pin" options={{ headerShown: false }} />
     </Stack>
   );
 }

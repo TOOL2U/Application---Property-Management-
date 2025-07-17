@@ -4,11 +4,8 @@ import { auth, db } from '../lib/firebase';
 import { StaffAccount } from './authService';
 import { Storage } from '../utils/storage';
 
-// Shared Firebase Auth credentials
-const SHARED_CREDENTIALS = {
-  email: 'staff@siamoon.com',
-  password: 'staff123'
-};
+// Note: This service now relies exclusively on staff_accounts collection
+// No hardcoded credentials - all authentication is handled through PIN system
 
 // Storage keys
 const SELECTED_STAFF_KEY = '@selected_staff_id';
@@ -42,32 +39,15 @@ class SharedAuthService {
   private readonly COLLECTION_NAME = 'staff_accounts';
 
   /**
-   * Sign in with shared Firebase Auth credentials
+   * Note: This method is deprecated as the app now uses PIN-based authentication
+   * with staff_accounts collection exclusively
    */
   async signInShared(): Promise<SharedAuthResult> {
-    try {
-      console.log('🔐 SharedAuthService: Attempting shared Firebase Auth login...');
-      
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        SHARED_CREDENTIALS.email,
-        SHARED_CREDENTIALS.password
-      );
-
-      if (userCredential.user) {
-        console.log('✅ SharedAuthService: Shared Firebase Auth successful');
-        return { success: true };
-      } else {
-        console.log('❌ SharedAuthService: No user returned from Firebase Auth');
-        return { success: false, error: 'Authentication failed' };
-      }
-    } catch (error) {
-      console.error('❌ SharedAuthService: Shared Firebase Auth failed:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Authentication failed' 
-      };
-    }
+    console.warn('⚠️ SharedAuthService: signInShared is deprecated - use PIN authentication instead');
+    return {
+      success: false,
+      error: 'Shared authentication is deprecated. Please use PIN authentication with staff accounts.'
+    };
   }
 
   /**
@@ -77,6 +57,12 @@ class SharedAuthService {
     try {
       console.log('👥 SharedAuthService: Fetching all staff profiles...');
       
+      // Check if Firebase is properly initialized
+      if (!db) {
+        console.warn('⚠️ SharedAuthService: Firebase Firestore is not initialized, returning empty array');
+        return [];
+      }
+
       const staffCollection = collection(db, this.COLLECTION_NAME);
       const activeStaffQuery = query(staffCollection, where('isActive', '==', true));
       const querySnapshot = await getDocs(activeStaffQuery);
@@ -227,14 +213,30 @@ class SharedAuthService {
 
   /**
    * Sign out from shared Firebase Auth
+   * This performs a complete Firebase Auth signOut and clears all staff selection data
    */
   async signOutShared(): Promise<void> {
     try {
-      await signOut(auth);
+      console.log('🚪 SharedAuthService: Starting Firebase signOut process...');
+
+      // First clear selected staff data
       await this.clearSelectedStaff();
-      console.log('🚪 SharedAuthService: Signed out successfully');
+      console.log('✅ SharedAuthService: Selected staff data cleared');
+
+      // Then sign out from Firebase Auth
+      if (auth && typeof auth.signOut === 'function') {
+        await signOut(auth);
+        console.log('✅ SharedAuthService: Firebase Auth signOut successful');
+      } else {
+        console.warn('⚠️ SharedAuthService: Firebase Auth not available, skipping signOut');
+      }
+
+      console.log('🚪 SharedAuthService: Complete signOut process finished successfully');
     } catch (error) {
       console.error('❌ SharedAuthService: Sign out failed:', error);
+
+      // Re-throw the error so it can be handled by the caller
+      throw new Error('Firebase signOut failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
 }

@@ -98,32 +98,32 @@ export const Typography = {
 // =============================================================================
 
 export const Colors = {
-  // Primary Purple (Linear-inspired)
-  primary: '#8b5cf6',
-  primaryHover: '#7c3aed',
-  primaryDark: '#6d28d9',
-  primaryLight: '#a78bfa',
+  // Primary Neon Green (Property Management Theme)
+  primary: '#C6FF00',
+  primaryHover: '#A3E635',
+  primaryDark: '#84CC16',
+  primaryLight: '#D4FF3A',
 
-  // Grayscale (Dark-first)
+  // Grayscale (Dark-first) - Updated backgrounds
   black: '#000000',
-  background: '#0a0a0a',
-  backgroundSecondary: '#111111',
-  backgroundTertiary: '#1a1a1a',
-  cardBackground: '#111111',
+  background: '#0B0F1A',        // Primary background (deep navy-black)
+  backgroundSecondary: '#1C1F2A', // Surface/card background (elevated surfaces)
+  backgroundTertiary: '#1F2937',  // Secondary surfaces
+  cardBackground: '#1C1F2A',      // Card background
 
-  // Neutral Scale
-  neutral950: '#0a0a0a',
-  neutral900: '#111111',
-  neutral850: '#1a1a1a',
-  neutral800: '#1f1f1f',
-  neutral700: '#2a2a2a',
-  neutral600: '#404040',
-  neutral500: '#525252',
-  neutral400: '#737373',
-  neutral300: '#a3a3a3',
-  neutral200: '#d4d4d4',
-  neutral100: '#e5e5e5',
-  neutral50: '#f5f5f5',
+  // Neutral Scale - Updated for new dark theme
+  neutral950: '#0B0F1A',  // Primary background
+  neutral900: '#111827',  // Secondary surface
+  neutral850: '#1C1F2A',  // Elevated surface
+  neutral800: '#1F2937',  // Tertiary surface
+  neutral700: '#374151',  // Border color
+  neutral600: '#4B5563',  // Disabled text
+  neutral500: '#6B7280',  // Muted text
+  neutral400: '#71717A',  // Tertiary text
+  neutral300: '#A1A1AA',  // Secondary text
+  neutral200: '#D1D5DB',  // Light gray
+  neutral100: '#E5E7EB',  // Very light gray
+  neutral50: '#F1F1F1',   // Primary text (soft white)
   white: '#ffffff',
 
   // Semantic Colors
@@ -136,31 +136,31 @@ export const Colors = {
   borderLight: '#333333',
   borderStrong: '#404040',
 
-  // Enhanced Gradients (for use in LinearGradient components)
+  // Enhanced Gradients (for use in LinearGradient components) - Updated for neon green theme
   gradients: {
-    primary: ['#8b5cf6', '#7c3aed', '#6d28d9'],
-    primarySubtle: ['rgba(139, 92, 246, 0.2)', 'rgba(124, 58, 237, 0.1)', 'rgba(109, 40, 217, 0.05)'],
-    background: ['#0a0a0a', '#111111', '#1a1a1a'],
+    primary: ['#C6FF00', '#A3E635', '#84CC16'],
+    primarySubtle: ['rgba(198, 255, 0, 0.2)', 'rgba(163, 230, 53, 0.1)', 'rgba(132, 204, 22, 0.05)'],
+    background: ['#0B0F1A', '#111827', '#1C1F2A'],
     card: ['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.04)', 'rgba(255, 255, 255, 0.02)'],
     cardElevated: ['rgba(255, 255, 255, 0.12)', 'rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.03)'],
-    text: ['#ffffff', '#e5e5e5', '#a3a3a3'],
+    text: ['#F1F1F1', '#A1A1AA', '#71717A'],
     success: ['#22c55e', '#16a34a', '#15803d'],
     warning: ['#f59e0b', '#d97706', '#b45309'],
     error: ['#ef4444', '#dc2626', '#b91c1c'],
-    neonPurple: ['rgba(139, 92, 246, 0.4)', 'rgba(124, 58, 237, 0.2)', 'rgba(109, 40, 217, 0.1)'],
+    neonGreen: ['rgba(198, 255, 0, 0.4)', 'rgba(163, 230, 53, 0.2)', 'rgba(132, 204, 22, 0.1)'],
     neonGreen: ['rgba(34, 197, 94, 0.4)', 'rgba(16, 185, 129, 0.2)', 'rgba(5, 150, 105, 0.1)'],
     neonBlue: ['rgba(59, 130, 246, 0.4)', 'rgba(37, 99, 235, 0.2)', 'rgba(29, 78, 216, 0.1)'],
     glassmorphism: ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)'],
   },
 
-  // Neon Effects
+  // Neon Effects - Updated to use neon green as primary
   neon: {
-    purple: {
-      color: '#8b5cf6',
-      glow: 'rgba(139, 92, 246, 0.6)',
-      shadow: '0 0 20px rgba(139, 92, 246, 0.4)',
-    },
     green: {
+      color: '#C6FF00',
+      glow: 'rgba(198, 255, 0, 0.6)',
+      shadow: '0 0 20px rgba(198, 255, 0, 0.4)',
+    },
+    success: {
       color: '#22c55e',
       glow: 'rgba(34, 197, 94, 0.6)',
       shadow: '0 0 20px rgba(34, 197, 94, 0.4)',

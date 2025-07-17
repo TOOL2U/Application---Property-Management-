@@ -1,6 +1,6 @@
 /**
- * AI-Inspired Dark Theme System
- * Modern, futuristic design inspired by AI tools like Notion AI, Linear, and Vercel
+ * Neon Green Dark Theme System
+ * Modern, professional dark theme with neon green accents for Property Management
  */
 
 export const AITheme = {
@@ -11,36 +11,36 @@ export const AITheme = {
       primary: '#0B0F1A',      // Deep navy-black - main background
       secondary: '#111827',     // Slightly lighter - secondary surfaces
       tertiary: '#1F2937',      // Cards and elevated surfaces
-      elevated: '#374151',      // Highly elevated surfaces
-      glass: 'rgba(31, 41, 55, 0.8)', // Glass morphism overlay
+      elevated: '#1C1F2A',      // Highly elevated surfaces (new surface color)
+      glass: 'rgba(28, 31, 42, 0.8)', // Glass morphism overlay
     },
 
     // Surface Colors
     surface: {
-      primary: '#111827',       // Main surface color
+      primary: '#1C1F2A',       // Main surface color (new elevated surface)
       secondary: '#1F2937',     // Secondary surface
       elevated: '#374151',      // Elevated surfaces
       glass: 'rgba(55, 65, 81, 0.6)', // Glass effect
       overlay: 'rgba(0, 0, 0, 0.4)', // Modal overlays
     },
 
-    // Text Colors - High contrast for readability
+    // Text Colors - High contrast for readability with new hierarchy
     text: {
-      primary: '#F9FAFB',       // Pure white - primary text
-      secondary: '#D1D5DB',     // Light gray - secondary text
-      tertiary: '#9CA3AF',      // Medium gray - tertiary text
+      primary: '#F1F1F1',       // Soft white - primary text (headings, important content)
+      secondary: '#A1A1AA',     // Muted gray - secondary text (descriptions)
+      tertiary: '#71717A',      // Darker gray - tertiary text (subtle text)
       muted: '#6B7280',         // Muted gray - subtle text
       disabled: '#4B5563',      // Disabled text
       inverse: '#111827',       // Dark text for light backgrounds
     },
 
-    // Brand Colors - AI-inspired purple/blue gradient
+    // Brand Colors - Neon green accent system
     brand: {
-      primary: '#8B5CF6',       // Purple 500 - main brand
-      secondary: '#A78BFA',     // Purple 400 - lighter variant
-      tertiary: '#C4B5FD',      // Purple 300 - lightest variant
-      gradient: ['#8B5CF6', '#3B82F6'], // Purple to blue gradient
-      glow: 'rgba(139, 92, 246, 0.3)', // Glow effect
+      primary: '#C6FF00',       // Neon green - main brand accent
+      secondary: '#A3E635',     // Lime green - hover/active states
+      tertiary: '#84CC16',      // Darker lime - pressed states
+      gradient: ['#C6FF00', '#A3E635'], // Neon to lime gradient
+      glow: 'rgba(198, 255, 0, 0.3)', // Neon green glow effect
     },
 
     // Accent Colors
@@ -53,22 +53,22 @@ export const AITheme = {
       pink: '#EC4899',          // Pink 500
     },
 
-    // Status Colors
+    // Status Colors - Keep existing success/warning/error, update pending
     status: {
-      success: '#10B981',       // Emerald 500
-      warning: '#F59E0B',       // Amber 500
-      error: '#EF4444',         // Red 500
-      info: '#3B82F6',          // Blue 500
-      pending: '#8B5CF6',       // Purple 500
+      success: '#22C55E',       // Green 500 (keep existing)
+      warning: '#F59E0B',       // Amber 500 (keep existing)
+      error: '#EF4444',         // Red 500 (keep existing)
+      info: '#3B82F6',          // Blue 500 (keep existing)
+      pending: '#C6FF00',       // Neon green - updated from purple
     },
 
-    // Border Colors
+    // Border Colors - Updated to use neon green accents
     border: {
       subtle: 'rgba(75, 85, 99, 0.3)',    // Very subtle borders
       default: 'rgba(107, 114, 128, 0.4)', // Default borders
       strong: 'rgba(156, 163, 175, 0.6)',  // Strong borders
-      focus: '#8B5CF6',                     // Focus state
-      glow: 'rgba(139, 92, 246, 0.4)',    // Glow borders
+      focus: '#C6FF00',                     // Neon green focus state
+      glow: 'rgba(198, 255, 0, 0.4)',     // Neon green glow borders
     },
   },
 

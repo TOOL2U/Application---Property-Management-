@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
-import { useAuth } from '@/contexts/AuthContext';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useLocation } from '@/hooks/useLocation';
 import { useTaskLocation } from '@/hooks/useTaskLocation';
 import { Button } from '@/components/ui/Button';
@@ -12,7 +12,7 @@ interface LocationButtonProps {
 }
 
 export function LocationButton({ taskId, style }: LocationButtonProps) {
-  const { user } = useAuth();
+  const { currentProfile } = usePINAuth();
   const { hasPermission, loading: locationLoading, requestPermission, getCurrentLocation } = useLocation();
   const { uploading, uploadStaffLocation } = useTaskLocation();
 

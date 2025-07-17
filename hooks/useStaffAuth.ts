@@ -3,7 +3,7 @@
  * Provides role-based access control and staff-specific utilities
  */
 
-import { useAuth } from '../contexts/AuthContext';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 
 export interface StaffUser {
   id: string;
@@ -19,13 +19,13 @@ export interface StaffUser {
  * Enhanced Staff Authentication Hook
  */
 export function useStaffAuth() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { currentProfile, isAuthenticated, isLoading } = usePINAuth();
 
   // Debug logging
   console.log('🔍 useStaffAuth Debug:', {
-    user,
-    userRole: user?.role,
-    userEmail: user?.email,
+    currentProfile,
+    userRole: currentProfile?.role,
+    userEmail: currentProfile?.email,
     isAuthenticated,
     isLoading
   });
@@ -34,11 +34,11 @@ export function useStaffAuth() {
    * Check if user has specific role(s)
    */
   const hasRole = (roles: string | string[]): boolean => {
-    console.log('🎭 hasRole check:', { userRole: user?.role, checkingRoles: roles });
-    if (!user?.role) return false;
+    console.log('🎭 hasRole check:', { userRole: currentProfile?.role, checkingRoles: roles });
+    if (!currentProfile?.role) return false;
 
     const roleArray = Array.isArray(roles) ? roles : [roles];
-    const result = roleArray.includes(user.role);
+    const result = roleArray.includes(currentProfile.role);
     console.log('🎭 hasRole result:', result);
     return result;
   };
@@ -47,8 +47,8 @@ export function useStaffAuth() {
    * Check if user has specific permission
    */
   const hasPermission = (permission: string): boolean => {
-    if (!user?.permissions) return false;
-    return user.permissions.includes(permission);
+    if (!currentProfile?.permissions) return false;
+    return currentProfile.permissions.includes(permission);
   };
 
   /**
@@ -66,14 +66,14 @@ export function useStaffAuth() {
   };
 
   return {
-    user: user as StaffUser | null,
+    user: currentProfile as StaffUser | null,
     isAuthenticated,
     isLoading,
     hasRole,
     hasPermission,
     isAdminOrManager: isAdminOrManager(),
     isStaffUser: isStaffUser(),
-    userRole: user?.role || null,
+    userRole: currentProfile?.role || null,
   };
 }
 

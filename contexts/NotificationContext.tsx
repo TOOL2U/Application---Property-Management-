@@ -6,8 +6,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Alert, AppState, AppStateStatus, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { useAuth } from '@/contexts/AuthContext';
-import { useStaffAuth } from '@/hooks/useStaffAuth';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 import { realTimeJobNotificationService } from '@/services/realTimeJobNotificationService';
 import { pushNotificationService } from '@/services/pushNotificationService';
 import type { JobNotificationData, NotificationCallbacks } from '@/services/realTimeJobNotificationService';
@@ -60,8 +59,7 @@ interface NotificationProviderProps {
 }
 
 export function NotificationProvider({ children }: NotificationProviderProps) {
-  const { user, isAuthenticated } = useAuth();
-  const { hasRole } = useStaffAuth();
+  const { currentProfile, isAuthenticated } = usePINAuth();
   const appState = useRef(AppState.currentState);
 
   const [state, setState] = useState<NotificationState>({
@@ -74,10 +72,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   });
 
   // Check if user is staff member
-  const isStaffUser = hasRole(['cleaner', 'maintenance', 'staff']);
+  const isStaffUser = currentProfile?.role && ['cleaner', 'maintenance', 'staff'].includes(currentProfile.role);
 
   useEffect(() => {
-    if (isAuthenticated && user?.id && isStaffUser) {
+    if (isAuthenticated && currentProfile?.id && isStaffUser) {
       startListening();
       initializePushNotifications();
     } else {
@@ -87,14 +85,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     return () => {
       stopListening();
     };
-  }, [isAuthenticated, user?.id, isStaffUser]);
+  }, [isAuthenticated, currentProfile?.id, isStaffUser]);
 
   // Handle app state changes
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         // App has come to the foreground
-        if (isAuthenticated && user?.id && isStaffUser && !state.isListening) {
+        if (isAuthenticated && currentProfile?.id && isStaffUser && !state.isListening) {
           startListening();
         }
       } else if (nextAppState.match(/inactive|background/)) {
@@ -106,7 +104,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
-  }, [isAuthenticated, user?.id, isStaffUser, state.isListening]);
+  }, [isAuthenticated, currentProfile?.id, isStaffUser, state.isListening]);
 
   const showJobNotificationModal = (job: JobNotificationData) => {
     setState(prev => ({
@@ -168,9 +166,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   };
 
   const startListening = () => {
-    if (!user?.id || !isStaffUser || state.isListening) return;
+    if (!currentProfile?.id || !isStaffUser || state.isListening) return;
 
-    console.log('🔔 Starting notification listener for staff:', user.id);
+    console.log('🔔 Starting notification listener for staff:', currentProfile.id);
 
     const callbacks: NotificationCallbacks = {
       onNewJobAssigned: (job: JobNotificationData) => {
@@ -193,7 +191,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       },
     };
 
-    realTimeJobNotificationService.startListening(user.id, callbacks);
+    realTimeJobNotificationService.startListening(currentProfile.id, callbacks);
     
     setState(prev => ({
       ...prev,
@@ -202,10 +200,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   };
 
   const stopListening = () => {
-    if (!user?.id) return;
+    if (!currentProfile?.id) return;
 
     console.log('🔕 Stopping notification listener');
-    realTimeJobNotificationService.stopListening(user.id);
+    realTimeJobNotificationService.stopListening(currentProfile.id);
     
     setState(prev => ({
       ...prev,
@@ -221,10 +219,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   };
 
   const initializePushNotifications = async (): Promise<boolean> => {
-    if (!user?.id) return false;
+    if (!currentProfile?.id) return false;
 
     try {
-      const success = await pushNotificationService.initialize(user.id);
+      const success = await pushNotificationService.initialize(currentProfile.id);
       
       setState(prev => ({
         ...prev,
@@ -260,7 +258,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         pushNotificationsEnabled: granted,
       }));
 
-      if (granted && user?.id) {
+      if (granted && currentProfile?.id) {
         await initializePushNotifications();
       }
 

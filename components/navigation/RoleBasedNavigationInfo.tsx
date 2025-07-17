@@ -25,11 +25,11 @@ import {
   CheckCircle,
   XCircle,
 } from 'lucide-react-native';
-import { useAuth } from '@/contexts/AuthContext';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useStaffAuth } from '@/hooks/useStaffAuth';
 
 export default function RoleBasedNavigationInfo() {
-  const { user } = useAuth();
+  const { currentProfile } = usePINAuth();
   const { hasRole } = useStaffAuth();
 
   const isStaffUser = hasRole(['cleaner', 'maintenance', 'staff']);

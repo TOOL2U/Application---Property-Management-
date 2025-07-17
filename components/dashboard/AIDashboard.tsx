@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import * as Animatable from 'react-native-animatable';
-import { useAuth } from '@/contexts/AuthContext';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useStaffAuth } from '@/hooks/useStaffAuth';
 import { AITheme } from '@/constants/AITheme';
 import {
@@ -225,7 +225,7 @@ const SectionHeader = ({ title, subtitle, action }: { title: string; subtitle?: 
 );
 
 export default function AIDashboard() {
-  const { user, signOut } = useAuth();
+  const { user, signOut } = usePINAuth();
   const { hasRole } = useStaffAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());

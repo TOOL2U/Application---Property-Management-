@@ -4,12 +4,12 @@
     "slug": "sia-moon-staff",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_1024,h_1024,c_fill,f_png,q_auto/logo-white-vector-3svg_dmz2pf",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "https://res.cloudinary.com/doez7m1hy/image/upload/w_600,h_600,c_fill,f_png,q_auto/logo-white-vector-3svg_dmz2pf",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0B0F1A"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -23,8 +23,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "https://res.cloudinary.com/doez7m1hy/image/upload/w_1024,h_1024,c_fill,f_png,q_auto/logo-white-vector-3svg_dmz2pf",
+        "backgroundColor": "#0B0F1A"
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
@@ -32,7 +32,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png",
+      "favicon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_32,h_32,c_fill,f_png,q_auto/logo-white-vector-3svg_dmz2pf",
       "bundler": "metro",
       "serviceWorkerPath": "firebase-messaging-sw.js",
       "config": {
@@ -44,10 +44,8 @@
       }
     },
     "notification": {
-      "icon": "./assets/icon.png",
-      "color": "#8b5cf6",
-      "vapidPublicKey": "BH7mKJZQk1kGGJOhrvY-cNpsyvwRAj-Btdd_WeZ4lHoMGfxSMokvAzJtBqsRBHdHBmy5CjjBQsV7mpNNvGwrBHI",
-      "serviceWorkerPath": "firebase-messaging-sw.js"
+      "icon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_64,h_64,c_fill,f_png,q_auto/logo-white-vector-3svg_dmz2pf",
+      "color": "#8b5cf6"
     },
     "plugins": [
       "expo-router",
@@ -58,9 +56,10 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-secure-store"
     ],
-    "scheme": "Sia-Moon-Staff",
+    "scheme": "sia-moon-staff",
     "experiments": {
       "typedRoutes": true
     },

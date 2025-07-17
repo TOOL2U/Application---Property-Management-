@@ -12,35 +12,38 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
-  // Fix: Remove unused Dimensions import
-  // Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 import type { JobAssignment } from '@/types/jobAssignment';
 import { mobileJobAssignmentService as jobAssignmentService } from '@/services/jobAssignmentService';
 import JobAcceptanceModal from '@/components/jobs/JobAcceptanceModal';
 import ActiveJobsView from '@/components/jobs/ActiveJobsView';
+import ErrorBoundary, { JobListErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { LoadingState, EmptyState } from '@/components/shared/StateComponents';
+import { 
+  getPriorityColor, 
+  getStatusColor, 
+  formatJobDate,
+  getJobTypeIcon,
+  JOB_COLORS,
+  COMMON_STYLES 
+} from '@/utils/jobUtils';
 import {
   Briefcase,
   Clock,
   MapPin,
   Play,
   CheckCircle,
-  // Fix: Keep Calendar as it's used, remove truly unused
   Calendar,
-  // AlertTriangle, Filter, Search, Navigation, XCircle, - removed unused
   Bell,
   Camera,
 } from 'lucide-react-native';
 
-// Fix: Remove unused width variable
-// const { width } = Dimensions.get('window');
-
 export default function EnhancedStaffJobsView() {
-  const { user } = useAuth();
+  const { currentProfile } = usePINAuth();
   const router = useRouter();
   
   const [pendingJobs, setPendingJobs] = useState<JobAssignment[]>([]);
@@ -53,7 +56,7 @@ export default function EnhancedStaffJobsView() {
   const [showAcceptanceModal, setShowAcceptanceModal] = useState(false);
 
   useEffect(() => {
-    if (user?.id) {
+    if (currentProfile?.id) {
       loadJobs();
       setupRealTimeListeners();
     }
@@ -61,14 +64,14 @@ export default function EnhancedStaffJobsView() {
     return () => {
       jobAssignmentService.cleanup();
     };
-  }, [user?.id]);
+  }, [currentProfile?.id]);
 
   const loadJobs = async () => {
-    if (!user?.id) return;
+    if (!currentProfile?.id) return;
 
     try {
       setIsLoading(true);
-      const response = await jobAssignmentService.getStaffJobs(user.id);
+      const response = await jobAssignmentService.getStaffJobs(currentProfile.id);
       
       if (response.success) {
         categorizeJobs(response.jobs);
@@ -82,10 +85,10 @@ export default function EnhancedStaffJobsView() {
   };
 
   const setupRealTimeListeners = () => {
-    if (!user?.id) return;
+    if (!currentProfile?.id) return;
 
     jobAssignmentService.subscribeToStaffJobs(
-      user.id,
+      currentProfile.id,
       (jobs) => {
         console.log('📱 Real-time jobs update:', jobs.length);
         categorizeJobs(jobs);
@@ -129,7 +132,7 @@ export default function EnhancedStaffJobsView() {
     try {
       const response = await jobAssignmentService.updateJobStatus({
         jobId: job.id,
-        staffId: user?.id || '',
+        staffId: currentProfile?.id || '',
         status: 'in_progress',
         startedAt: new Date()
       });
@@ -288,15 +291,20 @@ export default function EnhancedStaffJobsView() {
 
   // If Active filter is selected, render the ActiveJobsView component
   if (selectedFilter === 'Active') {
-    return <ActiveJobsView />;
+    return (
+      <ErrorBoundary>
+        <ActiveJobsView />
+      </ErrorBoundary>
+    );
   }
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#1a1a2e', '#16213e']}
-        style={styles.backgroundGradient}
-      />
+    <JobListErrorBoundary>
+      <View style={styles.container}>
+        <LinearGradient
+          colors={[JOB_COLORS.background, '#16213e']}
+          style={styles.backgroundGradient}
+        />
 
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
@@ -349,20 +357,16 @@ export default function EnhancedStaffJobsView() {
           }
         >
           {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading jobs...</Text>
-            </View>
+            <LoadingState message="Loading jobs..." />
           ) : filteredJobs.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Briefcase size={64} color="#6b7280" />
-              <Text style={styles.emptyStateTitle}>No Jobs Found</Text>
-              <Text style={styles.emptyStateText}>
-                {selectedFilter === 'All' 
-                  ? "You don't have any jobs assigned at the moment."
-                  : `No ${selectedFilter.toLowerCase()} jobs found.`
-                }
-              </Text>
-            </View>
+            <EmptyState
+              title="No Jobs Found"
+              message={selectedFilter === 'All' 
+                ? "You don't have any jobs assigned at the moment."
+                : `No ${selectedFilter.toLowerCase()} jobs found.`
+              }
+              icon="briefcase-outline"
+            />
           ) : (
             filteredJobs.map(renderJobCard)
           )}
@@ -375,7 +379,7 @@ export default function EnhancedStaffJobsView() {
       <JobAcceptanceModal
         visible={showAcceptanceModal}
         job={selectedJob}
-        staffId={user?.id || ''}
+        staffId={currentProfile?.id || ''}
         onClose={() => {
           setShowAcceptanceModal(false);
           setSelectedJob(null);
@@ -383,6 +387,7 @@ export default function EnhancedStaffJobsView() {
         onJobUpdated={handleJobUpdated}
       />
     </View>
+    </JobListErrorBoundary>
   );
 }
 

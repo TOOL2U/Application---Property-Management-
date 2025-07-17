@@ -8,7 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '../contexts/AuthContext';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Card } from './ui/Card';
@@ -17,7 +17,7 @@ import { Colors, Typography, Spacing, BorderRadius } from '../constants/Design';
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { signIn, isLoading } = useAuth();
+  const { signIn, isLoading } = usePINAuth();
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const handleLogin = async () => {

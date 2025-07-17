@@ -10,11 +10,11 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { PaperProvider } from 'react-native-paper';
-import { AuthProvider } from '@/contexts/AuthContext';
+import { PINAuthProvider } from "@/contexts/PINAuthContext";
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { JobProvider } from '@/contexts/JobContext';
 import { SiaMoonPaperTheme } from '@/constants/PaperTheme';
-import { NotificationProvider } from '@/contexts/NotificationContext';
-import NotificationOverlay from '@/components/notifications/NotificationOverlay';
+
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete
@@ -61,24 +61,23 @@ export default function RootLayout() {
       <PaperProvider theme={SiaMoonPaperTheme}>
         <ThemeProvider>
           <ErrorBoundary>
-            <AuthProvider>
-              <ErrorBoundary>
-                <NotificationProvider>
-                <StatusBar style="light" backgroundColor="#1a1a2e" />
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    contentStyle: { backgroundColor: '#1a1a2e' },
-                  }}
-                >
-                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                  <Stack.Screen name="+not-found" />
-                </Stack>
-                <NotificationOverlay />
-              </NotificationProvider>
-            </ErrorBoundary>
-          </AuthProvider>
+            <PINAuthProvider>
+              <JobProvider>
+                <ErrorBoundary>
+                  <StatusBar style="light" backgroundColor="#0B0F1A" />
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      contentStyle: { backgroundColor: '#0B0F1A' },
+                    }}
+                  >
+                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="+not-found" />
+                  </Stack>
+                </ErrorBoundary>
+              </JobProvider>
+            </PINAuthProvider>
         </ErrorBoundary>
       </ThemeProvider>
       </PaperProvider>

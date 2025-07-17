@@ -22,7 +22,7 @@ export default function NotificationOverlay() {
   } = useNotifications();
 
   return (
-    <View style={styles.container} pointerEvents="box-none">
+    <View style={[styles.container, { pointerEvents: 'box-none' }]}>
       {/* Job Assignment Modal */}
       <JobAssignmentNotificationModal
         visible={showModal}

@@ -11,11 +11,11 @@ import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
 import { Colors, Typography, Spacing, BorderRadius } from '../constants/Design';
-import { useAuth } from '../contexts/AuthContext';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 import { Storage } from '../utils/storage';
 
 export default function AuthTest() {
-  const { signIn, signOut, user, isLoading } = useAuth();
+  const { signIn, signOut, user, isLoading } = usePINAuth();
   const [testEmail, setTestEmail] = useState('demo@villa.com');
   const [testPassword, setTestPassword] = useState('demo123');
   const [testResults, setTestResults] = useState<Array<{ test: string; passed: boolean; message: string }>>([]);

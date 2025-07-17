@@ -632,13 +632,14 @@ class AuthService {
   }
 
   /**
-   * Sign out user
+   * Sign out user - clears individual staff session only
+   * Note: This does NOT clear Firebase Auth - use sharedAuthService.signOutShared() for that
    */
   async signOut(): Promise<void> {
     try {
-      console.log('👋 AuthService: Starting sign out process...');
+      console.log('👋 AuthService: Starting individual staff session sign out...');
       await this.clearSession();
-      console.log('✅ AuthService: Sign out completed successfully');
+      console.log('✅ AuthService: Individual staff session cleared successfully');
     } catch (error) {
       console.error('❌ AuthService: Sign out error:', error);
       // Don't throw error here - we want to ensure sign out always succeeds

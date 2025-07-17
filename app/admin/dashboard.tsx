@@ -27,7 +27,7 @@ import {
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { collection, query, onSnapshot, orderBy, where, doc, updateDoc } from 'firebase/firestore';
-import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { useAdminAuth } from "@/contexts/PINAuthContext";
 import { useDesignTokens } from '@/constants/Design';
 import { db } from '@/lib/firebase';
 import { Booking, AdminStats, COLLECTIONS } from '@/types/admin';

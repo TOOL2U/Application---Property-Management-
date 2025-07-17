@@ -74,7 +74,7 @@ const MapComponent = ({ job, userLocation }: { job: Job; userLocation: any }) =>
 
 export default function JobDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useStaffAuth();
+  const { currentProfile } = useStaffAuth();
   const router = useRouter();
   
   const [job, setJob] = useState<Job | null>(null);

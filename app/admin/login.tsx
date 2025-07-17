@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Shield, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { useAdminAuth } from "@/contexts/PINAuthContext";
 import { useDesignTokens } from '@/constants/Design';
 
 export default function AdminLoginScreen() {

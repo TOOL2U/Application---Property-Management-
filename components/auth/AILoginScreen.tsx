@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import * as Animatable from 'react-native-animatable';
-import { useAuth } from '../../contexts/AuthContext';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Eye, EyeOff, Mail, Lock, Sparkles, Zap, Shield } from 'lucide-react-native';
@@ -183,7 +183,7 @@ export default function AILoginScreen() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { signIn, signInShared, isLoading, error, clearError, isAuthenticated } = useAuth();
+  const { signIn, signInShared, isLoading, error, clearError, isAuthenticated } = usePINAuth();
   const router = useRouter();
 
   // Redirect if already authenticated

@@ -7,11 +7,8 @@ import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Shared Firebase credentials for all staff
-export const SHARED_STAFF_CREDENTIALS = {
-  email: 'staff@siamoon.com',
-  password: 'staff123'
-};
+// Note: This service now relies exclusively on staff_accounts collection
+// No hardcoded credentials - all authentication is handled through PIN system
 
 // Storage keys
 const STORAGE_KEYS = {

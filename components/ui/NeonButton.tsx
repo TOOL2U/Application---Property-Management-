@@ -22,9 +22,9 @@ interface NeonButtonProps {
 
 const variantConfig = {
   primary: {
-    colors: ['#8b5cf6', '#7c3aed'],
-    glowColor: '#8b5cf6',
-    textColor: '#ffffff',
+    colors: ['#C6FF00', '#A3E635'],
+    glowColor: '#C6FF00',
+    textColor: '#0B0F1A',  // Dark text for better contrast on neon green
   },
   secondary: {
     colors: ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)'],

@@ -3,23 +3,103 @@
  * Lazy initialization to avoid "Component auth has not been registered yet" error
  */
 
-import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { getAuth, Auth, initializeAuth } from 'firebase/auth';
+import { 
+  getFirestore, 
+  Firestore, 
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  memoryLocalCache
+} from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Firebase configuration
+// Fix for React Native AsyncStorage persistence
+declare const global: any;
+if (typeof global !== 'undefined') {
+  global.AsyncStorage = AsyncStorage;
+}
+
+// Initialize Firebase with environment variables
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL,
   projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
+
+console.log('🔥 Firebase Config Check:', {
+  hasApiKey: !!firebaseConfig.apiKey,
+  projectId: firebaseConfig.projectId,
+  authDomain: firebaseConfig.authDomain
+});
+
+// Validate required config
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  throw new Error('Missing required Firebase configuration');
+}
+
+// Initialize Firebase App
+let app: FirebaseApp;
+try {
+  app = initializeApp(firebaseConfig);
+  console.log('✅ Firebase app initialized successfully');
+} catch (error) {
+  console.error('❌ Firebase app initialization failed:', error);
+  throw error;
+}
+
+// Initialize Firestore with React Native optimized settings
+let firestoreInstance: Firestore;
+let initializationPromise: Promise<Firestore> | null = null;
+
+// Create a promise-based initialization for better React Native handling
+const initializeFirestoreAsync = async (): Promise<Firestore> => {
+  if (firestoreInstance) {
+    return firestoreInstance;
+  }
+
+  try {
+    console.log('🔄 Initializing Firestore for React Native...');
+    
+    // For React Native, we need different persistence settings
+    if (typeof window !== 'undefined') {
+      // Web environment - use persistent cache
+      firestoreInstance = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager()
+        })
+      });
+      console.log('✅ Firestore initialized with web persistence');
+    } else {
+      // React Native environment - use memory cache with better settings
+      firestoreInstance = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        localCache: memoryLocalCache()
+      });
+      console.log('✅ Firestore initialized with React Native memory cache');
+    }
+
+    // Add a small delay to ensure initialization completes
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    return firestoreInstance;
+    
+  } catch (error) {
+    console.warn('⚠️ Firestore custom initialization failed, falling back to default:', error);
+    firestoreInstance = getFirestore(app);
+    return firestoreInstance;
+  }
+};
+
+// Start initialization immediately but don't block
+initializationPromise = initializeFirestoreAsync();
 
 // Validate configuration
 const validateConfig = () => {
@@ -64,21 +144,53 @@ const getFirebaseApp = () => {
   }
 };
 
-// Initialize Firebase Auth with graceful error handling
+// Track auth initialization attempts to reduce log noise
+let _authInitAttempts = 0;
+let _authInitWarningShown = false;
+
+// Initialize Firebase Auth with graceful error handling and AsyncStorage
 const getFirebaseAuth = () => {
   if (_auth) return _auth;
 
   const firebaseApp = getFirebaseApp();
 
   try {
-    _auth = getAuth(firebaseApp);
-    console.log('✅ Firebase Auth initialized successfully');
-    return _auth;
+    // First try to get existing auth instance
+    try {
+      _auth = getAuth(firebaseApp);
+      console.log('✅ Firebase Auth initialized with getAuth');
+      return _auth;
+    } catch (getAuthError) {
+      // If getAuth fails, try initializeAuth with AsyncStorage persistence
+      console.log('⚠️ getAuth failed, trying initializeAuth with AsyncStorage...');
+      
+      const { getReactNativePersistence } = require('firebase/auth');
+      
+      _auth = initializeAuth(firebaseApp, {
+        persistence: getReactNativePersistence(AsyncStorage)
+      });
+      console.log('✅ Firebase Auth initialized with AsyncStorage persistence');
+      return _auth;
+    }
   } catch (error: any) {
+    if (error.message?.includes('already exists')) {
+      // If auth already exists, get it
+      _auth = getAuth(firebaseApp);
+      console.log('✅ Firebase Auth retrieved (already exists)');
+      return _auth;
+    }
+    
     if (error.message?.includes('Component auth has not been registered yet')) {
-      console.warn('⚠️ Firebase Auth component not registered yet - this is a known React Native issue');
-      console.warn('⚠️ Auth will be initialized on first use');
-      // Return a mock auth object that will be replaced when auth is actually needed
+      _authInitAttempts++;
+
+      // Only show warning once to reduce log noise
+      if (!_authInitWarningShown) {
+        console.warn('⚠️ Firebase Auth component not registered yet - this is a known React Native issue');
+        console.warn('⚠️ Auth will be initialized on first use');
+        _authInitWarningShown = true;
+      }
+
+      // Return null to trigger retry mechanism
       return null;
     }
     console.error('❌ Firebase Auth initialization failed:', error);
@@ -86,12 +198,19 @@ const getFirebaseAuth = () => {
   }
 };
 
-// Initialize Firestore (lazy)
-const getFirebaseFirestore = () => {
+// Initialize Firestore (lazy) - ensure async initialization completes
+const getFirebaseFirestore = async () => {
   if (_db) return _db;
-  const firebaseApp = getFirebaseApp();
-  _db = getFirestore(firebaseApp);
-  return _db;
+  
+  // Wait for the async initialization to complete
+  try {
+    _db = await initializationPromise;
+    console.log('✅ Firestore instance ready for use');
+    return _db;
+  } catch (error) {
+    console.error('❌ Failed to get Firestore instance:', error);
+    throw error;
+  }
 };
 
 // Initialize Realtime Database (lazy)
@@ -128,12 +247,15 @@ const createAuthProxy = (): Auth => {
             let unsubscribeFunction: (() => void) | null = null;
             let isUnsubscribed = false;
 
-            // Try to initialize auth with retries
+            // Try to initialize auth with retries (reduced attempts and less logging)
             const tryInitAuth = (attempts = 0) => {
               if (isUnsubscribed) return; // Don't continue if already unsubscribed
 
-              if (attempts >= 5) {
-                console.error('❌ Failed to initialize Auth after 5 attempts');
+              if (attempts >= 3) { // Reduced from 5 to 3 attempts
+                if (attempts === 3) {
+                  console.warn('⚠️ Firebase Auth initialization timed out after 3 attempts');
+                  console.warn('⚠️ This is expected behavior in React Native - Auth will work when needed');
+                }
                 if (!isUnsubscribed) callback(null); // Call with null user to indicate no auth
                 return;
               }
@@ -151,10 +273,13 @@ const createAuthProxy = (): Auth => {
                     unsubscribeFunction = _auth.onAuthStateChanged(callback);
                   }
                 } catch (error) {
-                  console.warn(`⚠️ Auth init attempt ${attempts + 1} failed, retrying...`);
+                  // Only log retry attempts for first 2 attempts to reduce noise
+                  if (attempts < 2) {
+                    console.warn(`⚠️ Auth init attempt ${attempts + 1} failed, retrying...`);
+                  }
                   tryInitAuth(attempts + 1);
                 }
-              }, 100 * Math.pow(2, attempts)); // Exponential backoff
+              }, 200 * Math.pow(1.5, attempts)); // Slower exponential backoff
             };
 
             tryInitAuth();
@@ -216,8 +341,27 @@ export const auth = createAuthProxy();
 
 export const db = new Proxy({} as any, {
   get(target, prop) {
-    const dbInstance = getFirebaseFirestore();
-    return dbInstance[prop as keyof any];
+    // For async methods, return wrapped versions
+    if (prop === 'collection' || prop === 'doc' || prop === 'batch' || prop === 'runTransaction') {
+      return (...args: any[]) => {
+        if (!_db) {
+          // Return the async version that waits for initialization
+          return (async () => {
+            const dbInstance = await getFirebaseFirestore();
+            return (dbInstance as any)[prop](...args);
+          })();
+        }
+        return (_db as any)[prop](...args);
+      };
+    }
+
+    // For sync properties, check if db is ready
+    if (!_db) {
+      console.warn('⚠️ Firestore not ready for property:', prop);
+      return undefined;
+    }
+    
+    return (_db as any)[prop];
   }
 });
 
@@ -263,6 +407,7 @@ export const performFirebaseHealthCheck = async () => {
 };
 
 // Export the app getter
+export { getFirebaseApp, getFirebaseFirestore };
 export default new Proxy({} as any, {
   get(target, prop) {
     const appInstance = getFirebaseApp();

@@ -5,890 +5,515 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
-  Dimensions,
+  StatusBar,
   Alert,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import * as Animatable from 'react-native-animatable';
-import { useAuth } from '@/contexts/AuthContext';
-import { useStaffAuth } from '@/hooks/useStaffAuth';
+import { Ionicons } from '@expo/vector-icons';
+import { usePINAuth } from "@/contexts/PINAuthContext";
+import { useRouter } from 'expo-router';
+import { shadowStyles } from '@/utils/shadowUtils';
 import { jobService } from '@/services/jobService';
-import { Job } from '@/types/job';
-import EnhancedStaffDashboard from '@/components/dashboard/EnhancedStaffDashboard';
-import { BlurHeader } from '@/components/ui/BlurHeader';
-import { SyncStatusIndicator } from '@/components/sync/SyncStatusIndicator';
-import { useSync } from '@/hooks/useSync';
-import { webhookService } from '@/services/webhookService';
-import {
-  collection,
-  query,
-  where,
-  // Fix: Keep required imports for test functions
-  getDocs,
-  doc,
-  getDoc,
-  onSnapshot,
-  updateDoc,
-  serverTimestamp
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-// Fix: Remove unused authService import
-// import { authService } from '@/services/authService';
-import UserTestScreen from '@/components/UserTestScreen';
-import {
-  Home,
-  Calendar,
-  Users,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  TrendingUp,
-  MapPin,
-  Bell,
-  Settings,
-  LogOut,
-} from 'lucide-react-native';
-import { NeumorphicTheme } from '@/constants/NeumorphicTheme';
-
-const { width: screenWidth } = Dimensions.get('window');
-
-interface DashboardStats {
-  totalBookings: number;
-  activeBookings: number;
-  completedTasks: number;
-  pendingTasks: number;
-  propertiesManaged: number;
-  maintenanceIssues: number;
-}
-
-interface RecentActivity {
-  id: string;
-  type: 'booking' | 'task' | 'maintenance' | 'sync';
-  title: string;
-  description: string;
-  timestamp: Date;
-  status: 'success' | 'warning' | 'error' | 'info';
-}
+import LogoutOverlay from '@/components/auth/LogoutOverlay';
 
 export default function IndexScreen() {
-  const { user, signOut } = useAuth();
-  const { hasRole } = useStaffAuth();
-  const { isOnline, isSyncing, lastSyncTime, pendingOperations, conflictCount } = useSync();
-
+  const { currentProfile, isAuthenticated, logout } = usePINAuth();
+  const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
-  const [showUserTest, setShowUserTest] = useState(false);
-  const [localLoading, setLocalLoading] = useState(false);
+  const [pendingJobs, setPendingJobs] = useState(0);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+  const [isSwitchingProfile, setIsSwitchingProfile] = useState(false);
 
-  // Staff Dashboard State
-  // Note: These are used in loadStaffDashboardData function
-  const [todaysJobs, setTodaysJobs] = useState<Job[]>([]);
-  const [pendingJobs, setPendingJobs] = useState<Job[]>([]);
-  const [jobsLoading, setJobsLoading] = useState(false);
-
-  const isStaffUser = hasRole(['cleaner', 'maintenance', 'staff']);
-  
-  // Combined loading state for sign out
-  const isLoading = localLoading;
-  const [stats, setStats] = useState<DashboardStats>({
-    totalBookings: 24,
-    activeBookings: 8,
-    completedTasks: 156,
-    pendingTasks: 12,
-    propertiesManaged: 15,
-    maintenanceIssues: 3,
-  });
-  
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([
-    {
-      id: '1',
-      type: 'booking',
-      title: 'New Booking Confirmed',
-      description: 'Villa Sunset - John Smith, Check-in: Tomorrow',
-      timestamp: new Date(Date.now() - 30 * 60 * 1000),
-      status: 'success',
-    },
-    {
-      id: '2',
-      type: 'task',
-      title: 'Cleaning Task Completed',
-      description: 'Villa Paradise - Deep cleaning finished',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      status: 'success',
-    },
-    {
-      id: '3',
-      type: 'maintenance',
-      title: 'Maintenance Required',
-      description: 'Villa Ocean View - AC unit needs attention',
-      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      status: 'warning',
-    },
-    {
-      id: '4',
-      type: 'sync',
-      title: 'Data Sync Completed',
-      description: 'All data synchronized with web application',
-      timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000),
-      status: 'info',
-    },
-  ]);
-
+  // Load pending jobs count when user is authenticated
   useEffect(() => {
-    if (isStaffUser && user?.id) {
-      loadStaffDashboardData();
-      // Set up real-time listener for test job
-      setupTestJobListener();
+    if (isAuthenticated && currentProfile?.id) {
+      loadPendingJobsCount();
     } else {
-      loadDashboardData();
+      setPendingJobs(0);
     }
-  }, [isStaffUser, user?.id]);
+  }, [isAuthenticated, currentProfile?.id]);
 
-  const loadDashboardData = async () => {
+  const loadPendingJobsCount = async () => {
     try {
-      // In a real app, this would fetch data from your sync service
-      // For now, we'll simulate loading
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLoadingJobs(true);
+      if (!currentProfile?.id) return;
       
-      // Update stats based on sync status
-      setStats(prevStats => ({
-        ...prevStats,
-        // Add some dynamic updates based on sync status
-        pendingTasks: pendingOperations,
-        maintenanceIssues: conflictCount,
-      }));
+      const response = await jobService.getStaffJobs(currentProfile.id, {
+        status: ['assigned', 'pending']
+      });
+      
+      if (response.success && response.jobs) {
+        setPendingJobs(response.jobs.length);
+      }
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
+      console.error('Error loading pending jobs:', error);
+      setPendingJobs(0);
+    } finally {
+      setLoadingJobs(false);
     }
   };
 
+  // Handle refresh
   const onRefresh = async () => {
     setRefreshing(true);
-    if (isStaffUser && user?.id) {
-      await loadStaffDashboardData();
-    } else {
-      await loadDashboardData();
+    if (isAuthenticated && currentProfile?.id) {
+      await loadPendingJobsCount();
     }
     setRefreshing(false);
   };
 
-  const loadStaffDashboardData = async () => {
-    if (!user?.id) return;
-
-    try {
-      setJobsLoading(true);
-
-      // Load today's jobs for staff users
-      const todaysResponse = await jobService.getTodaysJobs(user.id);
-      if (todaysResponse.success) {
-        const pending = todaysResponse.jobs.filter(job =>
-          job.status === 'assigned' || job.status === 'pending'
-        );
-        const accepted = todaysResponse.jobs.filter(job =>
-          job.status === 'accepted' || job.status === 'in_progress'
-        );
-
-        setPendingJobs(pending);
-        setTodaysJobs(accepted);
-      }
-    } catch (error) {
-      console.error('Error loading staff dashboard data:', error);
-    } finally {
-      setJobsLoading(false);
-    }
+  // Handle navigation to jobs
+  const handleViewJobs = () => {
+    router.push('/(tabs)/jobs');
   };
 
-  const handleSignOut = () => {
-    console.log('🔴 Sign out button clicked in Dashboard');
+  // Handle profile selection
+  const handleProfilePress = () => {
+    router.push('/(auth)/select-profile');
+  };
+
+  // Get user initials for avatar
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  // Handle switch profile functionality
+  const handleSwitchProfile = () => {
     Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out? You can sign back in with either a staff or admin account.',
-      [
-        { 
-          text: 'Cancel', 
-          style: 'cancel' 
-        },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('🚪 Starting sign out process from dashboard...');
-              setLocalLoading(true);
-              
-              // Check auth state before sign out
-              console.log('🔍 Pre-signout auth state:', { 
-                isAuthenticated: user !== null, 
-                userEmail: user?.email,
-                isLoading: localLoading 
-              });
-              
-              // Perform sign out
-              console.log('🔄 Calling signOut() function...');
-              await signOut();
-              
-              // Check auth state after sign out
-              console.log('🔍 Post-signout auth state:', { 
-                isAuthenticated: user !== null, 
-                userEmail: user?.email,
-                isLoading: localLoading 
-              });
-              
-              console.log('✅ Sign out completed successfully');
-              
-              // Don't manually navigate - let the tab layout handle it
-              // This prevents race conditions and ensures proper auth flow
-              console.log('🔄 Waiting for automatic redirect to login...');
-              
-            } catch (error) {
-              console.error('❌ Sign out error:', error);
-              Alert.alert(
-                'Sign Out Error',
-                'There was an error signing out. Please try again.',
-                [{ text: 'OK' }]
-              );
-            } finally {
-              setLocalLoading(false);
-            }
-          }
-        },
-      ]
-    );
-  };
-
-  // 🧪 TEST: Real-time listener for test job from web app
-  const setupTestJobListener = () => {
-    if (!user?.id) return;
-
-    console.log('🔔 Setting up test job listener for staff:', user.id);
-    console.log('🎯 Listening for test job: test_job_001');
-    console.log('👤 Target staff ID: iJxnTcy4xWZIoDVNnl5AgYSVPku2');
-
-    // Listen for jobs assigned to the specific test staff ID
-    const jobsRef = collection(db, 'jobs');
-    const q = query(
-      jobsRef,
-      where('assignedStaffId', '==', 'iJxnTcy4xWZIoDVNnl5AgYSVPku2'),
-      where('status', '==', 'pending')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      console.log('📡 Firebase snapshot received:', snapshot.size, 'pending jobs');
-
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const jobData = change.doc.data();
-          const jobId = change.doc.id;
-
-          console.log('🆕 NEW TEST JOB DETECTED!');
-          console.log('📋 Job ID:', jobId);
-          console.log('📋 Job Data:', jobData);
-
-          // Show toast notification
-          Alert.alert(
-            '🎯 TEST JOB RECEIVED!',
-            `Job: ${jobData.title || 'Untitled'}\nLocation: ${jobData.location || 'Unknown'}\nFrom: Web App`,
-            [{ text: 'OK' }]
-          );
-
-          // Add to pending jobs for display
-          const newJob: Job = {
-            id: jobId,
-            title: jobData.title || 'Test Job from Web App',
-            description: jobData.description || 'Test job assignment from web application',
-            type: jobData.type || 'general',
-            status: 'pending',
-            priority: jobData.priority || 'medium',
-            assignedTo: jobData.assignedStaffId,
-            assignedBy: jobData.assignedBy || 'web-app-admin',
-            assignedAt: jobData.assignedAt?.toDate() || new Date(),
-            scheduledDate: jobData.scheduledDate?.toDate() || new Date(),
-            estimatedDuration: jobData.estimatedDuration || 60,
-            propertyId: jobData.propertyId || 'test-property-001',
-            location: {
-              address: jobData.location?.address || '123 Test Street',
-              city: jobData.location?.city || 'Miami',
-              state: jobData.location?.state || 'FL',
-              zipCode: jobData.location?.zipCode || '33101',
-              specialInstructions: jobData.location?.specialInstructions || 'Test job from web app'
-            },
-            contacts: jobData.contacts || [{
-              name: 'Test Contact',
-              phone: '+1 (555) 123-4567',
-              email: 'test@example.com',
-              role: 'property_manager',
-              preferredContactMethod: 'phone'
-            }],
-            requirements: jobData.requirements || [],
-            photos: jobData.photos || [],
-            createdAt: jobData.createdAt?.toDate() || new Date(),
-            updatedAt: jobData.updatedAt?.toDate() || new Date(),
-            createdBy: jobData.createdBy || 'web-app-admin',
-            notificationsEnabled: jobData.notificationsEnabled ?? true,
-            reminderSent: jobData.reminderSent ?? false,
-          };
-
-          setPendingJobs(prev => [newJob, ...prev]);
-        }
-      });
-    }, (error) => {
-      console.error('❌ Error in test job listener:', error);
-    });
-
-    // Store unsubscribe function for cleanup
-    return unsubscribe;
-  };
-
-  // 🧪 TEST: Accept job function for test jobs
-  const acceptTestJob = async (jobId: string) => {
-    try {
-      console.log('✅ Accepting test job:', jobId);
-
-      // Update job status in Firebase
-      const jobRef = doc(db, 'jobs', jobId);
-      await updateDoc(jobRef, {
-        status: 'accepted',
-        acceptedAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-
-      console.log('✅ Job accepted successfully in Firebase');
-
-      // Show success message
-      Alert.alert(
-        '✅ Job Accepted!',
-        'The test job has been accepted and moved to Active Jobs.',
-        [{ text: 'OK' }]
-      );
-
-      // Remove from pending jobs
-      setPendingJobs(prev => prev.filter(job => job.id !== jobId));
-
-      // Reload staff dashboard to refresh data
-      loadStaffDashboardData();
-
-    } catch (error) {
-      console.error('❌ Error accepting test job:', error);
-      Alert.alert('Error', 'Failed to accept job. Please try again.');
-    }
-  };
-
-  // 🧪 TEST: Decline job function for test jobs
-  const declineTestJob = async (jobId: string) => {
-    try {
-      console.log('❌ Declining test job:', jobId);
-
-      // Update job status in Firebase
-      const jobRef = doc(db, 'jobs', jobId);
-      await updateDoc(jobRef, {
-        status: 'rejected',
-        rejectedAt: serverTimestamp(),
-        rejectionReason: 'Declined from mobile app test',
-        updatedAt: serverTimestamp()
-      });
-
-      console.log('❌ Job declined successfully in Firebase');
-
-      // Show success message
-      Alert.alert(
-        '❌ Job Declined',
-        'The test job has been declined.',
-        [{ text: 'OK' }]
-      );
-
-      // Remove from pending jobs
-      setPendingJobs(prev => prev.filter(job => job.id !== jobId));
-
-    } catch (error) {
-      console.error('❌ Error declining test job:', error);
-      Alert.alert('Error', 'Failed to decline job. Please try again.');
-    }
-  };
-
-  const handleAcceptJob = async (job: Job) => {
-    if (!user?.id) return;
-
-    Alert.alert(
-      'Accept Job',
-      `Are you sure you want to accept "${job.title}"?`,
+      'Switch Profile',
+      'Are you sure you want to switch to a different profile? This will log you out of the current session.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Accept',
-          style: 'default',
+          text: 'Switch Profile',
+          style: 'destructive',
           onPress: async () => {
             try {
-              const response = await jobService.acceptJob({
-                jobId: job.id,
-                staffId: user.id,
-                acceptedAt: new Date(),
-              });
+              setIsSwitchingProfile(true);
+              console.log('🔄 Dashboard: Starting profile switch process...');
 
-              if (response.success) {
-                Alert.alert('Success', 'Job accepted successfully!');
-                await loadStaffDashboardData();
-              } else {
-                Alert.alert('Error', response.error || 'Failed to accept job');
-              }
+              // Add smooth transition delay for better UX
+              await new Promise(resolve => setTimeout(resolve, 300));
+
+              // Perform the comprehensive logout
+              await logout();
+              console.log('✅ Dashboard: Logout completed, navigating to profile selection...');
+
+              // Add smooth transition delay
+              await new Promise(resolve => setTimeout(resolve, 300));
+
+              // Navigate to profile selection screen and completely clear navigation stack
+              router.replace('/(auth)/select-profile');
+              console.log('✅ Dashboard: Navigation to profile selection completed');
+
             } catch (error) {
-              Alert.alert('Error', 'Failed to accept job');
+              console.error('❌ Dashboard: Profile switch error:', error);
+
+              // Show user-friendly error message
+              const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+              Alert.alert(
+                'Profile Switch Complete',
+                `You have been successfully logged out.\n\n${errorMessage ? `Note: ${errorMessage}` : ''}`,
+                [{
+                  text: 'Continue',
+                  onPress: () => {
+                    // Ensure navigation happens even if there were errors
+                    router.replace('/(auth)/select-profile');
+                  }
+                }]
+              );
+            } finally {
+              setIsSwitchingProfile(false);
             }
-          },
-        },
+          }
+        }
       ]
     );
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  };
-
-  const getActivityIcon = (type: RecentActivity['type'], status: RecentActivity['status']) => {
-    const size = 16;
-    const getColor = () => {
-      switch (status) {
-        case 'success': return NeumorphicTheme.colors.semantic.success;
-        case 'warning': return NeumorphicTheme.colors.semantic.warning;
-        case 'error': return NeumorphicTheme.colors.semantic.error;
-        default: return NeumorphicTheme.colors.semantic.info;
-      }
-    };
-
-    switch (type) {
-      case 'booking': return <Calendar size={size} color={getColor()} />;
-      case 'task': return <CheckCircle size={size} color={getColor()} />;
-      case 'maintenance': return <AlertTriangle size={size} color={getColor()} />;
-      case 'sync': return <TrendingUp size={size} color={getColor()} />;
-      default: return <Bell size={size} color={getColor()} />;
-    }
-  };
-
-  const formatTimeAgo = (date: Date) => {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d ago`;
-  };
-
-  const StatCard = ({
-    title,
-    value,
-    icon,
-    color,
-    trend,
-    index = 0
-  }: {
-    title: string;
-    value: number;
-    icon: React.ReactNode;
-    color: string;
-    trend?: number;
-    index?: number;
-  }) => (
-    <Animatable.View
-      animation="fadeInUp"
-      duration={400}
-      delay={200 + (index * 100)}
-      className="shadow-lg"
-      style={{ width: (screenWidth - 60) / 2 }}
-    >
-      <View className="bg-dark-surface rounded-lg p-4">
-        <View className="flex-row justify-between items-center mb-3">
-          <View
-            className="w-10 h-10 rounded-full items-center justify-center"
-            style={{ backgroundColor: `${color}20` }}
+  return (
+    <View style={{ flex: 1, backgroundColor: '#0B0F1A' }}>
+      <StatusBar barStyle="light-content" backgroundColor="#0B0F1A" />
+      
+      <SafeAreaView style={{ flex: 1 }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 32 }}
+        >
+          {/* Header */}
+          <Animatable.View
+            animation="fadeInDown"
+            duration={600}
+            style={{
+              paddingHorizontal: 16,
+              paddingTop: 24,
+              paddingBottom: 16,
+            }}
           >
-            {icon}
-          </View>
-          {trend !== undefined && (
-            <View
-              className="flex-row items-center px-2 py-1 rounded-sm gap-1"
+            <Text style={{
+              color: '#F1F1F1',
+              fontSize: 24,
+              fontWeight: 'bold',
+              fontFamily: 'Urbanist_700Bold',
+            }}>
+              Property Management
+            </Text>
+            <Text style={{
+              color: '#9CA3AF',
+              fontSize: 16,
+              marginTop: 4,
+              fontFamily: 'Inter_400Regular',
+            }}>
+              {isAuthenticated && currentProfile 
+                ? `Welcome back, ${currentProfile.name}`
+                : 'Please log in to receive jobs'
+              }
+            </Text>
+          </Animatable.View>
+
+          {/* Profile Card */}
+          <Animatable.View
+            animation="fadeInUp"
+            duration={600}
+            delay={200}
+            style={{
+              marginHorizontal: 16,
+              marginBottom: 24,
+              backgroundColor: '#1C1F2A',
+              borderRadius: 16,
+              padding: 20,
+              borderWidth: 1,
+              borderColor: '#374151',
+              ...shadowStyles.large,
+            }}
+          >
+            {isAuthenticated && currentProfile ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <LinearGradient
+                  colors={['#C6FF00', '#A3E635']}
+                  style={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: 30,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 16,
+                  }}
+                >
+                  <Text style={{
+                    color: '#0B0F1A',
+                    fontSize: 20,
+                    fontWeight: 'bold',
+                    fontFamily: 'Inter_700Bold',
+                  }}>
+                    {getInitials(currentProfile.name)}
+                  </Text>
+                </LinearGradient>
+                
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    color: '#F1F1F1',
+                    fontSize: 18,
+                    fontWeight: '600',
+                    fontFamily: 'Inter_600SemiBold',
+                    marginBottom: 4,
+                  }}>
+                    {currentProfile.name}
+                  </Text>
+                  <Text style={{
+                    color: '#9CA3AF',
+                    fontSize: 14,
+                    fontFamily: 'Inter_400Regular',
+                    marginBottom: 4,
+                  }}>
+                    {currentProfile.role} • Ready for jobs
+                  </Text>
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                  }}>
+                    <View style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: '#22C55E',
+                      marginRight: 8,
+                    }} />
+                    <Text style={{
+                      color: '#22C55E',
+                      fontSize: 12,
+                      fontFamily: 'Inter_500Medium',
+                    }}>
+                      Online
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Switch Profile Button */}
+                <TouchableOpacity
+                  onPress={handleSwitchProfile}
+                  style={{
+                    backgroundColor: 'rgba(198, 255, 0, 0.1)',
+                    borderWidth: 1,
+                    borderColor: '#C6FF00',
+                    borderRadius: 8,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginLeft: 12,
+                    ...shadowStyles.small,
+                  }}
+                  disabled={isSwitchingProfile}
+                >
+                  <Ionicons
+                    name="swap-horizontal-outline"
+                    size={20}
+                    color="#C6FF00"
+                  />
+                  <Text style={{
+                    color: '#C6FF00',
+                    fontSize: 10,
+                    fontWeight: '600',
+                    fontFamily: 'Inter_600SemiBold',
+                    marginTop: 2,
+                  }}>
+                    Switch
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ alignItems: 'center' }}>
+                <Ionicons name="person-circle-outline" size={64} color="#9CA3AF" />
+                <Text style={{
+                  color: '#F1F1F1',
+                  fontSize: 16,
+                  fontWeight: '600',
+                  fontFamily: 'Inter_600SemiBold',
+                  marginTop: 12,
+                  marginBottom: 8,
+                }}>
+                  Not Logged In
+                </Text>
+                <Text style={{
+                  color: '#9CA3AF',
+                  fontSize: 14,
+                  fontFamily: 'Inter_400Regular',
+                  textAlign: 'center',
+                  marginBottom: 16,
+                }}>
+                  Please log in to receive job assignments
+                </Text>
+                <TouchableOpacity
+                  onPress={handleProfilePress}
+                  style={{
+                    backgroundColor: '#C6FF00',
+                    paddingHorizontal: 24,
+                    paddingVertical: 12,
+                    borderRadius: 12,
+                  }}
+                >
+                  <Text style={{
+                    color: '#0B0F1A',
+                    fontSize: 14,
+                    fontWeight: '600',
+                    fontFamily: 'Inter_600SemiBold',
+                  }}>
+                    Log In
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </Animatable.View>
+
+          {/* Jobs Overview */}
+          <Animatable.View
+            animation="fadeInUp"
+            duration={600}
+            delay={400}
+            style={{
+              marginHorizontal: 16,
+              marginBottom: 24,
+            }}
+          >
+            <Text style={{
+              color: '#F1F1F1',
+              fontSize: 18,
+              fontWeight: '600',
+              fontFamily: 'Inter_600SemiBold',
+              marginBottom: 16,
+            }}>
+              Job Status
+            </Text>
+
+            <TouchableOpacity
+              onPress={handleViewJobs}
               style={{
-                backgroundColor: trend >= 0 ? `${NeumorphicTheme.colors.semantic.success}20` : `${NeumorphicTheme.colors.semantic.error}20`
+                backgroundColor: '#1C1F2A',
+                borderRadius: 16,
+                padding: 20,
+                borderWidth: 1,
+                borderColor: '#374151',
+                ...shadowStyles.medium,
               }}
             >
-              <TrendingUp
-                size={12}
-                color={trend >= 0 ? NeumorphicTheme.colors.semantic.success : NeumorphicTheme.colors.semantic.error}
-                style={{ transform: [{ rotate: trend >= 0 ? '0deg' : '180deg' }] }}
-              />
-              <Text
-                className="text-xs font-medium"
-                style={{
-                  color: trend >= 0 ? NeumorphicTheme.colors.semantic.success : NeumorphicTheme.colors.semantic.error
-                }}
-              >
-                {Math.abs(trend)}%
-              </Text>
-            </View>
-          )}
-        </View>
-        <Text className="text-2xl font-bold text-white mb-1">{value}</Text>
-        <Text className="text-sm text-gray-400">{title}</Text>
-      </View>
-    </Animatable.View>
-  );
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 24,
+                    backgroundColor: 'rgba(198, 255, 0, 0.2)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 16,
+                  }}>
+                    <Ionicons name="briefcase" size={24} color="#C6FF00" />
+                  </View>
+                  
+                  <View>
+                    <Text style={{
+                      color: '#F1F1F1',
+                      fontSize: 16,
+                      fontWeight: '600',
+                      fontFamily: 'Inter_600SemiBold',
+                      marginBottom: 4,
+                    }}>
+                      {isAuthenticated ? 'Pending Jobs' : 'No Active Jobs'}
+                    </Text>
+                    <Text style={{
+                      color: '#9CA3AF',
+                      fontSize: 14,
+                      fontFamily: 'Inter_400Regular',
+                    }}>
+                      {isAuthenticated 
+                        ? `${pendingJobs} jobs waiting`
+                        : 'Log in to receive assignments'
+                      }
+                    </Text>
+                  </View>
+                </View>
 
-  // Test webapp connection
-  const testWebappConnection = async () => {
-    try {
-      Alert.alert(
-        'Testing Webapp Connection',
-        'Testing connection to webapp endpoints...',
-        [{ text: 'OK' }]
-      );
-
-      // Test basic connection
-      const connectionTest = await webhookService.testConnection();
-      
-      // Test fetch bookings
-      const bookingsTest = await webhookService.fetchApprovedBookings();
-      
-      // Test sync
-      const syncTest = await webhookService.syncWithWebApp({
-        staffId: user?.id || 'test-staff',
-        deviceId: 'test-device',
-      });
-
-      const results = [
-        `Connection Test: ${connectionTest.success ? '✅ Success' : '❌ Failed'}`,
-        connectionTest.error ? `Error: ${connectionTest.error}` : '',
-        '',
-        `Fetch Bookings: ${bookingsTest.success ? '✅ Success' : '❌ Failed'}`,
-        bookingsTest.error ? `Error: ${bookingsTest.error}` : '',
-        bookingsTest.success && bookingsTest.data ? `Found ${bookingsTest.data.length} bookings` : '',
-        '',
-        `Sync Test: ${syncTest.success ? '✅ Success' : '❌ Failed'}`,
-        syncTest.error ? `Error: ${syncTest.error}` : '',
-      ].filter(line => line.length > 0);
-
-      Alert.alert(
-        'Webapp Test Results',
-        results.join('\n'),
-        [{ text: 'OK' }]
-      );
-
-    } catch (error) {
-      Alert.alert(
-        'Test Failed',
-        `Connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        [{ text: 'OK' }]
-      );
-    }
-  };
-
-  // Test user authentication
-  const testUserAuth = async () => {
-    try {
-      Alert.alert(
-        'User Authentication Test',
-        'Testing user authentication and Firebase connection...',
-        [{ text: 'OK' }]
-      );
-
-      // These are already imported at the top of the file
-      // const { collection, query, where, getDocs, doc, getDoc } = await import('firebase/firestore');
-      // const { db } = await import('@/lib/firebase');
-      // const { authService } = await import('@/services/authService');
-
-      // Test 1: Find user by ID
-      const userId = 'VPPtbGl8WhMicZURHOgQ9BUzJd02';
-      const userRef = doc(db, 'staff accounts', userId);
-      const userDoc = await getDoc(userRef);
-      
-      let results = [];
-
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        results.push(`✅ User Found: ${userData.full_name || userData.firstName + ' ' + userData.lastName}`);
-        results.push(`Email: ${userData.email}`);
-        results.push(`Role: ${userData.role}`);
-        results.push(`Active: ${userData.isActive}`);
-      } else {
-        results.push('❌ User not found by ID');
-      }
-
-      // Test 2: Find user by email
-      const staffAccountsRef = collection(db, 'staff accounts');
-      const q = query(staffAccountsRef, where('email', '==', 'test@exam.com'));
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
-        results.push('✅ User found by email');
-        querySnapshot.forEach(doc => {
-          const data = doc.data();
-          results.push(`Document ID: ${doc.id}`);
-        });
-      } else {
-        results.push('❌ User not found by email');
-      }
-
-      // Test 3: Check if user has password field
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        if (userData.password) {
-          results.push('✅ User has password field');
-        } else {
-          results.push('❌ User missing password field');
-        }
-      }
-
-      Alert.alert(
-        'User Test Results',
-        results.join('\n'),
-        [{ text: 'OK' }]
-      );
-
-    } catch (error) {
-      Alert.alert(
-        'Test Failed',
-        `Firebase test failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        [{ text: 'OK' }]
-      );
-    }
-  };
-
-  // Render Enhanced Staff Dashboard for staff users
-  if (isStaffUser) {
-    return (
-      <EnhancedStaffDashboard
-        user={user}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        pendingJobs={pendingJobs}
-        onAcceptJob={acceptTestJob}
-        onDeclineJob={declineTestJob}
-      />
-    );
-  }
-
-  return (
-    <View className="flex-1 bg-dark-bg">
-      {/* Background Gradient */}
-      <LinearGradient
-        colors={NeumorphicTheme.gradients.background}
-        className="absolute inset-0"
-      />
-
-      {/* Enhanced BlurHeader */}
-      <BlurHeader
-        title={`${getGreeting()}, ${user?.name || 'Admin'}!`}
-        subtitle={`${user?.role} • Dashboard Overview`}
-        intensity={70}
-        tint="light"
-        showNotificationButton={true}
-        showSettingsButton={true}
-        onNotificationPress={() => Alert.alert('Notifications', 'Opening notifications...')}
-        onSettingsPress={() => Alert.alert('Settings', 'Opening settings...')}
-      />
-
-      <ScrollView
-        className="flex-1 px-4"
-        contentContainerStyle={{ paddingBottom: 32 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={NeumorphicTheme.colors.brand.primary}
-            colors={[NeumorphicTheme.colors.brand.primary]}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-
-          {/* Sync Status */}
-          <SyncStatusIndicator showDetails={true} />
-
-          {/* Quick Stats */}
-          <View className="mb-6">
-            <Text className="text-lg font-semibold text-white mb-4">Today's Overview</Text>
-            <View className="flex-row flex-wrap gap-3">
-              <StatCard
-                title="Active Bookings"
-                value={stats.activeBookings}
-                icon={<Home size={20} color={NeumorphicTheme.colors.brand.primary} />}
-                color={NeumorphicTheme.colors.brand.primary}
-                trend={12}
-                index={0}
-              />
-              <StatCard
-                title="Pending Tasks"
-                value={stats.pendingTasks}
-                icon={<Clock size={20} color={NeumorphicTheme.colors.semantic.warning} />}
-                color={NeumorphicTheme.colors.semantic.warning}
-                trend={-5}
-                index={1}
-              />
-              <StatCard
-                title="Completed Tasks"
-                value={stats.completedTasks}
-                icon={<CheckCircle size={20} color={NeumorphicTheme.colors.semantic.success} />}
-                color={NeumorphicTheme.colors.semantic.success}
-                trend={8}
-                index={2}
-              />
-              <StatCard
-                title="Maintenance Issues"
-                value={stats.maintenanceIssues}
-                icon={<AlertTriangle size={20} color={NeumorphicTheme.colors.semantic.error} />}
-                color={NeumorphicTheme.colors.semantic.error}
-                trend={-15}
-                index={3}
-              />
-            </View>
-          </View>
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}>
+                  {isAuthenticated && pendingJobs > 0 && (
+                    <View style={{
+                      backgroundColor: '#EF4444',
+                      borderRadius: 12,
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      marginRight: 12,
+                    }}>
+                      <Text style={{
+                        color: '#FFFFFF',
+                        fontSize: 12,
+                        fontWeight: '600',
+                        fontFamily: 'Inter_600SemiBold',
+                      }}>
+                        {pendingJobs}
+                      </Text>
+                    </View>
+                  )}
+                  <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                </View>
+              </View>
+            </TouchableOpacity>
+          </Animatable.View>
 
           {/* Quick Actions */}
-          <View className="mb-6">
-            <Text className="text-lg font-semibold text-white mb-4">Quick Actions</Text>
-            <View className="flex-row flex-wrap gap-3">
-              <TouchableOpacity className="bg-dark-surface rounded-lg p-4 items-center gap-2 shadow-lg" style={{ width: (screenWidth - 60) / 2 }}>
-                <Calendar size={24} color={NeumorphicTheme.colors.brand.primary} />
-                <Text className="text-sm font-medium text-white">View Schedule</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity className="bg-dark-surface rounded-lg p-4 items-center gap-2 shadow-lg" style={{ width: (screenWidth - 60) / 2 }}>
-                <MapPin size={24} color={NeumorphicTheme.colors.semantic.info} />
-                <Text className="text-sm font-medium text-white">Properties</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity className="bg-dark-surface rounded-lg p-4 items-center gap-2 shadow-lg" style={{ width: (screenWidth - 60) / 2 }}>
-                <Users size={24} color={NeumorphicTheme.colors.semantic.success} />
-                <Text className="text-sm font-medium text-white">Staff</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="bg-dark-surface rounded-lg p-4 items-center gap-2 shadow-lg"
-                style={{ width: (screenWidth - 60) / 2 }}
-                onPress={testWebappConnection}
-              >
-                <Settings size={24} color={NeumorphicTheme.colors.semantic.info} />
-                <Text className="text-sm font-medium text-white">Test Webapp</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                className="bg-dark-surface rounded-lg p-4 items-center gap-2 shadow-lg"
-                style={{ width: (screenWidth - 60) / 2 }}
-                onPress={() => setShowUserTest(true)}
-              >
-                <Users size={24} color={NeumorphicTheme.colors.semantic.warning} />
-                <Text className="text-sm font-medium text-white">Test User Login</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Recent Activity */}
-          <View className="mb-6">
-            <Text className="text-lg font-semibold text-white mb-4">Recent Activity</Text>
-            <View className="bg-dark-surface rounded-lg p-4 shadow-lg">
-              {recentActivity.map((activity, index) => (
-                <View key={activity.id}>
-                  <View className="flex-row items-start gap-3">
-                    <View className="w-8 h-8 rounded-full bg-dark-card items-center justify-center mt-1">
-                      {getActivityIcon(activity.type, activity.status)}
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-sm font-semibold text-white mb-1">{activity.title}</Text>
-                      <Text className="text-sm text-gray-400 mb-1">{activity.description}</Text>
-                      <Text className="text-xs text-gray-500">{formatTimeAgo(activity.timestamp)}</Text>
-                    </View>
-                  </View>
-                  {index < recentActivity.length - 1 && <View className="h-px bg-dark-card my-3" />}
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* System Status */}
-          <View className="bg-dark-surface rounded-lg p-4 shadow-lg mb-6">
-            <Text className="text-base font-semibold text-white mb-3">System Status</Text>
-            <View className="flex-row flex-wrap gap-4 mb-3">
-              <View className="flex-row items-center gap-2">
-                <View
-                  className="w-2 h-2 rounded-full"
-                  style={{
-                    backgroundColor: isOnline ? NeumorphicTheme.colors.semantic.success : NeumorphicTheme.colors.semantic.error
-                  }}
-                />
-                <Text className="text-sm text-gray-400">
-                  {isOnline ? 'Online' : 'Offline'}
-                </Text>
-              </View>
-
-              <View className="flex-row items-center gap-2">
-                <View
-                  className="w-2 h-2 rounded-full"
-                  style={{
-                    backgroundColor: isSyncing ? NeumorphicTheme.colors.semantic.warning : NeumorphicTheme.colors.semantic.success
-                  }}
-                />
-                <Text className="text-sm text-gray-400">
-                  {isSyncing ? 'Syncing' : 'Synced'}
-                </Text>
-              </View>
-
-              <View className="flex-row items-center gap-2">
-                <View
-                  className="w-2 h-2 rounded-full"
-                  style={{
-                    backgroundColor: conflictCount > 0 ? NeumorphicTheme.colors.semantic.error : NeumorphicTheme.colors.semantic.success
-                  }}
-                />
-                <Text className="text-sm text-gray-400">
-                  {conflictCount > 0 ? `${conflictCount} Conflicts` : 'No Conflicts'}
-                </Text>
-              </View>
-            </View>
-
-            {lastSyncTime && (
-              <Text className="text-xs text-gray-500 text-center">
-                Last sync: {formatTimeAgo(lastSyncTime)}
+          {isAuthenticated && currentProfile && (
+            <Animatable.View
+              animation="fadeInUp"
+              duration={600}
+              delay={600}
+              style={{
+                marginHorizontal: 16,
+              }}
+            >
+              <Text style={{
+                color: '#F1F1F1',
+                fontSize: 18,
+                fontWeight: '600',
+                fontFamily: 'Inter_600SemiBold',
+                marginBottom: 16,
+              }}>
+                Quick Actions
               </Text>
-            )}
-          </View>
 
-          {/* Sign Out Button */}
-          <TouchableOpacity
-            className="bg-red-500/20 border border-red-500/30 rounded-lg p-4 items-center"
-            onPress={signOut}
-          >
-            <Text className="text-base font-medium text-red-400">Sign Out</Text>
-          </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TouchableOpacity
+                  onPress={() => router.push('/(tabs)/scan')}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#1C1F2A',
+                    borderRadius: 16,
+                    padding: 16,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: '#374151',
+                    ...shadowStyles.small,
+                  }}
+                >
+                  <Ionicons name="qr-code" size={32} color="#C6FF00" />
+                  <Text style={{
+                    color: '#F1F1F1',
+                    fontSize: 14,
+                    fontWeight: '500',
+                    fontFamily: 'Inter_500Medium',
+                    marginTop: 8,
+                  }}>
+                    Scan QR
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => router.push('/(tabs)/profile')}
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#1C1F2A',
+                    borderRadius: 16,
+                    padding: 16,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: '#374151',
+                    ...shadowStyles.small,
+                  }}
+                >
+                  <Ionicons name="person" size={32} color="#C6FF00" />
+                  <Text style={{
+                    color: '#F1F1F1',
+                    fontSize: 14,
+                    fontWeight: '500',
+                    fontFamily: 'Inter_500Medium',
+                    marginTop: 8,
+                  }}>
+                    Profile
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Animatable.View>
+          )}
         </ScrollView>
+      </SafeAreaView>
 
-        {/* User Test Modal */}
-        <Modal
-          visible={showUserTest}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowUserTest(false)}
-        >
-          <View className="flex-1 bg-dark-bg">
-            <View className="flex-row justify-between items-center p-4 border-b border-gray-700">
-              <Text className="text-lg font-semibold text-white">User Authentication Test</Text>
-              <TouchableOpacity
-                className="w-8 h-8 rounded-full bg-dark-surface justify-center items-center"
-                onPress={() => setShowUserTest(false)}
-              >
-                <Text className="text-lg font-bold text-gray-400">✕</Text>
-              </TouchableOpacity>
-            </View>
-            <UserTestScreen />
-          </View>
-        </Modal>
-      </View>
-    );
+      {/* Beautiful Logout Overlay with AIS Telecom Styling */}
+      <LogoutOverlay
+        visible={isSwitchingProfile}
+        message="Switching profile..."
+      />
+    </View>
+  );
 }

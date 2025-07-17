@@ -13,7 +13,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '@/contexts/AuthContext';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useStaffAuth } from '@/hooks/useStaffAuth';
 import {
   CheckCircle,
@@ -26,7 +26,7 @@ import {
 } from 'lucide-react-native';
 
 export default function AuthenticationTest() {
-  const { user, isAuthenticated, signIn, signOut, isLoading, error } = useAuth();
+  const { user, isAuthenticated, signIn, signOut, isLoading, error } = usePINAuth();
   const { hasRole } = useStaffAuth();
   const [testResults, setTestResults] = useState<any[]>([]);
 

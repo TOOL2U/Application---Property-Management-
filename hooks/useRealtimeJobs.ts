@@ -8,7 +8,7 @@ import {
   Unsubscribe 
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useAuth } from '@/contexts/AuthContext';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 import { Job } from '@/types/job';
 
 interface UseRealtimeJobsReturn {
@@ -46,7 +46,7 @@ export function useRealtimeJobs(): UseRealtimeJobsReturn {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
   
-  const { user } = useAuth();
+  const { currentProfile } = usePINAuth();
 
   useEffect(() => {
     // Reset states when user changes
@@ -55,23 +55,23 @@ export function useRealtimeJobs(): UseRealtimeJobsReturn {
     setError(null);
 
     // Don't run query if no user is authenticated
-    if (!user?.id) {
+    if (!currentProfile?.id) {
       setLoading(false);
       return;
     }
 
-    console.log('🔔 Setting up real-time jobs listener for user:', user.id);
+    console.log('🔔 Setting up real-time jobs listener for user:', currentProfile.id);
 
     let unsubscribe: Unsubscribe;
 
     try {
-      // Create Firestore query for jobs assigned to current user with pending status
+      // Create Firestore query for jobs assigned to current staff profile with pending status
       const jobsRef = collection(db, 'jobs');
       const jobsQuery = query(
         jobsRef,
-        where('assignedStaffId', '==', user.id),
+        where('assignedTo', '==', currentProfile.id),
         where('status', '==', 'pending'),
-        orderBy('createdAt', 'desc') // Order by creation date, newest first
+        orderBy('scheduledDate', 'desc') // Order by scheduled date, newest first
       );
 
       // Set up real-time listener
@@ -95,7 +95,7 @@ export function useRealtimeJobs(): UseRealtimeJobsReturn {
                 type: data.type || 'general',
                 status: data.status || 'pending',
                 priority: data.priority || 'medium',
-                assignedTo: data.assignedStaffId || user.id,
+                assignedTo: data.assignedTo || currentProfile.id,
                 assignedBy: data.assignedBy || 'system',
                 assignedAt: data.assignedAt?.toDate() || new Date(),
                 scheduledDate: data.scheduledDate?.toDate() || new Date(),
@@ -169,7 +169,7 @@ export function useRealtimeJobs(): UseRealtimeJobsReturn {
       }
     };
 
-  }, [user?.id]); // Re-run effect when user ID changes
+  }, [currentProfile?.id]); // Re-run effect when user ID changes
 
   return {
     jobs,

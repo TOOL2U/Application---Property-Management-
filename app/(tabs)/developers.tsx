@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Platform, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as Animatable from 'react-native-animatable';
-import { AITheme } from '@/constants/AITheme';
-import { BlurHeader } from '@/components/ui/BlurHeader';
-import { useAuth } from '@/contexts/AuthContext';
-import { useStaffAuth } from '@/hooks/useStaffAuth';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 
 // Enhanced developer navigation item component
 const DevNavItem = ({
@@ -39,7 +37,7 @@ const DevNavItem = ({
       disabled={!isEnabled}
       className={`${!isEnabled ? 'opacity-60' : ''}`}
       style={{
-        shadowColor: isEnabled ? '#8b5cf6' : 'transparent',
+        shadowColor: isEnabled ? '#C6FF00' : 'transparent',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
@@ -141,13 +139,12 @@ const DevNavItem = ({
 
 export default function DevelopersPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const { hasRole } = useStaffAuth();
+  const { currentProfile } = usePINAuth();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Role-based navigation visibility
-  const isStaffUser = hasRole(['cleaner', 'maintenance', 'staff']);
-  const isAdminOrManager = hasRole(['admin', 'manager']);
+  const isStaffUser = currentProfile?.role && ['cleaner', 'maintenance', 'staff'].includes(currentProfile.role);
+  const isAdminOrManager = currentProfile?.role && ['admin', 'manager'].includes(currentProfile.role);
 
   const handleNavigation = (route: string) => {
     try {
@@ -332,54 +329,52 @@ export default function DevelopersPage() {
   );
 
   return (
-    <View className="flex-1" style={{ backgroundColor: '#0a0a0a' }}>
-      {/* Enhanced Dark-to-Blue Gradient Background */}
-      <LinearGradient
-        colors={[
-          '#000000', // Pure black at top
-          '#0a0a0a', // Very dark gray
-          '#1a1a2e', // Dark blue-gray
-          '#16213e', // Darker blue
-          '#0f3460', // Deep blue
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        className="absolute inset-0"
-      />
+    <View style={{ flex: 1, backgroundColor: '#0B0F1A' }}>
+      <StatusBar barStyle="light-content" backgroundColor="#0B0F1A" />
+      <SafeAreaView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 32 }}>
+        {/* Enhanced Dark Gradient Background */}
+        <LinearGradient
+          colors={[
+            '#0B0F1A', // Primary background
+            '#111827', // Secondary surface
+            '#1F2937', // Tertiary surface
+            '#1C1F2A', // Elevated surface
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        />
 
-      {/* Secondary gradient overlay for depth */}
-      <LinearGradient
-        colors={[
-          'rgba(139, 92, 246, 0.1)', // Purple overlay
-          'transparent',
-          'rgba(59, 130, 246, 0.15)', // Blue overlay
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        className="absolute inset-0"
-      />
+        {/* Header */}
+        <Animatable.View 
+          animation="fadeInDown"
+          duration={600}
+          style={{ marginBottom: 24 }}
+        >
+          <Text style={{ 
+            color: '#F1F1F1', 
+            fontSize: 24, 
+            fontWeight: 'bold',
+            fontFamily: 'Urbanist_700Bold'
+          }}>
+            Developer Hub
+          </Text>
+          <Text style={{ 
+            color: '#9CA3AF', 
+            fontSize: 16, 
+            marginTop: 4,
+            fontFamily: 'Inter_400Regular'
+          }}>
+            {currentNavItems.length} routes • {isStaffUser ? 'Staff' : 'Admin'} view
+          </Text>
+        </Animatable.View>
 
-      {/* BlurHeader Component */}
-      <BlurHeader
-        title="Developer Hub"
-        subtitle={`${currentNavItems.length} routes • ${isStaffUser ? 'Staff' : 'Admin'} view`}
-        intensity={70}
-        tint="light"
-        showNotificationButton={false}
-        showSettingsButton={false}
-        rightComponent={
-          <View className="w-10 h-10 rounded-full bg-white/10 items-center justify-center">
-            <Ionicons name="code" size={20} color="white" />
-          </View>
-        }
-      />
-
-      <ScrollView
-        className="flex-1 px-4"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
-      >
-        {/* Search Bar */}
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 32 }}
+        >
+          {/* Search Bar */}
         <Animatable.View
           animation="fadeInDown"
           duration={600}
@@ -444,10 +439,10 @@ export default function DevelopersPage() {
                 </View>
                 <View>
                   <Text className="text-white text-lg font-semibold">
-                    {user?.name || 'Developer'}
+                    {currentProfile?.name || 'Developer'}
                   </Text>
                   <Text className="text-purple-300 text-sm">
-                    {user?.role} • {isStaffUser ? 'Staff Access' : 'Admin Access'}
+                    {currentProfile?.role} • {isStaffUser ? 'Staff Access' : 'Admin Access'}
                   </Text>
                 </View>
               </View>
@@ -455,7 +450,7 @@ export default function DevelopersPage() {
               <View className="grid grid-cols-2 gap-4">
                 <View className="bg-white/5 rounded-xl p-3">
                   <Text className="text-gray-400 text-xs uppercase tracking-wide">Email</Text>
-                  <Text className="text-white text-sm mt-1">{user?.email}</Text>
+                  <Text className="text-white text-sm mt-1">{currentProfile?.email}</Text>
                 </View>
                 <View className="bg-white/5 rounded-xl p-3">
                   <Text className="text-gray-400 text-xs uppercase tracking-wide">Routes</Text>
@@ -695,9 +690,10 @@ export default function DevelopersPage() {
           </Animatable.View>
         )}
 
-        {/* Bottom spacing for safe scrolling */}
-        <View className="h-8" />
-      </ScrollView>
+          {/* Bottom spacing for safe scrolling */}
+          <View style={{ height: 32 }} />
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }

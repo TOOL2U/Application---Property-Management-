@@ -15,6 +15,14 @@ import { useRouter } from 'expo-router';
 import { Job } from '@/types/job';
 import { jobService } from '@/services/jobService';
 import { useStaffAuth } from '@/hooks/useStaffAuth';
+import ErrorBoundary, { JobListErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { LoadingState, EmptyState } from '@/components/shared/StateComponents';
+import { 
+  getPriorityColor, 
+  getStatusColor, 
+  JOB_COLORS,
+  COMMON_STYLES 
+} from '@/utils/jobUtils';
 import {
   Briefcase,
   Clock,
@@ -32,26 +40,6 @@ const { width } = Dimensions.get('window');
 interface StaffJobsViewProps {
   onJobSelect?: (job: Job) => void;
 }
-
-const getPriorityColor = (priority: string) => {
-  switch (priority) {
-    case 'urgent': return '#ef4444';
-    case 'high': return '#f97316';
-    case 'medium': return '#eab308';
-    case 'low': return '#22c55e';
-    default: return '#6b7280';
-  }
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'accepted': return '#22c55e';
-    case 'in_progress': return '#3b82f6';
-    case 'completed': return '#10b981';
-    case 'assigned': return '#f59e0b';
-    default: return '#6b7280';
-  }
-};
 
 const JobCard: React.FC<{
   job: Job;
@@ -138,7 +126,7 @@ const JobCard: React.FC<{
 };
 
 export default function StaffJobsView({ onJobSelect }: StaffJobsViewProps) {
-  const { user } = useStaffAuth();
+  const { user, isLoading: authLoading } = useStaffAuth();
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
@@ -240,7 +228,7 @@ export default function StaffJobsView({ onJobSelect }: StaffJobsViewProps) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView className="flex-1 bg-dark-bg px-4 pt-8">
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>My Jobs</Text>

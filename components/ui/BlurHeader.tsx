@@ -1,4 +1,4 @@
-/**
+pm run devicePixelRatio/**
  * BlurHeader Component
  * Reusable header with BlurView effect, rounded corners, and padding
  */
@@ -10,6 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Bell, Settings } from 'lucide-react-native';
 import { AITheme } from '@/constants/AITheme';
+import { Logo } from './Logo';
 
 interface BlurHeaderProps {
   title: string;
@@ -17,6 +18,7 @@ interface BlurHeaderProps {
   showBackButton?: boolean;
   showNotificationButton?: boolean;
   showSettingsButton?: boolean;
+  showLogo?: boolean;
   onBackPress?: () => void;
   onNotificationPress?: () => void;
   onSettingsPress?: () => void;
@@ -31,6 +33,7 @@ export const BlurHeader: React.FC<BlurHeaderProps> = ({
   showBackButton = false,
   showNotificationButton = true,
   showSettingsButton = false,
+  showLogo = true,
   onBackPress,
   onNotificationPress,
   onSettingsPress,
@@ -83,6 +86,12 @@ export const BlurHeader: React.FC<BlurHeaderProps> = ({
                 >
                   <ChevronLeft size={20} color="white" />
                 </TouchableOpacity>
+              )}
+              
+              {showLogo && (
+                <View className="mr-3">
+                  <Logo size="header" />
+                </View>
               )}
               
               <View className="flex-1">

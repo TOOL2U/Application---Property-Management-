@@ -12,32 +12,32 @@ export function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
       case 'not_started':
         return {
           text: 'Not Started',
-          backgroundColor: '#fef3c7',
-          textColor: '#d97706',
+          backgroundColor: 'rgba(245, 158, 11, 0.2)',  // Dark theme compatible
+          textColor: '#f59e0b',
         };
       case 'in_progress':
         return {
           text: 'In Progress',
-          backgroundColor: '#dbeafe',
-          textColor: '#2563eb',
+          backgroundColor: 'rgba(59, 130, 246, 0.2)',  // Dark theme compatible
+          textColor: '#3b82f6',
         };
       case 'completed':
         return {
           text: 'Completed',
-          backgroundColor: '#dcfce7',
-          textColor: '#16a34a',
+          backgroundColor: 'rgba(34, 197, 94, 0.2)',   // Dark theme compatible
+          textColor: '#22c55e',
         };
       case 'cancelled':
         return {
           text: 'Cancelled',
-          backgroundColor: '#fee2e2',
-          textColor: '#dc2626',
+          backgroundColor: 'rgba(239, 68, 68, 0.2)',   // Dark theme compatible
+          textColor: '#ef4444',
         };
       default:
         return {
           text: status,
-          backgroundColor: '#f3f4f6',
-          textColor: '#6b7280',
+          backgroundColor: 'rgba(107, 114, 128, 0.2)',  // Dark theme compatible
+          textColor: '#9ca3af',
         };
     }
   };

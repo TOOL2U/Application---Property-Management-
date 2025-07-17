@@ -21,7 +21,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Animatable from 'react-native-animatable';
-import { useAuth } from '@/contexts/AuthContext';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 import { jobService } from '@/services/jobService';
 import type { Job } from '@/types/job';
 import { SiaMoonCard, SiaMoonButton, SiaMoonGradientButton, SiaMoonText } from '@/components/ui/SiaMoonUI';
@@ -55,7 +55,7 @@ export default function StaffJobsDashboard({
   refreshing: externalRefreshing,
   onRefresh: externalOnRefresh
 }: StaffJobsDashboardProps) {
-  const { user, signOut } = useAuth();
+  const { user, signOut } = usePINAuth();
   const [pendingJobs, setPendingJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -322,7 +322,7 @@ export default function StaffJobsDashboard({
 
         {/* Booking Date */}
         <View style={styles.dateSection}>
-          <Calendar size={16} color="#8b5cf6" />
+          <Calendar size={16} color="#C6FF00" />
           <Text style={styles.bookingDate}>{formatDate(job.scheduledDate)}</Text>
         </View>
 
@@ -376,13 +376,11 @@ export default function StaffJobsDashboard({
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView className="flex-1 bg-dark-bg px-4 pt-8">
       <LinearGradient
-        colors={['#1a1a2e', '#16213e']}
+        colors={['#0B0F1A', '#111827', '#1C1F2A']}
         style={styles.backgroundGradient}
       />
-
-      <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
@@ -434,7 +432,6 @@ export default function StaffJobsDashboard({
 
           <View style={styles.bottomSpacing} />
         </ScrollView>
-      </SafeAreaView>
 
       {/* Decline Job Modal */}
       <Modal
@@ -510,7 +507,7 @@ export default function StaffJobsDashboard({
           </Animatable.View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 

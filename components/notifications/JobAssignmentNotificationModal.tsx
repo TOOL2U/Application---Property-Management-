@@ -28,7 +28,7 @@ import {
 } from 'lucide-react-native';
 import type { JobNotificationData } from '@/services/realTimeJobNotificationService';
 import { jobService } from '@/services/jobService';
-import { useAuth } from '@/contexts/AuthContext';
+import { usePINAuth } from "@/contexts/PINAuthContext";
 
 const { width, height } = Dimensions.get('window');
 
@@ -47,7 +47,7 @@ export default function JobAssignmentNotificationModal({
   onDecline,
   onDismiss,
 }: JobAssignmentNotificationModalProps) {
-  const { user } = useAuth();
+  const { currentProfile } = usePINAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [slideAnim] = useState(new Animated.Value(height));
 
@@ -78,7 +78,7 @@ export default function JobAssignmentNotificationModal({
       setIsProcessing(true);
       const response = await jobService.acceptJob({
         jobId: job.jobId,
-        staffId: user.id,
+        staffId: currentProfile?.id || '',
       });
 
       if (response.success) {

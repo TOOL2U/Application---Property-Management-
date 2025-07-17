@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,580 +7,417 @@ import {
   StyleSheet,
   Dimensions,
   RefreshControl,
+  FlatList,
+  TextInput,
+  StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import {
-  Search,
-  Filter,
-  Plus,
-  Clock,
-  MapPin,
-  Phone,
-  CheckCircle,
-  AlertTriangle,
-  Play,
-  Pause
-} from 'lucide-react-native';
-import { NeumorphicCard, NeumorphicButton } from '@/components/ui/NeumorphicComponents';
-import { NeumorphicTheme } from '@/constants/NeumorphicTheme';
-import { useStaffAuth } from '@/hooks/useStaffAuth';
-import { useAuth } from '@/contexts/AuthContext';
+import * as Animatable from 'react-native-animatable';
+import { usePINAuth } from "@/contexts/PINAuthContext";
+import { useJobContext } from '@/contexts/JobContext';
+import { JobData } from '@/types/jobData';
 import StaffJobsView from '@/components/jobs/StaffJobsView';
 import EnhancedStaffJobsView from '@/components/jobs/EnhancedStaffJobsView';
+import JobNotificationBanner from '@/components/JobNotificationBanner';
+import ErrorBoundary, { JobListErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { LoadingState, EmptyState, LoadingSkeleton, ErrorState } from '@/components/shared/StateComponents';
+import SharedJobCard from '@/components/shared/SharedJobCard';
+import { 
+  getJobTypeIcon, 
+  getStatusColor, 
+  getStatusText, 
+  formatJobDate,
+  JOB_COLORS,
+  COMMON_STYLES 
+} from '@/utils/jobUtils';
 
 const { width: screenWidth } = Dimensions.get('window');
-
-// Mock jobs data
-const mockJobs = [
-  {
-    id: '1',
-    title: 'HVAC System Maintenance',
-    property: 'Oceanview Apartments',
-    unit: 'Unit 4B',
-    address: '2847 Coastal Drive, Miami Beach, FL',
-    priority: 'high',
-    status: 'in_progress',
-    scheduledTime: '2:30 PM',
-    estimatedDuration: '2-3 hours',
-    tenant: 'Maria Rodriguez',
-    phone: '(305) 555-0123',
-    description: 'Annual HVAC system maintenance and filter replacement',
-    completedTasks: 2,
-    totalTasks: 5,
-  },
-  {
-    id: '2',
-    title: 'Emergency Plumbing Repair',
-    property: 'Sunset Gardens',
-    unit: 'Building C',
-    address: '1456 Garden View Blvd, Coral Gables, FL',
-    priority: 'urgent',
-    status: 'assigned',
-    scheduledTime: '4:00 PM',
-    estimatedDuration: '1-2 hours',
-    tenant: 'James Chen',
-    phone: '(305) 555-0456',
-    description: 'Kitchen sink leak causing water damage',
-    completedTasks: 0,
-    totalTasks: 3,
-  },
-  {
-    id: '3',
-    title: 'Electrical Outlet Installation',
-    property: 'Downtown Lofts',
-    unit: 'Unit 12A',
-    address: '789 Biscayne Boulevard, Miami, FL',
-    priority: 'medium',
-    status: 'scheduled',
-    scheduledTime: '10:00 AM',
-    estimatedDuration: '1 hour',
-    tenant: 'Sarah Williams',
-    phone: '(305) 555-0789',
-    description: 'Install additional electrical outlets in bedroom',
-    completedTasks: 0,
-    totalTasks: 2,
-  },
-  {
-    id: '4',
-    title: 'Pool Cleaning Service',
-    property: 'Luxury Villas',
-    unit: 'Villa 8',
-    address: '456 Ocean Drive, Key Biscayne, FL',
-    priority: 'low',
-    status: 'completed',
-    scheduledTime: '11:00 AM',
-    estimatedDuration: '45 minutes',
-    tenant: 'Michael Johnson',
-    phone: '(305) 555-0321',
-    description: 'Weekly pool cleaning and chemical balancing',
-    completedTasks: 3,
-    totalTasks: 3,
-  },
-];
 
 const filterOptions = ['All', 'Assigned', 'In Progress', 'Scheduled', 'Completed'];
 
 export default function JobsScreen() {
-  const { hasRole } = useStaffAuth();
-  const { user } = useAuth();
+  const { currentProfile } = usePINAuth();
+  const { 
+    jobs, 
+    assignedJobs, 
+    loading, 
+    error, 
+    refreshJobs,
+    notifications,
+    unreadNotificationCount 
+  } = useJobContext();
+  
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const isStaffUser = hasRole(['cleaner', 'maintenance', 'staff']);
+  const isStaffUser = currentProfile?.role && ['cleaner', 'maintenance', 'staff'].includes(currentProfile.role);
+
+  // Show active job notification if there are unread notifications
+  const activeNotification = notifications.find(n => n.status !== 'read' && n.type === 'job_assigned');
 
   // Render Enhanced Staff Jobs View for staff users
   if (isStaffUser) {
-    return <EnhancedStaffJobsView />;
+    return (
+      <ErrorBoundary>
+        <EnhancedStaffJobsView />
+      </ErrorBoundary>
+    );
   }
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await refreshJobs();
     setRefreshing(false);
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent': return NeumorphicTheme.colors.semantic.error;
-      case 'high': return NeumorphicTheme.colors.semantic.warning;
-      case 'medium': return NeumorphicTheme.colors.brand.primary;
-      default: return NeumorphicTheme.colors.semantic.success;
-    }
-  };
+    // Filter jobs based on selected filter and search query
+  const filteredJobs = jobs.filter((job: JobData) => {
+    // Filter by status
+    const statusMatches = selectedFilter === 'All' || 
+      (selectedFilter === 'Assigned' && job.status === 'assigned') ||
+      (selectedFilter === 'In Progress' && job.status === 'in_progress') ||
+      (selectedFilter === 'Scheduled' && job.status === 'pending') ||
+      (selectedFilter === 'Completed' && job.status === 'completed');
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'in_progress': return NeumorphicTheme.colors.semantic.info;
-      case 'assigned': return NeumorphicTheme.colors.semantic.warning;
-      case 'completed': return NeumorphicTheme.colors.semantic.success;
-      default: return NeumorphicTheme.colors.text.tertiary;
-    }
-  };
+    // Filter by search query
+    const searchMatches = searchQuery === '' || 
+      job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.propertyId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.location?.address?.toLowerCase().includes(searchQuery.toLowerCase());
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'in_progress': return Play;
-      case 'assigned': return Clock;
-      case 'completed': return CheckCircle;
-      default: return Pause;
-    }
-  };
-
-  const filteredJobs = mockJobs.filter(job => {
-    const matchesFilter = selectedFilter === 'All' || 
-      job.status.replace('_', ' ').toLowerCase() === selectedFilter.toLowerCase();
-    const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.property.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
+    return statusMatches && searchMatches;
   });
 
+  const renderJobCard = ({ item: job, index }: { item: JobData; index: number }) => {
+    // Convert JobData to JobCardData format
+    const jobCardData = {
+      id: job.id,
+      title: job.title,
+      description: job.description,
+      status: job.status,
+      priority: job.priority || 'medium',
+      jobType: job.jobType,
+      estimatedDuration: job.estimatedDuration,
+      scheduledDate: job.scheduledDate,
+      location: job.location,
+      propertyRef: job.propertyRef,
+      propertyId: job.propertyId,
+    };
+
+    const handleJobPress = (jobData: any) => {
+      console.log('View details:', jobData.id);
+    };
+
+    const handleActionPress = (jobData: any, action: string) => {
+      switch (action) {
+        case 'details':
+          console.log('View details:', jobData.id);
+          break;
+        case 'map':
+          console.log('Open map:', jobData.id);
+          break;
+      }
+    };
+
+    return (
+      <View
+        style={{
+          width: '47%',
+          marginRight: index % 2 === 0 ? '6%' : 0,
+        }}
+      >
+        <SharedJobCard
+          job={jobCardData}
+          onPress={handleJobPress}
+          onActionPress={handleActionPress}
+          compact={true}
+          animationDelay={index * 100}
+          actions={[
+            { label: 'Details', action: 'details', icon: 'eye-outline' },
+            { label: 'Map', action: 'map', icon: 'map-outline' },
+          ]}
+        />
+      </View>
+    );
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: JOB_COLORS.background }}>
+        <StatusBar barStyle="light-content" backgroundColor={JOB_COLORS.background} />
+        <SafeAreaView style={{ flex: 1 }}>
+          <LoadingSkeleton count={6} />
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <View style={{ flex: 1, backgroundColor: JOB_COLORS.background }}>
+        <StatusBar barStyle="light-content" backgroundColor={JOB_COLORS.background} />
+        <SafeAreaView style={{ flex: 1 }}>
+          <ErrorState
+            title="Unable to load jobs"
+            message={error}
+            onRetry={refreshJobs}
+            retryLabel="Retry"
+            icon="briefcase-outline"
+          />
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  // Render empty state
+  const renderEmptyState = () => (
+    <EmptyState
+      title="No Jobs Available"
+      message="There are no jobs matching your current filter. Try adjusting your search or filter criteria."
+      actionLabel="Show All Jobs"
+      onAction={() => setSelectedFilter('All')}
+      icon="briefcase-outline"
+    />
+  );
+
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={NeumorphicTheme.gradients.backgroundMain}
-        style={styles.backgroundGradient}
-      />
-
-      <SafeAreaView style={styles.safeArea}>
+    <JobListErrorBoundary>
+      <View style={{ flex: 1, backgroundColor: JOB_COLORS.background }}>
+        <StatusBar barStyle="light-content" backgroundColor={JOB_COLORS.background} />
+      
+      {/* Job Notification Banner */}
+      {activeNotification && (
+        <JobNotificationBanner
+          notification={activeNotification}
+          onDismiss={() => console.log('Notification dismissed')}
+        />
+      )}
+      
+      <SafeAreaView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 32 }}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Jobs</Text>
-          <TouchableOpacity style={styles.addButton}>
-            <NeumorphicCard style={styles.addButtonCard}>
-              <Plus size={20} color={NeumorphicTheme.colors.brand.primary} />
-            </NeumorphicCard>
+        <Animatable.View
+          animation="fadeInDown"
+          duration={600}
+          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}
+        >
+          <View>
+            <Text style={{
+              color: 'white',
+              fontSize: 32,
+              fontWeight: 'bold',
+              fontFamily: 'Urbanist'
+            }}>
+              Active Jobs
+            </Text>
+            <Text style={{
+              color: '#9CA3AF',
+              fontSize: 16,
+              marginTop: 4,
+              fontFamily: 'Inter'
+            }}>
+              {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} available
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: 'rgba(198, 255, 0, 0.2)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onPress={() => console.log('Add new job')}
+            accessibilityLabel="Add new job"
+          >
+            <Ionicons name="add" size={24} color="#C6FF00" />
           </TouchableOpacity>
-        </View>
+        </Animatable.View>
 
-        {/* Search and Filter */}
-        <View style={styles.searchSection}>
-          <NeumorphicCard style={styles.searchCard}>
-            <View style={styles.searchContent}>
-              <Search size={20} color={NeumorphicTheme.colors.text.tertiary} />
-              <Text
-                style={styles.searchInput}
-                placeholder="Search jobs..."
-                placeholderTextColor={NeumorphicTheme.colors.text.tertiary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-            </View>
-          </NeumorphicCard>
-
-          <TouchableOpacity style={styles.filterButton}>
-            <NeumorphicCard style={styles.filterButtonCard}>
-              <Filter size={20} color={NeumorphicTheme.colors.text.secondary} />
-            </NeumorphicCard>
-          </TouchableOpacity>
-        </View>
+        {/* Search Bar */}
+        <Animatable.View
+          animation="fadeInUp"
+          duration={600}
+          delay={100}
+          style={{
+            backgroundColor: '#1C1F2A',
+            borderRadius: 16,
+            padding: 16,
+            marginBottom: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: '#374151',
+          }}
+        >
+          <Ionicons name="search-outline" size={20} color="#9CA3AF" style={{ marginRight: 12 }} />
+          <TextInput
+            style={{
+              flex: 1,
+              color: 'white',
+              fontSize: 16,
+              fontFamily: 'Inter'
+            }}
+            placeholder="Search jobs..."
+            placeholderTextColor="#9CA3AF"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </Animatable.View>
 
         {/* Filter Chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filtersContainer}
-          contentContainerStyle={styles.filtersContent}
+        <Animatable.View
+          animation="fadeInUp"
+          duration={600}
+          delay={200}
+          style={{ marginBottom: 24 }}
         >
-          {filterOptions.map((filter) => (
-            <TouchableOpacity
-              key={filter}
-              onPress={() => setSelectedFilter(filter)}
-              style={styles.filterChip}
-            >
-              <NeumorphicCard 
-                variant={selectedFilter === filter ? 'elevated' : 'default'}
-                style={[
-                  styles.filterChipCard,
-                  selectedFilter === filter && styles.filterChipSelected
-                ]}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 0 }}
+          >
+            {filterOptions.map((filter, index) => (
+              <TouchableOpacity
+                key={filter}
+                onPress={() => setSelectedFilter(filter)}
+                style={{ marginRight: 12 }}
               >
-                <Text style={[
-                  styles.filterChipText,
-                  selectedFilter === filter && styles.filterChipTextSelected
-                ]}>
-                  {filter}
-                </Text>
-              </NeumorphicCard>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Jobs List */}
-        <ScrollView
-          style={styles.jobsList}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[NeumorphicTheme.colors.brand.primary]}
-              tintColor={NeumorphicTheme.colors.brand.primary}
-              progressBackgroundColor="rgba(139, 92, 246, 0.1)"
-            />
-          }
-        >
-          {filteredJobs.map((job) => {
-            const StatusIcon = getStatusIcon(job.status);
-            const priorityColor = getPriorityColor(job.priority);
-            const statusColor = getStatusColor(job.status);
-
-            return (
-              <TouchableOpacity key={job.id} style={styles.jobItem}>
-                <NeumorphicCard style={styles.jobCard}>
-                  {/* Job Header */}
-                  <View style={styles.jobHeader}>
-                    <View style={styles.jobTitleSection}>
-                      <Text style={styles.jobTitle}>{job.title}</Text>
-                      <View style={styles.jobLocation}>
-                        <MapPin size={12} color={NeumorphicTheme.colors.text.tertiary} />
-                        <Text style={styles.jobLocationText}>
-                          {job.property} - {job.unit}
-                        </Text>
-                      </View>
-                    </View>
-                    
-                    <View style={styles.jobBadges}>
-                      <View style={[styles.priorityBadge, { backgroundColor: `${priorityColor}20` }]}>
-                        <Text style={[styles.priorityText, { color: priorityColor }]}>
-                          {job.priority.toUpperCase()}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Job Details */}
-                  <View style={styles.jobDetails}>
-                    <View style={styles.jobDetailRow}>
-                      <View style={styles.jobDetailItem}>
-                        <Clock size={14} color={NeumorphicTheme.colors.text.tertiary} />
-                        <Text style={styles.jobDetailText}>{job.scheduledTime}</Text>
-                      </View>
-                      <View style={styles.jobDetailItem}>
-                        <Phone size={14} color={NeumorphicTheme.colors.text.tertiary} />
-                        <Text style={styles.jobDetailText}>{job.tenant}</Text>
-                      </View>
-                    </View>
-                    
-                    <Text style={styles.jobDescription}>{job.description}</Text>
-                  </View>
-
-                  {/* Job Progress */}
-                  <View style={styles.jobProgress}>
-                    <View style={styles.progressInfo}>
-                      <Text style={styles.progressText}>
-                        Progress: {job.completedTasks}/{job.totalTasks} tasks
-                      </Text>
-                      <View style={styles.progressBar}>
-                        <View 
-                          style={[
-                            styles.progressFill,
-                            { 
-                              width: `${(job.completedTasks / job.totalTasks) * 100}%`,
-                              backgroundColor: statusColor
-                            }
-                          ]} 
-                        />
-                      </View>
-                    </View>
-                    
-                    <View style={[styles.statusBadge, { backgroundColor: `${statusColor}20` }]}>
-                      <StatusIcon size={12} color={statusColor} />
-                      <Text style={[styles.statusText, { color: statusColor }]}>
-                        {job.status.replace('_', ' ').toUpperCase()}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Job Actions */}
-                  <View style={styles.jobActions}>
-                    {job.status === 'assigned' && (
-                      <NeumorphicButton
-                        title="Start Job"
-                        onPress={() => console.log('Start job:', job.id)}
-                        variant="primary"
-                        size="small"
-                        style={styles.actionButton}
-                      />
-                    )}
-                    {job.status === 'in_progress' && (
-                      <NeumorphicButton
-                        title="Update Progress"
-                        onPress={() => console.log('Update progress:', job.id)}
-                        variant="secondary"
-                        size="small"
-                        style={styles.actionButton}
-                      />
-                    )}
-                    <TouchableOpacity style={styles.moreButton}>
-                      <Text style={styles.moreButtonText}>View Details</Text>
-                    </TouchableOpacity>
-                  </View>
-                </NeumorphicCard>
+                <View
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 12,
+                    backgroundColor: selectedFilter === filter 
+                      ? 'rgba(198, 255, 0, 0.2)' 
+                      : '#1C1F2A',
+                    borderWidth: 1,
+                    borderColor: selectedFilter === filter 
+                      ? 'rgba(198, 255, 0, 0.3)' 
+                      : '#374151',
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: '500',
+                      color: selectedFilter === filter ? '#C6FF00' : '#9CA3AF',
+                      fontFamily: 'Inter'
+                    }}
+                  >
+                    {filter}
+                  </Text>
+                </View>
               </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+            ))}
+          </ScrollView>
+        </Animatable.View>
+
+        {/* Jobs Grid */}
+        {loading ? (
+          <View style={{ 
+            flex: 1, 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            paddingVertical: 60 
+          }}>
+            <ActivityIndicator size="large" color="#C6FF00" />
+            <Text style={{
+              color: '#9CA3AF',
+              fontSize: 16,
+              marginTop: 16,
+              fontFamily: 'Inter_400Regular'
+            }}>
+              Loading jobs...
+            </Text>
+          </View>
+        ) : error ? (
+          <View style={{ 
+            flex: 1, 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            paddingVertical: 60,
+            paddingHorizontal: 32 
+          }}>
+            <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+            <Text style={{
+              color: '#F1F1F1',
+              fontSize: 18,
+              fontWeight: '600',
+              marginTop: 16,
+              textAlign: 'center',
+              fontFamily: 'Inter_600SemiBold'
+            }}>
+              Error Loading Jobs
+            </Text>
+            <Text style={{
+              color: '#9CA3AF',
+              fontSize: 14,
+              marginTop: 8,
+              textAlign: 'center',
+              fontFamily: 'Inter_400Regular'
+            }}>
+              {error}
+            </Text>
+            <TouchableOpacity
+              onPress={refreshJobs}
+              style={{
+                backgroundColor: '#C6FF00',
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+                borderRadius: 12,
+                marginTop: 24,
+              }}
+            >
+              <Text style={{
+                color: '#0B0F1A',
+                fontSize: 14,
+                fontWeight: '600',
+                fontFamily: 'Inter_600SemiBold'
+              }}>
+                Try Again
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : filteredJobs.length === 0 ? (
+          renderEmptyState()
+        ) : (
+          <FlatList
+            data={filteredJobs}
+            renderItem={renderJobCard}
+            numColumns={2}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 100 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#C6FF00']}
+                tintColor="#C6FF00"
+                progressBackgroundColor="rgba(198, 255, 0, 0.1)"
+              />
+            }
+            ListEmptyComponent={renderEmptyState}
+            keyExtractor={(item) => item.id}
+            columnWrapperStyle={{ justifyContent: 'space-between' }}
+          />
+        )}
       </SafeAreaView>
     </View>
+    </JobListErrorBoundary>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: NeumorphicTheme.colors.background.primary,
-  },
-  backgroundGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  safeArea: {
-    flex: 1,
-  },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: NeumorphicTheme.spacing[5],
-    paddingTop: NeumorphicTheme.spacing[4],
-    paddingBottom: NeumorphicTheme.spacing[6],
-  },
-  headerTitle: {
-    color: NeumorphicTheme.colors.text.primary,
-    fontSize: NeumorphicTheme.typography.sizes['3xl'].fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.bold,
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-  },
-  addButtonCard: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Search Section
-  searchSection: {
-    flexDirection: 'row',
-    paddingHorizontal: NeumorphicTheme.spacing[5],
-    marginBottom: NeumorphicTheme.spacing[4],
-    gap: NeumorphicTheme.spacing[3],
-  },
-  searchCard: {
-    flex: 1,
-    height: 48,
-  },
-  searchContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: NeumorphicTheme.spacing[4],
-    gap: NeumorphicTheme.spacing[3],
-  },
-  searchInput: {
-    flex: 1,
-    color: NeumorphicTheme.colors.text.primary,
-    fontSize: NeumorphicTheme.typography.sizes.base.fontSize,
-  },
-  filterButton: {
-    width: 48,
-    height: 48,
-  },
-  filterButtonCard: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Filters
-  filtersContainer: {
-    marginBottom: NeumorphicTheme.spacing[6],
-  },
-  filtersContent: {
-    paddingHorizontal: NeumorphicTheme.spacing[5],
-    gap: NeumorphicTheme.spacing[2],
-  },
-  filterChip: {
-    height: 36,
-  },
-  filterChipCard: {
-    height: 36,
-    paddingHorizontal: NeumorphicTheme.spacing[4],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterChipSelected: {
-    backgroundColor: `${NeumorphicTheme.colors.brand.primary}20`,
-  },
-  filterChipText: {
-    color: NeumorphicTheme.colors.text.secondary,
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.medium,
-  },
-  filterChipTextSelected: {
-    color: NeumorphicTheme.colors.brand.primary,
-  },
-
-  // Jobs List
-  jobsList: {
-    flex: 1,
-    paddingHorizontal: NeumorphicTheme.spacing[5],
-  },
-  jobItem: {
-    marginBottom: NeumorphicTheme.spacing[4],
-  },
-  jobCard: {
-    padding: NeumorphicTheme.spacing[4],
-  },
-
-  // Job Header
-  jobHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: NeumorphicTheme.spacing[3],
-  },
-  jobTitleSection: {
-    flex: 1,
-    marginRight: NeumorphicTheme.spacing[3],
-  },
-  jobTitle: {
-    color: NeumorphicTheme.colors.text.primary,
-    fontSize: NeumorphicTheme.typography.sizes.lg.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.semibold,
-    marginBottom: NeumorphicTheme.spacing[1],
-  },
-  jobLocation: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: NeumorphicTheme.spacing[1],
-  },
-  jobLocationText: {
-    color: NeumorphicTheme.colors.text.tertiary,
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-  },
-  jobBadges: {
-    alignItems: 'flex-end',
-  },
-  priorityBadge: {
-    paddingHorizontal: NeumorphicTheme.spacing[2],
-    paddingVertical: NeumorphicTheme.spacing[1],
-    borderRadius: NeumorphicTheme.borderRadius.sm,
-  },
-  priorityText: {
-    fontSize: NeumorphicTheme.typography.sizes.xs.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.bold,
-  },
-
-  // Job Details
-  jobDetails: {
-    marginBottom: NeumorphicTheme.spacing[3],
-  },
-  jobDetailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: NeumorphicTheme.spacing[2],
-  },
-  jobDetailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: NeumorphicTheme.spacing[1],
-  },
-  jobDetailText: {
-    color: NeumorphicTheme.colors.text.secondary,
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-  },
-  jobDescription: {
-    color: NeumorphicTheme.colors.text.tertiary,
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    lineHeight: 20,
-  },
-
-  // Job Progress
-  jobProgress: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: NeumorphicTheme.spacing[3],
-  },
-  progressInfo: {
-    flex: 1,
-    marginRight: NeumorphicTheme.spacing[3],
-  },
-  progressText: {
-    color: NeumorphicTheme.colors.text.secondary,
-    fontSize: NeumorphicTheme.typography.sizes.xs.fontSize,
-    marginBottom: NeumorphicTheme.spacing[1],
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: NeumorphicTheme.colors.surface.primary,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: NeumorphicTheme.spacing[1],
-    paddingHorizontal: NeumorphicTheme.spacing[2],
-    paddingVertical: NeumorphicTheme.spacing[1],
-    borderRadius: NeumorphicTheme.borderRadius.sm,
-  },
-  statusText: {
-    fontSize: NeumorphicTheme.typography.sizes.xs.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.semibold,
-  },
-
-  // Job Actions
-  jobActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  actionButton: {
-    flex: 1,
-    marginRight: NeumorphicTheme.spacing[3],
-  },
-  moreButton: {
-    paddingVertical: NeumorphicTheme.spacing[2],
-  },
-  moreButtonText: {
-    color: NeumorphicTheme.colors.brand.primary,
-    fontSize: NeumorphicTheme.typography.sizes.sm.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.medium,
-  },
-});

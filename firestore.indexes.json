@@ -113,6 +113,15 @@
       ]
     },
     {
+      "collectionGroup": "job_assignments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "staffId", "order": "ASCENDING" },
+        { "fieldPath": "scheduledFor", "order": "DESCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "job_events",
       "queryScope": "COLLECTION",
       "fields": [

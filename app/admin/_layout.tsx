@@ -1,6 +1,6 @@
 import React from 'react';
 import { Stack } from 'expo-router';
-import { AdminAuthProvider, useAdminAuth } from '@/contexts/AdminAuthContext';
+import { AdminAuthProvider, useAdminAuth } from "@/contexts/PINAuthContext";
 import { View, Text, StyleSheet } from 'react-native';
 import { useDesignTokens } from '@/constants/Design';
 

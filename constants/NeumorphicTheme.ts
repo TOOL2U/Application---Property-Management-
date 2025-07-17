@@ -11,39 +11,39 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 export const SiaMoonTheme = {
   // AI-Inspired Color Palette - Dark First Design
   colors: {
-    // Background System - Deep blacks with subtle variations
+    // Background System - Updated for new dark theme
     background: {
-      primary: '#0a0a0a',      // Deep black - main background
-      secondary: '#111111',     // Dark gray - secondary background
-      tertiary: '#1a1a1a',     // Card/surface colors
-      elevated: '#1f1f1f',     // Elevated surfaces
+      primary: '#0B0F1A',      // Deep navy-black - main background
+      secondary: '#111827',     // Secondary surface
+      tertiary: '#1C1F2A',     // Surface/card background (elevated surfaces)
+      elevated: '#1F2937',     // Secondary surfaces
     },
 
     // Surface colors for cards and components
     surface: {
-      primary: '#1a1a1a',      // Main card background
-      secondary: '#111111',     // Secondary surfaces
-      elevated: '#1f1f1f',     // Elevated cards
-      pressed: '#252525',      // Pressed state
-      border: '#333333',       // Subtle borders
+      primary: '#1C1F2A',      // Main card background (elevated surface)
+      secondary: '#1F2937',     // Secondary surfaces
+      elevated: '#374151',     // Elevated cards
+      pressed: '#4B5563',      // Pressed state
+      border: '#374151',       // Subtle borders
     },
 
-    // Text Hierarchy - High contrast for accessibility
+    // Text Hierarchy - Updated for new theme
     text: {
-      primary: '#ffffff',      // Primary text - pure white
-      secondary: '#a1a1aa',    // Secondary text - zinc-400
-      muted: '#71717a',        // Muted text - zinc-500
-      disabled: '#52525b',     // Disabled text - zinc-600
-      inverse: '#0a0a0a',      // Inverse text for light backgrounds
+      primary: '#F1F1F1',      // Primary text - soft white for headings
+      secondary: '#A1A1AA',    // Secondary text - muted gray for descriptions
+      muted: '#71717A',        // Tertiary text - darker gray for subtle text
+      disabled: '#4B5563',     // Disabled text
+      inverse: '#0B0F1A',      // Inverse text for light backgrounds
     },
 
-    // Brand Colors - Purple-focused with AI accent
+    // Brand Colors - Neon green accent system
     brand: {
-      primary: '#8b5cf6',      // Purple-500 - primary accent
-      primaryHover: '#7c3aed',  // Purple-600 - hover states
-      primaryLight: '#a78bfa',  // Purple-400 - light variant
-      primaryDark: '#6d28d9',   // Purple-700 - dark variant
-      primaryMuted: 'rgba(139, 92, 246, 0.1)', // Muted backgrounds
+      primary: '#C6FF00',      // Neon green - primary accent
+      primaryHover: '#A3E635',  // Lime green - hover states
+      primaryLight: '#D4FF3A',  // Light neon green - light variant
+      primaryDark: '#84CC16',   // Darker lime - dark variant
+      primaryMuted: 'rgba(198, 255, 0, 0.1)', // Muted backgrounds
     },
 
     // Semantic Colors - Optimized for dark theme
@@ -78,29 +78,30 @@ export const SiaMoonTheme = {
 
     // Border System - Subtle to prominent
     border: {
-      subtle: '#333333',       // Subtle borders
-      default: '#404040',      // Default borders
-      strong: '#525252',       // Strong borders
-      brand: '#8b5cf6',        // Brand-colored borders
+      subtle: '#374151',       // Subtle borders
+      default: '#4B5563',      // Default borders
+      strong: '#6B7280',       // Strong borders
+      brand: '#C6FF00',        // Brand-colored borders (neon green)
     },
   },
 
-  // AI-Inspired Gradients - Purple to blue spectrum
+  // Neon Green Gradients - Updated theme spectrum
   gradients: {
     // Primary brand gradients
-    primary: ['#8b5cf6', '#7c3aed'],           // Purple gradient
-    primaryToBlue: ['#8b5cf6', '#3b82f6'],     // Purple to blue
-    primaryToPink: ['#8b5cf6', '#ec4899'],     // Purple to pink
+    primary: ['#C6FF00', '#A3E635'],           // Neon green gradient
+    primaryToBlue: ['#C6FF00', '#3b82f6'],     // Neon green to blue
+    primaryToCyan: ['#C6FF00', '#06b6d4'],     // Neon green to cyan
 
-    // Background gradients - Subtle depth
-    background: ['#0a0a0a', '#111111'],
-    backgroundElevated: ['#111111', '#1a1a1a'],
-    backgroundHeader: ['#0a0a0a', '#1a1a1a', '#111111'],
+    // Background gradients - Updated for new dark theme
+    background: ['#0B0F1A', '#111827'],
+    backgroundElevated: ['#111827', '#1C1F2A'],
+    backgroundHeader: ['#0B0F1A', '#1C1F2A', '#111827'],
+    backgroundMain: ['#0B0F1A', '#111827', '#1C1F2A'],
 
-    // Card gradients - Glassmorphism effect
-    card: ['rgba(26, 26, 26, 0.8)', 'rgba(17, 17, 17, 0.6)'],
-    cardElevated: ['rgba(31, 31, 31, 0.9)', 'rgba(26, 26, 26, 0.7)'],
-    cardPressed: ['rgba(17, 17, 17, 0.9)', 'rgba(26, 26, 26, 0.8)'],
+    // Card gradients - Updated glassmorphism effect
+    card: ['rgba(28, 31, 42, 0.8)', 'rgba(17, 24, 39, 0.6)'],
+    cardElevated: ['rgba(31, 41, 55, 0.9)', 'rgba(28, 31, 42, 0.7)'],
+    cardPressed: ['rgba(17, 24, 39, 0.9)', 'rgba(28, 31, 42, 0.8)'],
 
     // Status gradients - Enhanced visibility
     success: ['#22c55e', '#16a34a'],
@@ -108,9 +109,9 @@ export const SiaMoonTheme = {
     error: ['#ef4444', '#dc2626'],
     info: ['#3b82f6', '#2563eb'],
 
-    // Special AI-themed gradients
-    aiAccent: ['#8b5cf6', '#3b82f6', '#06b6d4'],  // Purple-blue-cyan
-    neonGlow: ['#8b5cf6', '#a78bfa', '#c4b5fd'],  // Purple glow effect
+    // Special neon-themed gradients
+    aiAccent: ['#C6FF00', '#3b82f6', '#06b6d4'],  // Neon green-blue-cyan
+    neonGlow: ['#C6FF00', '#A3E635', '#D4FF3A'],  // Neon green glow effect
   },
 
   // Modern Shadow System - Optimized for dark theme
