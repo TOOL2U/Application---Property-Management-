@@ -60,7 +60,7 @@
       "expo-font",
       "expo-web-browser"
     ],
-    "scheme": "sia-moon-staff",
+    "scheme": "Sia-Moon-Staff",
     "experiments": {
       "typedRoutes": true
     },

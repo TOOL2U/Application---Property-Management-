@@ -73,7 +73,7 @@ interface RecentActivity {
   status: 'success' | 'warning' | 'error' | 'info';
 }
 
-export default function DashboardScreen() {
+export default function IndexScreen() {
   const { user, signOut } = useAuth();
   const { hasRole } = useStaffAuth();
   const { isOnline, isSyncing, lastSyncTime, pendingOperations, conflictCount } = useSync();
@@ -679,7 +679,7 @@ export default function DashboardScreen() {
     <View className="flex-1 bg-dark-bg">
       {/* Background Gradient */}
       <LinearGradient
-        colors={NeumorphicTheme.gradients.backgroundMain}
+        colors={NeumorphicTheme.gradients.background}
         className="absolute inset-0"
       />
 
@@ -892,5 +892,3 @@ export default function DashboardScreen() {
       </View>
     );
 }
-
-
