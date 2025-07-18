@@ -18,7 +18,7 @@ import {
   disableNetwork,
   Unsubscribe,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/lib/firebase';
 import { Job, JobStatus, JobFilter } from '@/types/job';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -66,6 +66,7 @@ class StaffJobService {
       }
 
       // Fetch from Firestore
+      const db = await getDb();
       const jobsRef = collection(db, this.JOBS_COLLECTION);
       let q = query(
         jobsRef,
@@ -148,49 +149,61 @@ class StaffJobService {
   ): () => void {
     console.log('👂 StaffJobService: Setting up real-time listener for staff:', staffId);
 
-    const jobsRef = collection(db, this.JOBS_COLLECTION);
-    let q = query(
-      jobsRef,
-      where('assignedTo', '==', staffId),
-      orderBy('scheduledDate', 'desc')
-    );
+    let unsubscribe: (() => void) | null = null;
 
-    // Apply status filter if provided
-    if (filters?.status && filters.status.length > 0) {
-      q = query(q, where('status', 'in', filters.status));
-    }
+    // Initialize async and set up listener
+    (async () => {
+      try {
+        const db = await getDb();
+        const jobsRef = collection(db, this.JOBS_COLLECTION);
+        let q = query(
+          jobsRef,
+          where('assignedTo', '==', staffId),
+          orderBy('scheduledDate', 'desc')
+        );
 
-    const unsubscribe = onSnapshot(
-      q,
-      (querySnapshot) => {
-        const jobs: Job[] = [];
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          const job = this.mapFirestoreDataToJob(doc.id, data);
-          jobs.push(job);
-        });
+        // Apply status filter if provided
+        if (filters?.status && filters.status.length > 0) {
+          q = query(q, where('status', 'in', filters.status));
+        }
 
-        console.log(`📡 StaffJobService: Real-time update - ${jobs.length} jobs for staff ${staffId}`);
-        
-        // Update cache
-        this.cacheJobs(staffId, jobs);
-        
-        // Apply filters and call callback
-        const filteredJobs = this.applyFilters(jobs, filters);
-        callback(filteredJobs);
-      },
-      (error) => {
-        console.error('❌ StaffJobService: Real-time listener error:', error);
+        unsubscribe = onSnapshot(
+          q,
+          (querySnapshot) => {
+            const jobs: Job[] = [];
+            querySnapshot.forEach((doc) => {
+              const data = doc.data();
+              const job = this.mapFirestoreDataToJob(doc.id, data);
+              jobs.push(job);
+            });
+
+            console.log(`📡 StaffJobService: Real-time update - ${jobs.length} jobs for staff ${staffId}`);
+
+            // Update cache
+            this.cacheJobs(staffId, jobs);
+
+            // Apply filters and call callback
+            const filteredJobs = this.applyFilters(jobs, filters);
+            callback(filteredJobs);
+          },
+          (error) => {
+            console.error('❌ StaffJobService: Real-time listener error:', error);
+          }
+        );
+
+        // Store unsubscribe callback
+        this.unsubscribeCallbacks.set(staffId, unsubscribe);
+      } catch (error) {
+        console.error('❌ StaffJobService: Error setting up real-time listener:', error);
       }
-    );
-
-    // Store unsubscribe callback
-    this.unsubscribeCallbacks.set(staffId, unsubscribe);
+    })();
 
     return () => {
       console.log('🔇 StaffJobService: Unsubscribing from real-time updates for staff:', staffId);
-      unsubscribe();
-      this.unsubscribeCallbacks.delete(staffId);
+      if (unsubscribe) {
+        unsubscribe();
+        this.unsubscribeCallbacks.delete(staffId);
+      }
     };
   }
 

@@ -339,31 +339,25 @@ const createAuthProxy = (): Auth => {
 // Export the robust auth proxy
 export const auth = createAuthProxy();
 
+// Synchronous db export that throws if not ready
 export const db = new Proxy({} as any, {
   get(target, prop) {
-    // For async methods, return wrapped versions
-    if (prop === 'collection' || prop === 'doc' || prop === 'batch' || prop === 'runTransaction') {
-      return (...args: any[]) => {
-        if (!_db) {
-          // Return the async version that waits for initialization
-          return (async () => {
-            const dbInstance = await getFirebaseFirestore();
-            return (dbInstance as any)[prop](...args);
-          })();
-        }
-        return (_db as any)[prop](...args);
-      };
+    // Ensure _db is available synchronously
+    if (!_db) {
+      throw new Error(`Firestore not initialized. Call 'await getFirebaseFirestore()' first before using db.${String(prop)}`);
     }
 
-    // For sync properties, check if db is ready
-    if (!_db) {
-      console.warn('⚠️ Firestore not ready for property:', prop);
-      return undefined;
-    }
-    
     return (_db as any)[prop];
   }
 });
+
+// Async db getter for proper initialization
+export const getDb = async () => {
+  if (!_db) {
+    _db = await getFirebaseFirestore();
+  }
+  return _db;
+};
 
 export const rtdb = new Proxy({} as any, {
   get(target, prop) {

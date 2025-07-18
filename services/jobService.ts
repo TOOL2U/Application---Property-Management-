@@ -26,7 +26,7 @@ import {
   getDownloadURL, 
   deleteObject 
 } from 'firebase/storage';
-import { db, storage } from '../lib/firebase';
+import { getDb, storage } from '../lib/firebase';
 import {
   Job,
   JobStatus,
@@ -71,20 +71,8 @@ class JobService {
     try {
       console.log('🔍 JobService: Getting jobs for staff:', staffId);
 
-      // Check if Firebase is properly initialized with retry
-      const isFirebaseReady = await this.waitForFirebaseInit(2000);
-      if (!isFirebaseReady) {
-        console.warn('⚠️ JobService: Firebase Firestore is not ready after waiting');
-        return {
-          success: false,
-          jobs: [],
-          total: 0,
-          page: 1,
-          limit: 0,
-          error: 'Firebase Firestore is not ready. Please try again.',
-        };
-      }
-
+      // Get initialized Firestore instance
+      const db = await getDb();
       const jobsRef = collection(db, this.JOBS_COLLECTION);
       let q = query(
         jobsRef,
@@ -151,13 +139,8 @@ class JobService {
     try {
       console.log('🔍 JobService: Getting pending jobs for staff:', staffId);
 
-      // Check if Firebase is properly initialized
-      const isFirebaseReady = await this.waitForFirebaseInit(2000);
-      if (!isFirebaseReady) {
-        console.warn('⚠️ JobService: Firebase Firestore is not ready for pending jobs');
-        return [];
-      }
-
+      // Get initialized Firestore instance
+      const db = await getDb();
       const jobsRef = collection(db, this.JOBS_COLLECTION);
       const q = query(
         jobsRef,
@@ -235,13 +218,8 @@ class JobService {
     try {
       console.log('🔍 JobService: Getting active jobs for staff:', staffId);
 
-      // Check if Firebase is properly initialized
-      const isFirebaseReady = await this.waitForFirebaseInit(2000);
-      if (!isFirebaseReady) {
-        console.warn('⚠️ JobService: Firebase Firestore is not ready for active jobs');
-        return [];
-      }
-
+      // Get initialized Firestore instance
+      const db = await getDb();
       const jobsRef = collection(db, this.JOBS_COLLECTION);
       const q = query(
         jobsRef,
@@ -732,6 +710,7 @@ class JobService {
       };
 
       // Add photo to Firestore
+      const db = await getDb();
       const photoDocRef = await addDoc(collection(db, this.JOB_PHOTOS_COLLECTION), {
         ...photoData,
         jobId,
