@@ -741,6 +741,7 @@ class JobService {
    */
   async updateStaffLocation(update: LocationUpdate): Promise<{ success: boolean; error?: string }> {
     try {
+      const db = await getDb();
       const locationRef = collection(db, this.LOCATION_UPDATES_COLLECTION);
       await addDoc(locationRef, {
         ...update,
@@ -777,41 +778,50 @@ class JobService {
   ): () => void {
     console.log('👂 JobService: Subscribing to real-time job updates for staff:', staffId);
 
-    // Check if Firebase is ready before setting up listener
-    if (!db) {
-      console.warn('⚠️ JobService: Firebase Firestore is not ready for real-time subscription');
-      return () => {
-        console.log('🔇 JobService: Dummy unsubscribe called (Firebase not ready)');
-      };
-    }
+    let unsubscribe: (() => void) | null = null;
 
-    const jobsRef = collection(db, this.JOBS_COLLECTION);
-    const q = query(
-      jobsRef,
-      where('assignedTo', '==', staffId),
-      orderBy('scheduledDate', 'desc')
-    );
+    // Initialize async and set up listener
+    (async () => {
+      try {
+        const db = await getDb();
+        const jobsRef = collection(db, this.JOBS_COLLECTION);
+        const q = query(
+          jobsRef,
+          where('assignedTo', '==', staffId),
+          orderBy('scheduledDate', 'desc')
+        );
 
-    return onSnapshot(q, (querySnapshot) => {
-      const jobs: Job[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        jobs.push({
-          id: doc.id,
-          ...data,
-          scheduledDate: data.scheduledDate?.toDate() || new Date(),
-          assignedAt: data.assignedAt?.toDate() || new Date(),
-          acceptedAt: data.acceptedAt?.toDate(),
-          startedAt: data.startedAt?.toDate(),
-          completedAt: data.completedAt?.toDate(),
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-        } as Job);
-      });
+        unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const jobs: Job[] = [];
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            jobs.push({
+              id: doc.id,
+              ...data,
+              scheduledDate: data.scheduledDate?.toDate() || new Date(),
+              assignedAt: data.assignedAt?.toDate() || new Date(),
+              acceptedAt: data.acceptedAt?.toDate(),
+              startedAt: data.startedAt?.toDate(),
+              completedAt: data.completedAt?.toDate(),
+              createdAt: data.createdAt?.toDate() || new Date(),
+              updatedAt: data.updatedAt?.toDate() || new Date(),
+            } as Job);
+          });
 
-      console.log(`🔄 JobService: Real-time update - ${jobs.length} jobs`);
-      callback(jobs);
-    });
+          console.log(`🔄 JobService: Real-time update - ${jobs.length} jobs`);
+          callback(jobs);
+        });
+      } catch (error) {
+        console.error('❌ JobService: Error setting up real-time listener:', error);
+      }
+    })();
+
+    return () => {
+      console.log('🔇 JobService: Unsubscribing from real-time updates');
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }
 }
 

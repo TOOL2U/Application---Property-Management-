@@ -15,12 +15,12 @@ import {
 } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
 // Fix for React Native AsyncStorage persistence
 declare const global: any;
 if (typeof global !== 'undefined') {
-  global.AsyncStorage = AsyncStorage;
+  global.AsyncStorage = ReactNativeAsyncStorage;
 }
 
 // Initialize Firebase with environment variables
@@ -99,7 +99,10 @@ const initializeFirestoreAsync = async (): Promise<Firestore> => {
 };
 
 // Start initialization immediately but don't block
-initializationPromise = initializeFirestoreAsync();
+initializationPromise = initializeFirestoreAsync().then(db => {
+  _db = db;
+  return db;
+});
 
 // Validate configuration
 const validateConfig = () => {
@@ -161,15 +164,13 @@ const getFirebaseAuth = () => {
       console.log('✅ Firebase Auth initialized with getAuth');
       return _auth;
     } catch (getAuthError) {
-      // If getAuth fails, try initializeAuth with AsyncStorage persistence
-      console.log('⚠️ getAuth failed, trying initializeAuth with AsyncStorage...');
-      
-      const { getReactNativePersistence } = require('firebase/auth');
+      // If getAuth fails, try initializeAuth without persistence for now
+      console.log('⚠️ getAuth failed, trying initializeAuth...');
       
       _auth = initializeAuth(firebaseApp, {
-        persistence: getReactNativePersistence(AsyncStorage)
+        // Use default persistence for React Native
       });
-      console.log('✅ Firebase Auth initialized with AsyncStorage persistence');
+      console.log('✅ Firebase Auth initialized with initializeAuth');
       return _auth;
     }
   } catch (error: any) {
@@ -204,12 +205,29 @@ const getFirebaseFirestore = async () => {
   
   // Wait for the async initialization to complete
   try {
+    if (!initializationPromise) {
+      console.log('⚠️ Initialization promise not found, creating new one...');
+      initializationPromise = initializeFirestoreAsync().then(db => {
+        _db = db;
+        return db;
+      });
+    }
+    
     _db = await initializationPromise;
     console.log('✅ Firestore instance ready for use');
     return _db;
   } catch (error) {
     console.error('❌ Failed to get Firestore instance:', error);
-    throw error;
+    console.log('🔄 Falling back to simple getFirestore...');
+    
+    // Fallback to simple initialization
+    try {
+      _db = getFirestore(app);
+      return _db;
+    } catch (fallbackError) {
+      console.error('❌ Fallback also failed:', fallbackError);
+      throw error;
+    }
   }
 };
 
@@ -402,11 +420,126 @@ export const performFirebaseHealthCheck = async () => {
 
 // Export the app getter
 export { getFirebaseApp, getFirebaseFirestore };
+
+// Convenient function to initialize all Firebase services
+export const initializeFirebase = async () => {
+  try {
+    console.log('🔄 Initializing Firebase services...');
+    
+    const app = getFirebaseApp();
+    const auth = getFirebaseAuth();
+    const db = await getFirebaseFirestore();
+    
+    console.log('✅ All Firebase services initialized successfully');
+    return { app, auth, db };
+  } catch (error) {
+    console.error('❌ Firebase initialization failed:', error);
+    throw error;
+  }
+};
 export default new Proxy({} as any, {
   get(target, prop) {
     const appInstance = getFirebaseApp();
     return appInstance[prop as keyof any];
   }
 });
+
+// Firebase Authentication Service for Staff Integration
+export class FirebaseAuthService {
+  static async getStaffAccountByEmail(email: string): Promise<any | null> {
+    try {
+      const db = await getDb();
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      
+      const staffQuery = query(
+        collection(db, 'staff_accounts'),
+        where('email', '==', email)
+      );
+      
+      const querySnapshot = await getDocs(staffQuery);
+      
+      if (!querySnapshot.empty) {
+        const staffDoc = querySnapshot.docs[0];
+        return { id: staffDoc.id, ...staffDoc.data() };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting staff account by email:', error);
+      throw error;
+    }
+  }
+
+  static async getCurrentStaffAccount(): Promise<any | null> {
+    try {
+      const currentUser = auth?.currentUser;
+      if (!currentUser?.email) return null;
+      
+      return await this.getStaffAccountByEmail(currentUser.email);
+    } catch (error) {
+      console.error('Error getting current staff account:', error);
+      return null;
+    }
+  }
+
+  static onAuthStateChanged(callback: (user: any) => void) {
+    if (!auth) {
+      console.error('Firebase Auth not initialized');
+      return () => {};
+    }
+    
+    return auth.onAuthStateChanged(callback);
+  }
+}
+
+// Firebase Notification Service for Real-time Updates
+export class FirebaseNotificationService {
+  static listenToNotifications(userId: string, onUpdate: (notifications: any[]) => void) {
+    try {
+      const setupListener = async () => {
+        const db = await getDb();
+        const { collection, query, where, onSnapshot } = await import('firebase/firestore');
+        
+        const notificationsQuery = query(
+          collection(db, 'staff_notifications'),
+          where('userId', '==', userId)
+        );
+
+        return onSnapshot(notificationsQuery, (snapshot) => {
+          const notifications = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          
+          // Sort by timestamp descending (newest first)
+          notifications.sort((a: any, b: any) => {
+            const aTime = a.timestamp?.seconds || 0;
+            const bTime = b.timestamp?.seconds || 0;
+            return bTime - aTime;
+          });
+          
+          onUpdate(notifications);
+        }, (error) => {
+          console.error('Error listening to notifications:', error);
+        });
+      };
+
+      // Setup listener and return unsubscribe function
+      let unsubscribe: (() => void) | null = null;
+      setupListener().then(unsub => {
+        unsubscribe = unsub;
+      });
+
+      return () => {
+        if (unsubscribe) {
+          unsubscribe();
+        }
+      };
+    } catch (error) {
+      console.error('Error setting up notification listener:', error);
+      return () => {};
+    }
+  }
+}
 
 console.log('🔥 Firebase lazy initialization setup complete');

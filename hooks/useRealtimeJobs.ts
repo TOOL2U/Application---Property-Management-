@@ -7,7 +7,7 @@ import {
   orderBy,
   Unsubscribe 
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/lib/firebase';
 import { usePINAuth } from "@/contexts/PINAuthContext";
 import { Job } from '@/types/job';
 
@@ -64,15 +64,19 @@ export function useRealtimeJobs(): UseRealtimeJobsReturn {
 
     let unsubscribe: Unsubscribe;
 
-    try {
-      // Create Firestore query for jobs assigned to current staff profile with pending status
-      const jobsRef = collection(db, 'jobs');
-      const jobsQuery = query(
-        jobsRef,
-        where('assignedTo', '==', currentProfile.id),
-        where('status', '==', 'pending'),
-        orderBy('scheduledDate', 'desc') // Order by scheduled date, newest first
-      );
+    const setupListener = async () => {
+      try {
+        // Get Firestore instance
+        const db = await getDb();
+
+        // Create Firestore query for jobs assigned to current staff profile with pending status
+        const jobsRef = collection(db, 'jobs');
+        const jobsQuery = query(
+          jobsRef,
+          where('assignedTo', '==', currentProfile.id),
+          where('status', '==', 'pending'),
+          orderBy('scheduledDate', 'desc') // Order by scheduled date, newest first
+        );
 
       // Set up real-time listener
       unsubscribe = onSnapshot(

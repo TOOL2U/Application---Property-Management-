@@ -35,6 +35,8 @@ export interface StaffProfile {
   isActive: boolean;
   department?: string;
   phone?: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
   createdAt: Date;
   lastLogin?: Date;
 }

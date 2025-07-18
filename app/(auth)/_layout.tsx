@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { View, ActivityIndicator, Text } from 'react-native';
 import { usePINAuth } from "@/contexts/PINAuthContext";
+import ScreenWrapper from '@/components/ScreenWrapper';
 
 export default function AuthLayout() {
   const { isAuthenticated, isLoading } = usePINAuth();
@@ -40,16 +41,18 @@ export default function AuthLayout() {
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: '#0B0F1A' },
-        animation: 'fade',
-      }}
-    >
-      <Stack.Screen name="select-profile" options={{ headerShown: false }} />
-      <Stack.Screen name="enter-pin" options={{ headerShown: false }} />
-      <Stack.Screen name="create-pin" options={{ headerShown: false }} />
-    </Stack>
+    <ScreenWrapper>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: '#0B0F1A' },
+          animation: 'fade',
+        }}
+      >
+        <Stack.Screen name="select-profile" options={{ headerShown: false }} />
+        <Stack.Screen name="enter-pin" options={{ headerShown: false }} />
+        <Stack.Screen name="create-pin" options={{ headerShown: false }} />
+      </Stack>
+    </ScreenWrapper>
   );
 }

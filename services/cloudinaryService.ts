@@ -41,9 +41,9 @@ class CloudinaryService {
 
   constructor() {
     this.config = {
-      cloudName: process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || 'doez7m1hy',
-      apiKey: process.env.CLOUDINARY_API_KEY || '316689738793838',
-      uploadPreset: process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || 'villa_mobile_uploads',
+      cloudName: 'doez7m1hy',
+      apiKey: '316689738793838',
+      uploadPreset: 'property_management_staff_profile', // Use the correct preset directly
     };
 
     console.log('☁️ Cloudinary Service initialized:', {
@@ -51,6 +51,10 @@ class CloudinaryService {
       hasApiKey: !!this.config.apiKey,
       uploadPreset: this.config.uploadPreset,
     });
+
+    if (!this.config.cloudName || !this.config.uploadPreset) {
+      console.error('❌ Missing required Cloudinary configuration');
+    }
   }
 
   /**
@@ -58,9 +62,10 @@ class CloudinaryService {
    */
   private async compressImage(imageUri: string, quality: number = 0.8): Promise<string> {
     try {
-      // For React Native, you would use expo-image-manipulator
-      // For web, you can use canvas compression
-      if (typeof window !== 'undefined') {
+      // Check if we're in a web environment with document support
+      const isWeb = typeof window !== 'undefined' && typeof document !== 'undefined';
+
+      if (isWeb) {
         return new Promise((resolve, reject) => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
@@ -92,8 +97,31 @@ class CloudinaryService {
         });
       }
 
-      // Fallback: return original URI
-      return imageUri;
+      // For React Native, use expo-image-manipulator if available
+      try {
+        // Dynamic import with better error handling
+        const ImageManipulator = require('expo-image-manipulator');
+
+        if (ImageManipulator && ImageManipulator.manipulateAsync) {
+          console.log('📱 React Native: Compressing image with expo-image-manipulator');
+
+          const result = await ImageManipulator.manipulateAsync(imageUri, [
+            { resize: { width: 1920 } }, // Resize to max width, maintain aspect ratio
+          ], {
+            compress: quality,
+            format: ImageManipulator.SaveFormat.JPEG,
+          });
+
+          console.log('✅ Image compressed successfully');
+          return result.uri;
+        } else {
+          console.log('📱 expo-image-manipulator methods not available');
+          return imageUri;
+        }
+      } catch (importError) {
+        console.log('📱 expo-image-manipulator not available, using original image');
+        return imageUri;
+      }
     } catch (error) {
       console.warn('⚠️ Image compression failed, using original:', error);
       return imageUri;
@@ -114,20 +142,23 @@ class CloudinaryService {
       const formData = new FormData();
       
       // Handle different image sources
+      const isWeb = typeof window !== 'undefined' && typeof document !== 'undefined';
+
       if (compressedUri.startsWith('data:')) {
         // Data URL (base64)
         formData.append('file', compressedUri);
       } else {
         // File URI - create blob for web or use direct URI for React Native
-        if (typeof window !== 'undefined') {
+        if (isWeb) {
           const response = await fetch(compressedUri);
           const blob = await response.blob();
           formData.append('file', blob);
         } else {
+          // React Native FormData format
           formData.append('file', {
             uri: compressedUri,
             type: 'image/jpeg',
-            name: 'upload.jpg',
+            name: `upload_${Date.now()}.jpg`,
           } as any);
         }
       }
@@ -135,22 +166,17 @@ class CloudinaryService {
       formData.append('upload_preset', this.config.uploadPreset);
       formData.append('cloud_name', this.config.cloudName);
 
-      // Add optional parameters
+      // Add only allowed parameters for unsigned upload
       if (options.folder) {
         formData.append('folder', options.folder);
-      }
-
-      if (options.quality) {
-        formData.append('quality', options.quality.toString());
-      }
-
-      if (options.format) {
-        formData.append('format', options.format);
       }
 
       if (options.tags && options.tags.length > 0) {
         formData.append('tags', options.tags.join(','));
       }
+
+      // Note: quality and format are NOT allowed for unsigned uploads
+      // These must be configured in the upload preset on Cloudinary dashboard
 
       if (options.context) {
         formData.append('context', Object.entries(options.context)
@@ -164,7 +190,11 @@ class CloudinaryService {
 
       // Upload to Cloudinary
       const uploadUrl = `https://api.cloudinary.com/v1_1/${this.config.cloudName}/image/upload`;
-      
+
+      console.log('🌐 Uploading to Cloudinary URL:', uploadUrl);
+      console.log('📦 Upload preset:', this.config.uploadPreset);
+      console.log('🌐 Cloud name:', this.config.cloudName);
+
       const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
@@ -173,10 +203,22 @@ class CloudinaryService {
         },
       });
 
+      console.log('📡 Response status:', response.status, response.statusText);
+
       const result = await response.json();
+      console.log('📄 Response data:', result);
 
       if (!response.ok) {
-        throw new Error(result.error?.message || 'Upload failed');
+        console.error('❌ Cloudinary upload failed:', result);
+
+        // Handle specific error cases
+        if (result.error?.message?.includes('Upload preset not found')) {
+          throw new Error('Upload configuration error. Please contact support.');
+        } else if (result.error?.message?.includes('Invalid image file')) {
+          throw new Error('Invalid image format. Please try a different photo.');
+        } else {
+          throw new Error(result.error?.message || `Upload failed: ${response.status} ${response.statusText}`);
+        }
       }
 
       console.log('✅ Image uploaded successfully:', result.secure_url);

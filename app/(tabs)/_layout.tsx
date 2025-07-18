@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { usePINAuth } from "@/contexts/PINAuthContext";
+import { useAppNotifications } from "@/contexts/AppNotificationContext";
+import ScreenWrapper from '@/components/ScreenWrapper';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, Platform, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -67,8 +69,46 @@ const AISTabIcon = ({
   );
 };
 
+// Notification icon with badge
+const NotificationIcon = ({ focused, color, unreadCount }: { focused: boolean; color: string; unreadCount: number }) => {
+  return (
+    <View className="items-center justify-center relative">
+      <AISTabIcon name="notifications" focused={focused} color={color} />
+      {unreadCount > 0 && (
+        <View 
+          style={{
+            position: 'absolute',
+            top: -2,
+            right: -6,
+            backgroundColor: '#FF4444',
+            borderRadius: 10,
+            minWidth: 20,
+            height: 20,
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderWidth: 2,
+            borderColor: '#0B0F1A'
+          }}
+        >
+          <Text 
+            style={{
+              color: 'white',
+              fontSize: 12,
+              fontWeight: 'bold',
+              textAlign: 'center'
+            }}
+          >
+            {unreadCount > 99 ? '99+' : unreadCount.toString()}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
 export default function TabLayout() {
   const { isAuthenticated, isLoading } = usePINAuth();
+  const { unreadCount } = useAppNotifications();
   const router = useRouter();
 
   console.log('🏠 TabLayout rendered:', {
@@ -111,21 +151,22 @@ export default function TabLayout() {
   }
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: '#C6FF00',
-        tabBarInactiveTintColor: '#666666',
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: '#0B0F1A',
-          borderTopWidth: 1,
-          borderTopColor: '#1E2A3A',
-          paddingBottom: Platform.OS === 'ios' ? 20 : 5,
-          paddingTop: 5,
-          height: Platform.OS === 'ios' ? 85 : 60,
-        },
-      }}
-    >
+    <ScreenWrapper>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: '#C6FF00',
+          tabBarInactiveTintColor: '#666666',
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: '#0B0F1A',
+            borderTopWidth: 1,
+            borderTopColor: '#1E2A3A',
+            paddingBottom: Platform.OS === 'ios' ? 20 : 5,
+            paddingTop: 5,
+            height: Platform.OS === 'ios' ? 85 : 60,
+          },
+        }}
+      >
       <Tabs.Screen
         name="index"
         options={{
@@ -145,11 +186,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="scan"
+        name="profile"
         options={{
-          title: 'Scan',
+          title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <AISTabIcon name="qr-code" focused={focused} color={color} isCenter={true} />
+            <AISTabIcon name="person" focused={focused} color={color} />
           ),
         }}
       />
@@ -163,14 +204,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="notifications"
         options={{
-          title: 'Profile',
+          title: 'Notifications',
           tabBarIcon: ({ color, focused }) => (
-            <AISTabIcon name="person" focused={focused} color={color} />
+            <NotificationIcon focused={focused} color={color} unreadCount={unreadCount} />
           ),
         }}
       />
-    </Tabs>
+
+      </Tabs>
+    </ScreenWrapper>
   );
 }

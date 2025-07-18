@@ -256,6 +256,20 @@
       ]
     },
     {
+      "collectionGroup": "staff_notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "job_assignments",
       "queryScope": "COLLECTION",
       "fields": [

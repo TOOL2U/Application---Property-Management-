@@ -12,7 +12,7 @@ import {
   Timestamp,
   DocumentChange 
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/lib/firebase';
 import { jobService } from '@/services/jobService';
 import type { Job } from '@/types/job';
 
@@ -48,43 +48,53 @@ class RealTimeJobNotificationService {
 
     console.log('🔔 Starting real-time job notification listener for staff:', staffId);
 
-    const jobsRef = collection(db, 'jobs');
-    const q = query(
-      jobsRef,
-      where('assignedStaffId', '==', staffId),
-      where('status', '==', 'pending'),
-      orderBy('assignedAt', 'desc')
-    );
+    let unsubscribe: (() => void) | null = null;
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      console.log('🔄 Real-time job update received:', snapshot.size, 'pending jobs');
+    // Initialize async and set up listener
+    (async () => {
+      try {
+        const db = await getDb();
+        const jobsRef = collection(db, 'jobs');
+        const q = query(
+          jobsRef,
+          where('assignedStaffId', '==', staffId),
+          where('status', '==', 'pending'),
+          orderBy('assignedAt', 'desc')
+        );
 
-      snapshot.docChanges().forEach((change) => {
-        const jobData = change.doc.data();
-        const job: JobNotificationData = {
-          jobId: change.doc.id,
-          title: jobData.title || 'Untitled Job',
-          description: jobData.description || '',
-          propertyName: jobData.propertyName || jobData.location?.address || 'Unknown Property',
-          priority: jobData.priority || 'medium',
-          scheduledDate: jobData.scheduledDate?.toDate() || new Date(),
-          type: jobData.type || 'general',
-        };
+        unsubscribe = onSnapshot(q, (snapshot) => {
+          console.log('🔄 Real-time job update received:', snapshot.size, 'pending jobs');
 
-        if (change.type === 'added') {
-          this.handleNewJobAssignment(job, callbacks.onNewJobAssigned);
-        } else if (change.type === 'modified') {
-          this.handleJobUpdate(job, callbacks.onJobUpdated);
-        } else if (change.type === 'removed') {
-          this.handleJobCancellation(job.jobId, callbacks.onJobCancelled);
-        }
-      });
-    }, (error) => {
-      console.error('❌ Error in real-time job listener:', error);
-    });
+          snapshot.docChanges().forEach((change) => {
+            const jobData = change.doc.data();
+            const job: JobNotificationData = {
+              jobId: change.doc.id,
+              title: jobData.title || 'Untitled Job',
+              description: jobData.description || '',
+              propertyName: jobData.propertyName || jobData.location?.address || 'Unknown Property',
+              priority: jobData.priority || 'medium',
+              scheduledDate: jobData.scheduledDate?.toDate() || new Date(),
+              type: jobData.type || 'general',
+            };
 
-    this.unsubscribers.set(staffId, unsubscribe);
-    this.isListening = true;
+            if (change.type === 'added') {
+              this.handleNewJobAssignment(job, callbacks.onNewJobAssigned);
+            } else if (change.type === 'modified') {
+              this.handleJobUpdate(job, callbacks.onJobUpdated);
+            } else if (change.type === 'removed') {
+              this.handleJobCancellation(job.jobId, callbacks.onJobCancelled);
+            }
+          });
+        }, (error) => {
+          console.error('❌ Error in real-time job listener:', error);
+        });
+
+        this.unsubscribers.set(staffId, unsubscribe);
+        this.isListening = true;
+      } catch (error) {
+        console.error('❌ Error setting up real-time job listener:', error);
+      }
+    })();
 
     return () => {
       this.stopListening(staffId);

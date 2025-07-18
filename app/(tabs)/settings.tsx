@@ -119,12 +119,20 @@ export default function SettingsScreen() {
   const settingsData: SettingItem[] = [
     // Account Section
     {
-      id: 'profile',
-      title: 'Edit Profile',
-      subtitle: 'Update your personal information',
+      id: 'view-profile',
+      title: 'View Profile',
+      subtitle: 'View your profile and status',
       icon: 'person-outline',
       type: 'navigation',
-      onPress: () => router.push('/(tabs)/profile'),
+      onPress: () => router.push('/profile-view'),
+    },
+    {
+      id: 'edit-profile',
+      title: 'Edit Profile',
+      subtitle: 'Update your personal information',
+      icon: 'create-outline',
+      type: 'navigation',
+      onPress: () => router.push('/(modal)/edit-profile'),
     },
     {
       id: 'notifications',

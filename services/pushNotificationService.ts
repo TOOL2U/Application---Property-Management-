@@ -7,7 +7,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/lib/firebase';
 
 // Admin services are handled server-side only
 // Client-side push notifications use Expo's FCM integration
@@ -261,6 +261,7 @@ class PushNotificationService {
    */
   private async saveTokenToStaffProfile(staffId: string, token: string): Promise<void> {
     try {
+      const db = await getDb();
       const staffRef = doc(db, 'staff_accounts', staffId);
       
       // Get current staff data
@@ -373,6 +374,7 @@ class PushNotificationService {
       console.log('📤 Sending job assignment notification for job:', job.id);
 
       // Get staff FCM tokens
+      const db = await getDb();
       const staffRef = doc(db, 'staff_accounts', job.staffId);
       const staffDoc = await getDoc(staffRef);
       
@@ -562,6 +564,7 @@ class PushNotificationService {
       };
 
       // Add to job's notification log
+      const db = await getDb();
       const jobRef = doc(db, 'job_assignments', job.id);
       await updateDoc(jobRef, {
         notificationsSent: arrayUnion(notificationLog),

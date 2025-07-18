@@ -1,6 +1,6 @@
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { auth, getDb } from '../lib/firebase';
 import { StaffAccount } from './authService';
 import { Storage } from '../utils/storage';
 
@@ -57,12 +57,8 @@ class SharedAuthService {
     try {
       console.log('👥 SharedAuthService: Fetching all staff profiles...');
       
-      // Check if Firebase is properly initialized
-      if (!db) {
-        console.warn('⚠️ SharedAuthService: Firebase Firestore is not initialized, returning empty array');
-        return [];
-      }
-
+      // Get initialized Firestore instance
+      const db = await getDb();
       const staffCollection = collection(db, this.COLLECTION_NAME);
       const activeStaffQuery = query(staffCollection, where('isActive', '==', true));
       const querySnapshot = await getDocs(activeStaffQuery);
@@ -99,6 +95,7 @@ class SharedAuthService {
         return { success: false, error: 'PIN must be 4 digits' };
       }
 
+      const db = await getDb();
       const staffDoc = doc(db, this.COLLECTION_NAME, staffId);
       const staffSnapshot = await getDoc(staffDoc);
 

@@ -12,13 +12,14 @@ import {
   onSnapshot,
   Timestamp,
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getDb } from '@/lib/firebase';
 import { Booking, Staff, Task, TaskAssignment, COLLECTIONS } from '@/types/admin';
 
 export class AdminService {
   // Booking Management
   static async getBookings(): Promise<Booking[]> {
     try {
+      const db = await getDb();
       const bookingsQuery = query(
         collection(db, COLLECTIONS.BOOKINGS),
         orderBy('createdAt', 'desc')
@@ -80,6 +81,7 @@ export class AdminService {
   // Staff Management
   static async getStaff(): Promise<Staff[]> {
     try {
+      const db = await getDb();
       const staffQuery = query(
         collection(db, COLLECTIONS.STAFF),
         where('isActive', '==', true),
@@ -120,6 +122,7 @@ export class AdminService {
   // Task Management
   static async createTask(taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
+      const db = await getDb();
       const docRef = await addDoc(collection(db, COLLECTIONS.TASKS), {
         ...taskData,
         createdAt: new Date(),
@@ -157,6 +160,7 @@ export class AdminService {
       });
 
       // Create task assignment record
+      const db = await getDb();
       await addDoc(collection(db, COLLECTIONS.TASK_ASSIGNMENTS), {
         taskId,
         staffIds,
@@ -174,6 +178,7 @@ export class AdminService {
 
   static async getTasksForBooking(bookingId: string): Promise<Task[]> {
     try {
+      const db = await getDb();
       const tasksQuery = query(
         collection(db, COLLECTIONS.TASKS),
         where('bookingId', '==', bookingId),
@@ -197,6 +202,7 @@ export class AdminService {
 
   static async getTasksForStaff(staffId: string): Promise<Task[]> {
     try {
+      const db = await getDb();
       const tasksQuery = query(
         collection(db, COLLECTIONS.TASKS),
         where('assignedTo', 'array-contains', staffId),
@@ -242,25 +248,41 @@ export class AdminService {
 
   // Real-time listeners
   static subscribeToBookings(callback: (bookings: Booking[]) => void): () => void {
-    const bookingsQuery = query(
-      collection(db, COLLECTIONS.BOOKINGS),
-      orderBy('createdAt', 'desc')
-    );
+    let unsubscribe: (() => void) | null = null;
 
-    return onSnapshot(bookingsQuery, (snapshot) => {
-      const bookings: Booking[] = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        checkIn: doc.data().checkIn?.toDate() || new Date(),
-        checkOut: doc.data().checkOut?.toDate() || new Date(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-        approvedAt: doc.data().approvedAt?.toDate(),
-        rejectedAt: doc.data().rejectedAt?.toDate(),
-      })) as Booking[];
-      
-      callback(bookings);
-    });
+    // Initialize async and set up listener
+    (async () => {
+      try {
+        const db = await getDb();
+        const bookingsQuery = query(
+          collection(db, COLLECTIONS.BOOKINGS),
+          orderBy('createdAt', 'desc')
+        );
+
+        unsubscribe = onSnapshot(bookingsQuery, (snapshot) => {
+          const bookings: Booking[] = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            checkIn: doc.data().checkIn?.toDate() || new Date(),
+            checkOut: doc.data().checkOut?.toDate() || new Date(),
+            createdAt: doc.data().createdAt?.toDate() || new Date(),
+            updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+            approvedAt: doc.data().approvedAt?.toDate(),
+            rejectedAt: doc.data().rejectedAt?.toDate(),
+          })) as Booking[];
+
+          callback(bookings);
+        });
+      } catch (error) {
+        console.error('❌ Error setting up bookings subscription:', error);
+      }
+    })();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }
 
   static subscribeToStaffTasks(staffId: string, callback: (tasks: Task[]) => void): () => void {

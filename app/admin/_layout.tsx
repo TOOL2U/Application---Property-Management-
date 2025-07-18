@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { AdminAuthProvider, useAdminAuth } from "@/contexts/PINAuthContext";
 import { View, Text, StyleSheet } from 'react-native';
 import { useDesignTokens } from '@/constants/Design';
+import ScreenWrapper from '@/components/ScreenWrapper';
 
 const AdminLayoutContent = () => {
   const { loading } = useAdminAuth();
@@ -21,15 +22,17 @@ const AdminLayoutContent = () => {
   const { Colors } = useDesignTokens();
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: Colors.background.primary },
-      }}
-    >
-      <Stack.Screen name="login" />
-      <Stack.Screen name="dashboard" />
-    </Stack>
+    <ScreenWrapper>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: Colors.background },
+        }}
+      >
+        <Stack.Screen name="login" />
+        <Stack.Screen name="dashboard" />
+      </Stack>
+    </ScreenWrapper>
   );
 };
 

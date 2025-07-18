@@ -17,7 +17,7 @@ import {
   Unsubscribe,
   getFirestore
 } from 'firebase/firestore';
-import { getFirebaseApp, getFirebaseFirestore } from '@/lib/firebase';
+import { getFirebaseApp, getFirebaseFirestore, initializeFirebase } from '@/lib/firebase';
 import { JobData, JobNotificationData, JobResponse, JobStatusUpdate } from '@/types/jobData';
 import { usePINAuth } from '@/contexts/PINAuthContext';
 
@@ -65,11 +65,12 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Async Firestore getter
   const getDb = async () => {
     try {
+      // Ensure Firebase is initialized before getting Firestore
+      await initializeFirebase();
       return await getFirebaseFirestore();
     } catch (error) {
-      console.error('❌ JobContext: Failed to get Firestore instance:', error);
+      console.error('❌ JobContext: Firebase initialization failed:', error);
       setError('Firebase connection error');
-      setIsConnected(false);
       throw error;
     }
   };

@@ -13,7 +13,9 @@ import { PaperProvider } from 'react-native-paper';
 import { PINAuthProvider } from "@/contexts/PINAuthContext";
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { JobProvider } from '@/contexts/JobContext';
+import { AppNotificationProvider } from '@/contexts/AppNotificationContext';
 import { SiaMoonPaperTheme } from '@/constants/PaperTheme';
+import { initializeFirebase } from '@/lib/firebase';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -22,6 +24,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
+  const [firebaseReady, setFirebaseReady] = useState(false);
 
   const [loaded, error] = useFonts({
     // Add your custom fonts here if needed
@@ -30,11 +33,20 @@ export default function RootLayout() {
   useEffect(() => {
     async function prepare() {
       try {
+        console.log('🚀 App startup: Initializing Firebase...');
+        
+        // Initialize Firebase first
+        await initializeFirebase();
+        setFirebaseReady(true);
+        console.log('✅ Firebase initialization complete');
+        
         // Pre-load fonts, make any API calls you need to do here
         // Artificially delay for demo purposes
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
       } catch (e) {
-        console.warn(e);
+        console.error('❌ App startup error:', e);
+        // Continue even if Firebase fails to ensure app doesn't crash
+        setFirebaseReady(true);
       } finally {
         // Tell the application to render
         setAppIsReady(true);
@@ -47,12 +59,12 @@ export default function RootLayout() {
   }, [loaded, error]);
 
   useEffect(() => {
-    if (appIsReady) {
+    if (appIsReady && firebaseReady) {
       SplashScreen.hideAsync();
     }
-  }, [appIsReady]);
+  }, [appIsReady, firebaseReady]);
 
-  if (!appIsReady) {
+  if (!appIsReady || !firebaseReady) {
     return null;
   }
 
@@ -62,21 +74,23 @@ export default function RootLayout() {
         <ThemeProvider>
           <ErrorBoundary>
             <PINAuthProvider>
-              <JobProvider>
-                <ErrorBoundary>
-                  <StatusBar style="light" backgroundColor="#0B0F1A" />
-                  <Stack
-                    screenOptions={{
-                      headerShown: false,
-                      contentStyle: { backgroundColor: '#0B0F1A' },
-                    }}
-                  >
-                    <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                    <Stack.Screen name="+not-found" />
-                  </Stack>
-                </ErrorBoundary>
-              </JobProvider>
+              <AppNotificationProvider>
+                <JobProvider>
+                  <ErrorBoundary>
+                    <StatusBar style="light" backgroundColor="#0B0F1A" />
+                    <Stack
+                      screenOptions={{
+                        headerShown: false,
+                        contentStyle: { backgroundColor: '#0B0F1A' },
+                      }}
+                    >
+                      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                      <Stack.Screen name="+not-found" />
+                    </Stack>
+                  </ErrorBoundary>
+                </JobProvider>
+              </AppNotificationProvider>
             </PINAuthProvider>
         </ErrorBoundary>
       </ThemeProvider>

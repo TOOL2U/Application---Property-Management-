@@ -3,8 +3,8 @@
  * Handles staff profile management, PIN validation, and profile selection
  */
 
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { collection, getDocs, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { getDb } from '@/lib/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Note: This service now relies exclusively on staff_accounts collection
@@ -25,7 +25,11 @@ export interface StaffProfile {
   role: string;
   pin: string;
   photo?: string;
+  avatar?: string;
   department?: string;
+  phone?: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
   isActive: boolean;
   createdAt?: any;
   lastLogin?: any;
@@ -45,6 +49,7 @@ export const fetchAllStaffProfiles = async (): Promise<StaffProfile[]> => {
   try {
     console.log('🔍 Fetching all staff profiles...');
     
+    const db = await getDb();
     const staffCollection = collection(db, 'staff_accounts');
     const snapshot = await getDocs(staffCollection);
     
@@ -304,5 +309,39 @@ export const recordPINAttempt = async (staffId: string, success: boolean): Promi
     console.log(`⚠️ PIN attempt recorded for ${staffId}: ${attempts}/${MAX_PIN_ATTEMPTS}`);
   } catch (error) {
     console.error('❌ Error recording PIN attempt:', error);
+  }
+};
+
+/**
+ * Update staff profile information
+ */
+export const updateStaffProfile = async (
+  staffId: string,
+  profileData: Partial<StaffProfile>
+): Promise<void> => {
+  try {
+    console.log('📝 Updating staff profile:', staffId);
+
+    const db = await getDb();
+    const staffDoc = doc(db, 'staff_accounts', staffId);
+
+    // Prepare update data
+    const updateData = {
+      ...profileData,
+      updatedAt: serverTimestamp(),
+    };
+
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key as keyof typeof updateData] === undefined) {
+        delete updateData[key as keyof typeof updateData];
+      }
+    });
+
+    await updateDoc(staffDoc, updateData);
+    console.log('✅ Staff profile updated successfully');
+  } catch (error) {
+    console.error('❌ Failed to update staff profile:', error);
+    throw error;
   }
 };

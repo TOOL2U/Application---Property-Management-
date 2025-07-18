@@ -10,7 +10,7 @@ import {
   getDoc,
   setDoc
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { getDb } from '../lib/firebase';
 import bcrypt from 'bcryptjs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
@@ -90,6 +90,7 @@ class AuthService {
       }
 
       // Query Firestore for active staff account
+      const db = await getDb();
       const staffAccountsRef = collection(db, this.COLLECTION_NAME);
       const q = query(
         staffAccountsRef,
@@ -209,6 +210,7 @@ class AuthService {
    */
   async getUserById(userId: string): Promise<StaffAccount | null> {
     try {
+      const db = await getDb();
       const staffAccountsRef = collection(db, this.COLLECTION_NAME);
       const q = query(
         staffAccountsRef,
@@ -280,6 +282,7 @@ class AuthService {
       const passwordHash = await this.hashPassword(accountData.password);
 
       // Create user document
+      const db = await getDb();
       const staffAccountsRef = collection(db, this.COLLECTION_NAME);
       const newUserDoc = doc(staffAccountsRef);
 
@@ -331,6 +334,7 @@ class AuthService {
    */
   async getUserByEmail(email: string): Promise<StaffAccount | null> {
     try {
+      const db = await getDb();
       const staffAccountsRef = collection(db, this.COLLECTION_NAME);
       const q = query(
         staffAccountsRef,
@@ -371,6 +375,7 @@ class AuthService {
    */
   async checkConnection(): Promise<boolean> {
     try {
+      const db = await getDb();
       const testRef = collection(db, this.COLLECTION_NAME);
       const testQuery = query(testRef, where('isActive', '==', true));
       await getDocs(testQuery);

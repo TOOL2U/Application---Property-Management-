@@ -19,7 +19,8 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
-import { getFirebaseFirestore } from '@/lib/firebase';
+import { getFirebaseFirestore, FirebaseAuthService } from '@/lib/firebase';
+import { firebaseUidService } from './firebaseUidService';
 import type {
   JobAssignment,
   JobAssignmentRequest,
@@ -253,28 +254,118 @@ class JobAssignmentService {
       console.log('📋 Getting jobs for staff:', staffId);
 
       const db = await getFirebaseFirestore();
-      const jobsCollection = collection(db, 'job_assignments');
-      let q = query(
-        jobsCollection,
-        where('staffId', '==', staffId),
-        orderBy('scheduledFor', 'desc')
-      );
-      if (statusFilter && statusFilter.length > 0) {
-        q = query(q, where('status', 'in', statusFilter));
-      }
-      const querySnapshot = await getDocs(q);
-      const jobs: JobAssignment[] = [];
+      const allJobs: JobAssignment[] = [];
 
-      querySnapshot.forEach((doc) => {
-        jobs.push({ id: doc.id, ...doc.data() } as JobAssignment);
-      });
+      // Get Firebase UID for this staff member
+      const firebaseUid = await firebaseUidService.getFirebaseUid(staffId);
+      console.log('🔍 Firebase UID for staff', staffId, ':', firebaseUid);
+
+      // If we can't get a Firebase UID, try to get it from current auth
+      let queryStaffId = firebaseUid || staffId;
+      if (!firebaseUid) {
+        console.log('⚠️ No Firebase UID found, trying current user Firebase UID...');
+        const currentStaffAccount = await FirebaseAuthService.getCurrentStaffAccount();
+        if (currentStaffAccount) {
+          queryStaffId = currentStaffAccount.firebaseUid || currentStaffAccount.id || staffId;
+          console.log('🔍 Using current staff Firebase UID:', queryStaffId);
+        }
+      }
+
+      // Query job_assignments collection (legacy)
+      try {
+        const jobAssignmentsCollection = collection(db, 'job_assignments');
+        let q1 = query(
+          jobAssignmentsCollection,
+          where('staffId', '==', queryStaffId),
+          orderBy('scheduledFor', 'desc')
+        );
+        if (statusFilter && statusFilter.length > 0) {
+          q1 = query(q1, where('status', 'in', statusFilter));
+        }
+        const querySnapshot1 = await getDocs(q1);
+        querySnapshot1.forEach((doc) => {
+          allJobs.push({ id: doc.id, ...doc.data() } as JobAssignment);
+        });
+        console.log(`📋 Found ${querySnapshot1.size} jobs in job_assignments collection for Firebase UID: ${queryStaffId}`);
+      } catch (error) {
+        console.log('📋 job_assignments collection query failed (might not exist):', error);
+      }
+
+      // Query jobs collection (webapp integration) with Firebase UID
+      try {
+        const jobsCollection = collection(db, 'jobs');
+        let q2 = query(
+          jobsCollection,
+          where('assignedStaffId', '==', queryStaffId),
+          orderBy('createdAt', 'desc')
+        );
+        if (statusFilter && statusFilter.length > 0) {
+          q2 = query(q2, where('status', 'in', statusFilter));
+        }
+        const querySnapshot2 = await getDocs(q2);
+        querySnapshot2.forEach((doc) => {
+          const jobData = doc.data();
+          // Convert jobs collection format to JobAssignment format
+          const jobAssignment: JobAssignment = {
+            id: doc.id,
+            staffId: jobData.assignedStaffId || queryStaffId,
+            propertyId: jobData.propertyId || 'unknown',
+            status: jobData.status || 'assigned',
+            title: jobData.title || 'Untitled Job',
+            description: jobData.description || '',
+            type: (jobData.jobType || 'other') as any,
+            priority: (jobData.priority || 'medium') as any,
+            estimatedDuration: typeof jobData.estimatedDuration === 'string' 
+              ? parseInt(jobData.estimatedDuration.replace(/\D/g, '') || '30')
+              : typeof jobData.estimatedDuration === 'number' 
+                ? jobData.estimatedDuration 
+                : 30,
+            location: {
+              address: jobData.location?.address || 'Unknown Location',
+              city: jobData.location?.city || '',
+              state: jobData.location?.state || '',
+              zipCode: jobData.location?.zipCode || '',
+              coordinates: jobData.location?.coordinates,
+              accessInstructions: jobData.location?.accessInstructions,
+              accessCode: jobData.location?.accessCode
+            },
+            assignedBy: jobData.assignedBy || 'system',
+            assignedAt: jobData.assignedAt || jobData.createdAt,
+            scheduledFor: jobData.scheduledDate || jobData.createdAt,
+            dueDate: jobData.dueDate,
+            accepted: jobData.status === 'accepted' || jobData.status === 'in_progress',
+            acceptedAt: jobData.acceptedAt,
+            rejectedAt: jobData.rejectedAt,
+            rejectionReason: jobData.rejectionReason,
+            startedAt: jobData.startedAt,
+            completedAt: jobData.completedAt,
+            actualDuration: jobData.actualDuration,
+            completionNotes: jobData.notes || '',
+            requirements: jobData.requirements || [],
+            checklist: jobData.checklist || [],
+            photos: jobData.photos || [],
+            documents: jobData.documents || [],
+            bookingDetails: jobData.bookingDetails,
+            notificationsSent: jobData.notificationsSent || [],
+            createdAt: jobData.createdAt,
+            updatedAt: jobData.updatedAt || jobData.createdAt,
+            version: jobData.version || 1
+          };
+          allJobs.push(jobAssignment);
+        });
+        console.log(`📋 Found ${querySnapshot2.size} jobs in jobs collection for Firebase UID: ${queryStaffId}`);
+      } catch (error) {
+        console.log('📋 jobs collection query failed:', error);
+      }
+
+      console.log(`📋 Total jobs found: ${allJobs.length} for staff ${staffId} (Firebase UID: ${queryStaffId})`);
 
       return {
         success: true,
-        jobs,
-        total: jobs.length,
+        jobs: allJobs,
+        total: allJobs.length,
         page: 1,
-        limit: jobs.length
+        limit: allJobs.length
       };
 
     } catch (error) {
@@ -300,34 +391,163 @@ class JobAssignmentService {
   ): () => void {
     console.log('🔄 Setting up real-time listener for staff jobs:', staffId);
 
-  // Return a no-op unsubscribe immediately; real unsubscribe is set up asynchronously
-  (async () => {
+    const allUnsubscribers: (() => void)[] = [];
+    let combinedJobs: JobAssignment[] = [];
+    let queryStaffId = staffId; // Initialize with original staffId
+
+    // Return a no-op unsubscribe immediately; real unsubscribe is set up asynchronously
+    (async () => {
       const db = await getFirebaseFirestore();
-      const jobsCollection = collection(db, 'job_assignments');
-      let q = query(
-        jobsCollection,
-        where('staffId', '==', staffId),
-        orderBy('scheduledFor', 'desc')
-      );
-      if (statusFilter && statusFilter.length > 0) {
-        q = query(q, where('status', 'in', statusFilter));
+
+      // Get Firebase UID for this staff member
+      const firebaseUid = await firebaseUidService.getFirebaseUid(staffId);
+      console.log('🔍 Firebase UID for real-time listener:', firebaseUid);
+
+      // If we can't get a Firebase UID, try to get it from current auth
+      queryStaffId = firebaseUid || staffId;
+      if (!firebaseUid) {
+        console.log('⚠️ No Firebase UID found for listener, trying current user Firebase UID...');
+        const currentStaffAccount = await FirebaseAuthService.getCurrentStaffAccount();
+        if (currentStaffAccount) {
+          queryStaffId = currentStaffAccount.firebaseUid || currentStaffAccount.id || staffId;
+          console.log('🔍 Using current staff Firebase UID for listener:', queryStaffId);
+        }
       }
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const jobs: JobAssignment[] = [];
-        querySnapshot.forEach((doc) => {
-          jobs.push({ id: doc.id, ...doc.data() } as JobAssignment);
+
+      // Listen to job_assignments collection (legacy)
+      try {
+        const jobAssignmentsCollection = collection(db, 'job_assignments');
+        let q1 = query(
+          jobAssignmentsCollection,
+          where('staffId', '==', queryStaffId),
+          orderBy('scheduledFor', 'desc')
+        );
+        if (statusFilter && statusFilter.length > 0) {
+          q1 = query(q1, where('status', 'in', statusFilter));
+        }
+        const unsubscribe1 = onSnapshot(q1, (querySnapshot) => {
+          const legacyJobs: JobAssignment[] = [];
+          querySnapshot.forEach((doc) => {
+            legacyJobs.push({ id: doc.id, ...doc.data() } as JobAssignment);
+          });
+          console.log('🔄 Real-time update: received', legacyJobs.length, 'jobs from job_assignments');
+          // Merge and call callback - implemented below
+          mergeCombinedJobs('legacy', legacyJobs);
+        }, (error) => {
+          console.error('❌ Error in job_assignments listener:', error);
         });
-        console.log('🔄 Real-time update: received', jobs.length, 'jobs for staff', staffId);
-        callback(jobs);
-      }, (error) => {
-        console.error('❌ Error in real-time listener:', error);
-      });
-      // Store unsubscriber
+        allUnsubscribers.push(unsubscribe1);
+      } catch (error) {
+        console.log('📋 job_assignments listener setup failed:', error);
+      }
+
+      // Listen to jobs collection (webapp integration) with Firebase UID
+      try {
+        const jobsCollection = collection(db, 'jobs');
+        let q2 = query(
+          jobsCollection,
+          where('assignedStaffId', '==', queryStaffId),
+          orderBy('createdAt', 'desc')
+        );
+        if (statusFilter && statusFilter.length > 0) {
+          q2 = query(q2, where('status', 'in', statusFilter));
+        }
+        const unsubscribe2 = onSnapshot(q2, (querySnapshot) => {
+          const webappJobs: JobAssignment[] = [];
+          querySnapshot.forEach((doc) => {
+            const jobData = doc.data();
+            // Convert jobs collection format to JobAssignment format
+            const jobAssignment: JobAssignment = {
+              id: doc.id,
+              staffId: jobData.assignedStaffId || queryStaffId,
+              propertyId: jobData.propertyId || 'unknown',
+              status: jobData.status || 'assigned',
+              title: jobData.title || 'Untitled Job',
+              description: jobData.description || '',
+              type: (jobData.jobType || 'other') as any,
+              priority: (jobData.priority || 'medium') as any,
+              estimatedDuration: typeof jobData.estimatedDuration === 'string' 
+                ? parseInt(jobData.estimatedDuration.replace(/\D/g, '') || '30')
+                : typeof jobData.estimatedDuration === 'number' 
+                  ? jobData.estimatedDuration 
+                  : 30,
+              location: {
+                address: jobData.location?.address || 'Unknown Location',
+                city: jobData.location?.city || '',
+                state: jobData.location?.state || '',
+                zipCode: jobData.location?.zipCode || '',
+                coordinates: jobData.location?.coordinates,
+                accessInstructions: jobData.location?.accessInstructions,
+                accessCode: jobData.location?.accessCode
+              },
+              assignedBy: jobData.assignedBy || 'system',
+              assignedAt: jobData.assignedAt || jobData.createdAt,
+              scheduledFor: jobData.scheduledDate || jobData.createdAt,
+              dueDate: jobData.dueDate,
+              accepted: jobData.status === 'accepted' || jobData.status === 'in_progress',
+              acceptedAt: jobData.acceptedAt,
+              rejectedAt: jobData.rejectedAt,
+              rejectionReason: jobData.rejectionReason,
+              startedAt: jobData.startedAt,
+              completedAt: jobData.completedAt,
+              actualDuration: jobData.actualDuration,
+              completionNotes: jobData.notes || '',
+              requirements: jobData.requirements || [],
+              checklist: jobData.checklist || [],
+              photos: jobData.photos || [],
+              documents: jobData.documents || [],
+              bookingDetails: jobData.bookingDetails,
+              notificationsSent: jobData.notificationsSent || [],
+              createdAt: jobData.createdAt,
+              updatedAt: jobData.updatedAt || jobData.createdAt,
+              version: jobData.version || 1
+            };
+            webappJobs.push(jobAssignment);
+          });
+          console.log('🔄 Real-time update: received', webappJobs.length, 'jobs from jobs collection for Firebase UID:', queryStaffId);
+          // Merge and call callback
+          mergeCombinedJobs('webapp', webappJobs);
+        }, (error) => {
+          console.error('❌ Error in jobs listener:', error);
+        });
+        allUnsubscribers.push(unsubscribe2);
+      } catch (error) {
+        console.log('📋 jobs listener setup failed:', error);
+      }
+
+      // Store all unsubscribers
       const listenerId = `staff_jobs_${staffId}`;
-      this.unsubscribers.set(listenerId, unsubscribe);
-      // No return here; see above
+      this.unsubscribers.set(listenerId, () => {
+        allUnsubscribers.forEach(unsub => unsub());
+      });
     })();
-    return () => {};
+
+    // Function to merge jobs from both sources
+    const mergeCombinedJobs = (source: 'legacy' | 'webapp', newJobs: JobAssignment[]) => {
+      if (source === 'legacy') {
+        // Remove old legacy jobs and add new ones
+        combinedJobs = combinedJobs.filter(job => !job.id.startsWith('legacy_'));
+        combinedJobs.push(...newJobs.map(job => ({ ...job, id: `legacy_${job.id}` })));
+      } else {
+        // Remove old webapp jobs and add new ones
+        combinedJobs = combinedJobs.filter(job => !job.id.startsWith('webapp_') && !job.id.match(/^[a-zA-Z0-9]{20}$/));
+        combinedJobs.push(...newJobs);
+      }
+      
+      // Sort by date and call callback
+      combinedJobs.sort((a, b) => {
+        const aTime = a.scheduledFor?.seconds || a.assignedAt?.seconds || 0;
+        const bTime = b.scheduledFor?.seconds || b.assignedAt?.seconds || 0;
+        return bTime - aTime;
+      });
+      
+      console.log(`🔄 Merged jobs update: ${combinedJobs.length} total jobs for staff ${staffId} (Firebase UID: ${queryStaffId})`);
+      callback(combinedJobs);
+    };
+
+    return () => {
+      allUnsubscribers.forEach(unsub => unsub());
+    };
   }
 
   /**

@@ -112,11 +112,7 @@ export default function ProfileScreen() {
   };
 
   const handleEditProfile = () => {
-    Alert.alert(
-      'Edit Profile',
-      'Profile editing functionality coming soon!',
-      [{ text: 'OK' }]
-    );
+    router.push('/(modal)/edit-profile');
   };
 
   const getCurrentStatus = () => {

@@ -28,7 +28,10 @@
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "WAKE_LOCK"
       ]
     },
     "web": {
@@ -52,17 +55,30 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Sia Moon Staff to use your location to help navigate to properties and share your location for task management."
+          "locationAlwaysAndWhenInUseUsageDescription": "Allow Sia Moon Staff to use your location to help navigate to properties and share your location for task management."
         }
       ],
       "expo-font",
       "expo-web-browser",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_64,h_64,c_fill,f_png,q_auto/logo-white-vector-3svg_dmz2pf",
+          "color": "#8b5cf6",
+          "sounds": []
+        }
+      ]
     ],
     "scheme": "sia-moon-staff",
     "experiments": {
       "typedRoutes": true
     },
-    "newArchEnabled": true
+    "newArchEnabled": true,
+    "extra": {
+      "eas": {
+        "projectId": "cc931fa3"
+      }
+    }
   }
 }

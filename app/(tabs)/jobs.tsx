@@ -1,40 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   RefreshControl,
   FlatList,
   TextInput,
-  StatusBar,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Animatable from 'react-native-animatable';
 import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useJobContext } from '@/contexts/JobContext';
 import { JobData } from '@/types/jobData';
-import StaffJobsView from '@/components/jobs/StaffJobsView';
 import EnhancedStaffJobsView from '@/components/jobs/EnhancedStaffJobsView';
 import JobNotificationBanner from '@/components/JobNotificationBanner';
 import ErrorBoundary, { JobListErrorBoundary } from '@/components/shared/ErrorBoundary';
-import { LoadingState, EmptyState, LoadingSkeleton, ErrorState } from '@/components/shared/StateComponents';
 import SharedJobCard from '@/components/shared/SharedJobCard';
-import { 
-  getJobTypeIcon, 
-  getStatusColor, 
-  getStatusText, 
-  formatJobDate,
-  JOB_COLORS,
-  COMMON_STYLES 
-} from '@/utils/jobUtils';
-
-const { width: screenWidth } = Dimensions.get('window');
 
 const filterOptions = ['All', 'Assigned', 'In Progress', 'Scheduled', 'Completed'];
 
@@ -74,7 +59,7 @@ export default function JobsScreen() {
     setRefreshing(false);
   };
 
-    // Filter jobs based on selected filter and search query
+  // Filter jobs based on selected filter and search query
   const filteredJobs = jobs.filter((job: JobData) => {
     // Filter by status
     const statusMatches = selectedFilter === 'All' || 
@@ -93,8 +78,26 @@ export default function JobsScreen() {
     return statusMatches && searchMatches;
   });
 
-  const renderJobCard = ({ item: job, index }: { item: JobData; index: number }) => {
-    // Convert JobData to JobCardData format
+  const handleCreateJob = () => {
+    Alert.alert('Create Job', 'Job creation feature coming soon!');
+  };
+
+  const handleJobPress = (jobData: any) => {
+    console.log('View details:', jobData.id);
+  };
+
+  const handleActionPress = (jobData: any, action: string) => {
+    switch (action) {
+      case 'details':
+        console.log('View details:', jobData.id);
+        break;
+      case 'map':
+        console.log('Open map:', jobData.id);
+        break;
+    }
+  };
+
+  const renderJobItem = ({ item: job }: { item: JobData }) => {
     const jobCardData = {
       id: job.id,
       title: job.title,
@@ -109,34 +112,13 @@ export default function JobsScreen() {
       propertyId: job.propertyId,
     };
 
-    const handleJobPress = (jobData: any) => {
-      console.log('View details:', jobData.id);
-    };
-
-    const handleActionPress = (jobData: any, action: string) => {
-      switch (action) {
-        case 'details':
-          console.log('View details:', jobData.id);
-          break;
-        case 'map':
-          console.log('Open map:', jobData.id);
-          break;
-      }
-    };
-
     return (
-      <View
-        style={{
-          width: '47%',
-          marginRight: index % 2 === 0 ? '6%' : 0,
-        }}
-      >
+      <View style={styles.jobCardContainer}>
         <SharedJobCard
           job={jobCardData}
           onPress={handleJobPress}
           onActionPress={handleActionPress}
-          compact={true}
-          animationDelay={index * 100}
+          compact={false}
           actions={[
             { label: 'Details', action: 'details', icon: 'eye-outline' },
             { label: 'Map', action: 'map', icon: 'map-outline' },
@@ -146,278 +128,304 @@ export default function JobsScreen() {
     );
   };
 
-  // Show loading state
-  if (loading) {
-    return (
-      <View style={{ flex: 1, backgroundColor: JOB_COLORS.background }}>
-        <StatusBar barStyle="light-content" backgroundColor={JOB_COLORS.background} />
-        <SafeAreaView style={{ flex: 1 }}>
-          <LoadingSkeleton count={6} />
-        </SafeAreaView>
-      </View>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <View style={{ flex: 1, backgroundColor: JOB_COLORS.background }}>
-        <StatusBar barStyle="light-content" backgroundColor={JOB_COLORS.background} />
-        <SafeAreaView style={{ flex: 1 }}>
-          <ErrorState
-            title="Unable to load jobs"
-            message={error}
-            onRetry={refreshJobs}
-            retryLabel="Retry"
-            icon="briefcase-outline"
-          />
-        </SafeAreaView>
-      </View>
-    );
-  }
-
-  // Render empty state
-  const renderEmptyState = () => (
-    <EmptyState
-      title="No Jobs Available"
-      message="There are no jobs matching your current filter. Try adjusting your search or filter criteria."
-      actionLabel="Show All Jobs"
-      onAction={() => setSelectedFilter('All')}
-      icon="briefcase-outline"
-    />
-  );
-
   return (
     <JobListErrorBoundary>
-      <View style={{ flex: 1, backgroundColor: JOB_COLORS.background }}>
-        <StatusBar barStyle="light-content" backgroundColor={JOB_COLORS.background} />
-      
-      {/* Job Notification Banner */}
-      {activeNotification && (
-        <JobNotificationBanner
-          notification={activeNotification}
-          onDismiss={() => console.log('Notification dismissed')}
-        />
-      )}
-      
-      <SafeAreaView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 32 }}>
+      <SafeAreaView style={styles.container}>
+        {/* Job Notification Banner */}
+        {activeNotification && (
+          <JobNotificationBanner
+            notification={activeNotification}
+            onDismiss={() => console.log('Notification dismissed')}
+          />
+        )}
+
         {/* Header */}
-        <Animatable.View
-          animation="fadeInDown"
-          duration={600}
-          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}
-        >
-          <View>
-            <Text style={{
-              color: 'white',
-              fontSize: 32,
-              fontWeight: 'bold',
-              fontFamily: 'Urbanist'
-            }}>
-              Active Jobs
-            </Text>
-            <Text style={{
-              color: '#9CA3AF',
-              fontSize: 16,
-              marginTop: 4,
-              fontFamily: 'Inter'
-            }}>
-              {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} available
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Jobs</Text>
+            <Text style={styles.headerSubtitle}>
+              {currentProfile?.name} • {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''}
             </Text>
           </View>
+          
           <TouchableOpacity
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 24,
-              backgroundColor: 'rgba(198, 255, 0, 0.2)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            onPress={() => console.log('Add new job')}
-            accessibilityLabel="Add new job"
+            style={styles.createButton}
+            onPress={handleCreateJob}
           >
-            <Ionicons name="add" size={24} color="#C6FF00" />
+            <Ionicons name="add" size={20} color="#0B0F1A" />
+            <Text style={styles.createButtonText}>Create Job</Text>
           </TouchableOpacity>
-        </Animatable.View>
+        </View>
 
         {/* Search Bar */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
-          delay={100}
-          style={{
-            backgroundColor: '#1C1F2A',
-            borderRadius: 16,
-            padding: 16,
-            marginBottom: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
-            borderWidth: 1,
-            borderColor: '#374151',
-          }}
-        >
-          <Ionicons name="search-outline" size={20} color="#9CA3AF" style={{ marginRight: 12 }} />
-          <TextInput
-            style={{
-              flex: 1,
-              color: 'white',
-              fontSize: 16,
-              fontFamily: 'Inter'
-            }}
-            placeholder="Search jobs..."
-            placeholderTextColor="#9CA3AF"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-          )}
-        </Animatable.View>
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <Ionicons name="search-outline" size={20} color="#8E9AAE" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search jobs..."
+              placeholderTextColor="#8E9AAE"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color="#8E9AAE" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
 
         {/* Filter Chips */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
-          delay={200}
-          style={{ marginBottom: 24 }}
-        >
+        <View style={styles.filtersContainer}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 0 }}
+            contentContainerStyle={styles.filtersScrollView}
           >
-            {filterOptions.map((filter, index) => (
+            {filterOptions.map((filter) => (
               <TouchableOpacity
                 key={filter}
                 onPress={() => setSelectedFilter(filter)}
-                style={{ marginRight: 12 }}
+                style={[
+                  styles.filterChip,
+                  selectedFilter === filter && styles.filterChipActive
+                ]}
               >
-                <View
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: 12,
-                    backgroundColor: selectedFilter === filter 
-                      ? 'rgba(198, 255, 0, 0.2)' 
-                      : '#1C1F2A',
-                    borderWidth: 1,
-                    borderColor: selectedFilter === filter 
-                      ? 'rgba(198, 255, 0, 0.3)' 
-                      : '#374151',
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: '500',
-                      color: selectedFilter === filter ? '#C6FF00' : '#9CA3AF',
-                      fontFamily: 'Inter'
-                    }}
-                  >
-                    {filter}
-                  </Text>
-                </View>
+                <Text style={[
+                  styles.filterChipText,
+                  selectedFilter === filter && styles.filterChipTextActive
+                ]}>
+                  {filter}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </Animatable.View>
+        </View>
 
-        {/* Jobs Grid */}
-        {loading ? (
-          <View style={{ 
-            flex: 1, 
-            justifyContent: 'center', 
-            alignItems: 'center',
-            paddingVertical: 60 
-          }}>
-            <ActivityIndicator size="large" color="#C6FF00" />
-            <Text style={{
-              color: '#9CA3AF',
-              fontSize: 16,
-              marginTop: 16,
-              fontFamily: 'Inter_400Regular'
-            }}>
-              Loading jobs...
-            </Text>
-          </View>
-        ) : error ? (
-          <View style={{ 
-            flex: 1, 
-            justifyContent: 'center', 
-            alignItems: 'center',
-            paddingVertical: 60,
-            paddingHorizontal: 32 
-          }}>
-            <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-            <Text style={{
-              color: '#F1F1F1',
-              fontSize: 18,
-              fontWeight: '600',
-              marginTop: 16,
-              textAlign: 'center',
-              fontFamily: 'Inter_600SemiBold'
-            }}>
-              Error Loading Jobs
-            </Text>
-            <Text style={{
-              color: '#9CA3AF',
-              fontSize: 14,
-              marginTop: 8,
-              textAlign: 'center',
-              fontFamily: 'Inter_400Regular'
-            }}>
-              {error}
-            </Text>
-            <TouchableOpacity
-              onPress={refreshJobs}
-              style={{
-                backgroundColor: '#C6FF00',
-                paddingHorizontal: 24,
-                paddingVertical: 12,
-                borderRadius: 12,
-                marginTop: 24,
-              }}
-            >
-              <Text style={{
-                color: '#0B0F1A',
-                fontSize: 14,
-                fontWeight: '600',
-                fontFamily: 'Inter_600SemiBold'
-              }}>
-                Try Again
+        {/* Content */}
+        <View style={styles.content}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#C6FF00" />
+              <Text style={styles.loadingText}>Loading jobs...</Text>
+            </View>
+          ) : error ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="alert-circle-outline" size={64} color="#FF4444" />
+              <Text style={styles.emptyTitle}>Error Loading Jobs</Text>
+              <Text style={styles.emptyMessage}>{error}</Text>
+              <TouchableOpacity style={styles.retryButton} onPress={refreshJobs}>
+                <Text style={styles.retryButtonText}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : filteredJobs.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="briefcase-outline" size={64} color="#8E9AAE" />
+              <Text style={styles.emptyTitle}>No Jobs Found</Text>
+              <Text style={styles.emptyMessage}>
+                {searchQuery || selectedFilter !== 'All' 
+                  ? 'No jobs match your current search or filter criteria.'
+                  : 'There are no jobs available at the moment.'}
               </Text>
-            </TouchableOpacity>
-          </View>
-        ) : filteredJobs.length === 0 ? (
-          renderEmptyState()
-        ) : (
-          <FlatList
-            data={filteredJobs}
-            renderItem={renderJobCard}
-            numColumns={2}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 100 }}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={['#C6FF00']}
-                tintColor="#C6FF00"
-                progressBackgroundColor="rgba(198, 255, 0, 0.1)"
-              />
-            }
-            ListEmptyComponent={renderEmptyState}
-            keyExtractor={(item) => item.id}
-            columnWrapperStyle={{ justifyContent: 'space-between' }}
-          />
-        )}
+              {(searchQuery || selectedFilter !== 'All') && (
+                <TouchableOpacity 
+                  style={styles.clearFiltersButton} 
+                  onPress={() => {
+                    setSearchQuery('');
+                    setSelectedFilter('All');
+                  }}
+                >
+                  <Text style={styles.clearFiltersButtonText}>Clear Filters</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <FlatList
+              data={filteredJobs}
+              renderItem={renderJobItem}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.jobsList}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={['#C6FF00']}
+                  tintColor="#C6FF00"
+                />
+              }
+              keyExtractor={(item) => item.id}
+            />
+          )}
+        </View>
       </SafeAreaView>
-    </View>
     </JobListErrorBoundary>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0B0F1A',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E2A3A',
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontFamily: 'Inter_700Bold',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#8E9AAE',
+    marginTop: 4,
+    fontFamily: 'Inter_400Regular',
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#C6FF00',
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  createButtonText: {
+    color: '#0B0F1A',
+    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  searchContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E2A3A',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: 'Inter_400Regular',
+  },
+  filtersContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  filtersScrollView: {
+    gap: 12,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#1E2A3A',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  filterChipActive: {
+    backgroundColor: 'rgba(198, 255, 0, 0.2)',
+    borderColor: '#C6FF00',
+  },
+  filterChipText: {
+    fontSize: 14,
+    color: '#8E9AAE',
+    fontFamily: 'Inter_500Medium',
+  },
+  filterChipTextActive: {
+    color: '#C6FF00',
+  },
+  content: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    color: '#8E9AAE',
+    fontSize: 16,
+    marginTop: 16,
+    fontFamily: 'Inter_400Regular',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginTop: 20,
+    fontFamily: 'Inter_700Bold',
+  },
+  emptyMessage: {
+    fontSize: 16,
+    color: '#8E9AAE',
+    textAlign: 'center',
+    marginTop: 12,
+    lineHeight: 22,
+    fontFamily: 'Inter_400Regular',
+  },
+  retryButton: {
+    backgroundColor: '#C6FF00',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 24,
+  },
+  retryButtonText: {
+    color: '#0B0F1A',
+    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  clearFiltersButton: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#C6FF00',
+    marginTop: 24,
+  },
+  clearFiltersButtonText: {
+    color: '#C6FF00',
+    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  jobsList: {
+    paddingHorizontal: 20,
+    paddingBottom: 100,
+  },
+  jobCardContainer: {
+    marginBottom: 16,
+  },
+});
 
 

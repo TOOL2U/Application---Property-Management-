@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { localStaffService, StaffProfile, StaffSession } from '../services/localStaffService';
 import { staffSyncService, getStaffSyncService } from '../services/staffSyncService';
+import { initializeFirebase } from '../lib/firebase';
 
 interface PINAuthContextType {
   // Authentication state
@@ -61,6 +62,15 @@ export function PINAuthProvider({ children }: PINAuthProviderProps) {
       const unsubscribe = staffSyncService.subscribeToStaffUpdates((updatedProfiles: StaffProfile[]) => {
         console.log(`📡 PINAuth: Real-time staff update - ${updatedProfiles.length} profiles`);
         setStaffProfiles(updatedProfiles);
+        
+        // Update current profile if it exists and has been modified
+        if (currentProfile) {
+          const updatedCurrentProfile = updatedProfiles.find(p => p.id === currentProfile.id);
+          if (updatedCurrentProfile) {
+            console.log('🔄 PINAuth: Updating current profile with latest data');
+            setCurrentProfile(updatedCurrentProfile);
+          }
+        }
       });
 
       return () => {
@@ -75,13 +85,32 @@ export function PINAuthProvider({ children }: PINAuthProviderProps) {
       setIsLoading(true);
       console.log('🔐 PINAuth: Initializing authentication...');
 
-      // Initialize staff profiles
+      // Initialize staff profiles (local only, no Firebase)
       await localStaffService.initializeStaffProfiles();
       
-      // Load staff profiles
-      await loadStaffProfiles();
+      // Wait for Firebase to be ready before loading from Firestore
+      console.log('⏳ PINAuth: Waiting for Firebase to be ready...');
+      try {
+        await initializeFirebase();
+        console.log('✅ PINAuth: Firebase ready, loading staff profiles...');
+        
+        // Load staff profiles from Firestore
+        await loadStaffProfiles();
+      } catch (firebaseError) {
+        console.warn('⚠️ PINAuth: Firebase not ready, loading from cache only:', firebaseError);
+        // Try to load from local cache only
+        try {
+          const localProfiles = await localStaffService.getStaffProfiles();
+          if (localProfiles.length > 0) {
+            setStaffProfiles(localProfiles);
+            console.log(`📋 PINAuth: Loaded ${localProfiles.length} staff profiles from local cache`);
+          }
+        } catch (localError) {
+          console.error('❌ PINAuth: Failed to load from local cache:', localError);
+        }
+      }
       
-      // Check for existing session
+      // Check for existing session (uses local storage, not Firebase)
       await checkExistingSession();
       
       console.log('✅ PINAuth: Authentication initialized');
