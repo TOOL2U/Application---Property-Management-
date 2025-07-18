@@ -3,7 +3,7 @@
  * Provides offline-first caching, real-time updates, and job actions
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePINAuth } from '@/contexts/PINAuthContext';
 import { staffJobService } from '@/services/staffJobService';
 import { Job, JobStatus, JobFilter } from '@/types/job';
@@ -49,6 +49,14 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
 
   const { currentProfile } = usePINAuth();
   
+  // Use refs for stable references
+  const filtersRef = useRef(filters);
+  const enableCacheRef = useRef(enableCache);
+  
+  // Update refs when props change
+  filtersRef.current = filters;
+  enableCacheRef.current = enableCache;
+  
   // State
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,8 +69,8 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
   const pendingJobs = jobs.filter(job => job.status === 'pending');
   const completedJobs = jobs.filter(job => job.status === 'completed');
 
-  // Load jobs function
-  const loadJobs = useCallback(async (useCache: boolean = enableCache) => {
+  // Load jobs function - stabilized dependencies
+  const loadJobs = useCallback(async (useCache?: boolean) => {
     if (!currentProfile?.id) {
       setLoading(false);
       return;
@@ -73,8 +81,8 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
       
       const response = await staffJobService.getStaffJobs(
         currentProfile.id,
-        filters,
-        useCache
+        filtersRef.current,
+        useCache ?? enableCacheRef.current
       );
 
       if (response.success) {
@@ -93,7 +101,7 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
     } finally {
       setLoading(false);
     }
-  }, [currentProfile?.id, filters, enableCache]);
+  }, [currentProfile?.id]); // Only depend on currentProfile.id
 
   // Refresh jobs function
   const refreshJobs = useCallback(async () => {
@@ -280,7 +288,8 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
       setJobs([]);
       setLoading(false);
     }
-  }, [currentProfile?.id, loadJobs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProfile?.id]);
 
   // Set up real-time listener
   useEffect(() => {
@@ -297,14 +306,16 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
         setJobs(updatedJobs);
         setFromCache(false);
       },
-      filters
+      filtersRef.current
     );
 
     return () => {
       console.log('🔇 useStaffJobs: Cleaning up real-time listener');
       unsubscribe();
     };
-  }, [currentProfile?.id, enableRealtime, filters]);
+    // Only re-subscribe when currentProfile.id or enableRealtime changes, not on filters change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProfile?.id, enableRealtime]);
 
   // Cleanup on unmount
   useEffect(() => {
