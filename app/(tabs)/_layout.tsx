@@ -69,13 +69,14 @@ const AISTabIcon = ({
 
 export default function TabLayout() {
   const { isAuthenticated, isLoading } = usePINAuth();
+  const router = useRouter();
 
   console.log('🏠 TabLayout rendered:', {
     isAuthenticated,
     isLoading
   });
 
-  // Temporarily remove authentication guard to test navigation
+  // Show loading screen while checking authentication
   if (isLoading) {
     return (
       <View style={{
@@ -95,6 +96,18 @@ export default function TabLayout() {
         </Text>
       </View>
     );
+  }
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/(auth)/select-staff-profile');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  // Don't render tabs if not authenticated
+  if (!isAuthenticated) {
+    return null;
   }
 
   return (
@@ -137,6 +150,15 @@ export default function TabLayout() {
           title: 'Scan',
           tabBarIcon: ({ color, focused }) => (
             <AISTabIcon name="qr-code" focused={focused} color={color} isCenter={true} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color, focused }) => (
+            <AISTabIcon name="settings" focused={focused} color={color} />
           ),
         }}
       />
