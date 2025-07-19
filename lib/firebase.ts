@@ -39,9 +39,18 @@ console.log('🔥 Firebase Config Check:', {
   authDomain: firebaseConfig.authDomain
 });
 
-// Validate required config
+// Validate required config - allow development mode
+const isDevelopment = process.env.NODE_ENV === 'development' || __DEV__;
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-  throw new Error('Missing required Firebase configuration');
+  if (isDevelopment) {
+    console.warn('⚠️ Missing Firebase configuration - running in development mode');
+    // Use minimal config for development
+    firebaseConfig.apiKey = firebaseConfig.apiKey || 'development-api-key';
+    firebaseConfig.projectId = firebaseConfig.projectId || 'operty-b54dc';
+    firebaseConfig.authDomain = firebaseConfig.authDomain || 'operty-b54dc.firebaseapp.com';
+  } else {
+    throw new Error('Missing required Firebase configuration');
+  }
 }
 
 // Initialize Firebase App
