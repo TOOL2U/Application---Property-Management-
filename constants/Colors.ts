@@ -14,7 +14,7 @@ import { Appearance } from 'react-native';
 // SEMANTIC COLOR TOKENS - Light Theme
 // =============================================================================
 
-const LightColors = {
+export const LightColors = {
   // Brand Colors
   primary: '#3b82f6',        // Blue 500 - Primary brand color
   primaryHover: '#2563eb',   // Blue 600 - Hover states
@@ -93,7 +93,7 @@ const LightColors = {
 // SEMANTIC COLOR TOKENS - Dark Theme
 // =============================================================================
 
-const DarkColors = {
+export const DarkColors = {
   // Brand Colors - Adjusted for dark backgrounds
   primary: '#60a5fa',        // Blue 400 - More visible on dark (8.49:1 contrast)
   primaryHover: '#3b82f6',   // Blue 500 - Hover states (5.73:1 contrast)
@@ -189,43 +189,6 @@ export const Colors = getColors();
 // Named exports for specific themes
 export { LightColors, DarkColors };
 
-// =============================================================================
-// COLOR PALETTE DOCUMENTATION
-// =============================================================================
 
-export const ColorPalette = {
-  light: LightColors,
-  dark: DarkColors,
-  
-  // Contrast ratios for accessibility compliance
-  contrastRatios: {
-    light: {
-      'text.primary': 19.07,    // #0f172a on #ffffff
-      'text.secondary': 7.07,   // #475569 on #ffffff
-      'text.tertiary': 5.25,    // #64748b on #ffffff
-      'text.quaternary': 3.52,  // #94a3b8 on #ffffff
-      'primary': 5.73,          // #3b82f6 on #ffffff
-      'success': 4.73,          // #10b981 on #ffffff
-      'warning': 6.37,          // #f59e0b on #ffffff
-      'error': 5.73,            // #ef4444 on #ffffff
-    },
-    dark: {
-      'text.primary': 17.09,    // #f8fafc on #0f172a
-      'text.secondary': 11.58,  // #cbd5e1 on #0f172a
-      'text.tertiary': 7.07,    // #94a3b8 on #0f172a
-      'text.quaternary': 4.73,  // #64748b on #0f172a
-      'primary': 8.49,          // #60a5fa on #0f172a
-      'success': 9.54,          // #34d399 on #0f172a
-      'warning': 11.35,         // #fbbf24 on #0f172a
-      'error': 7.73,            // #f87171 on #0f172a
-    },
-  },
-  
-  // WCAG compliance status
-  wcagCompliance: {
-    AA: true,     // All colors meet WCAG 2.1 AA standards
-    AAA: false,   // Some colors don't meet AAA standards (7:1 ratio)
-  },
-};
 
 export default Colors;

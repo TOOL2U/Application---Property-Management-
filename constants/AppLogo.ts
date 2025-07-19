@@ -87,51 +87,6 @@ export const AppLogo = {
   },
 };
 
-/**
- * Logo component props for easy usage
- */
-export const LogoProps = {
-  // For main app icon/splash
-  appIcon: {
-    source: { uri: AppLogo.appIcon },
-    style: { width: 120, height: 120 },
-    resizeMode: 'contain' as const,
-  },
-  
-  // For header/navigation
-  header: {
-    source: { uri: AppLogo.header },
-    style: { width: 150, height: 40 },
-    resizeMode: 'contain' as const,
-  },
-  
-  // For notifications
-  notification: {
-    source: { uri: AppLogo.notification },
-    style: { width: 32, height: 32 },
-    resizeMode: 'contain' as const,
-  },
-  
-  // For small inline usage
-  small: {
-    source: { uri: AppLogo.responsive(40, 40) },
-    style: { width: 40, height: 40 },
-    resizeMode: 'contain' as const,
-  },
-  
-  // For medium usage
-  medium: {
-    source: { uri: AppLogo.responsive(80, 80) },
-    style: { width: 80, height: 80 },
-    resizeMode: 'contain' as const,
-  },
-  
-  // For large usage
-  large: {
-    source: { uri: AppLogo.responsive(160, 160) },
-    style: { width: 160, height: 160 },
-    resizeMode: 'contain' as const,
-  },
-};
+
 
 export default AppLogo;

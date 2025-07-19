@@ -265,38 +265,6 @@ export const AITheme = {
   },
 } as const;
 
-// NativeWind class mappings for easy use
-export const AIClassNames = {
-  // Background classes
-  bg: {
-    primary: 'bg-[#0B0F1A]',
-    secondary: 'bg-[#111827]',
-    tertiary: 'bg-[#1F2937]',
-    elevated: 'bg-[#374151]',
-  },
 
-  // Text classes
-  text: {
-    primary: 'text-[#F9FAFB]',
-    secondary: 'text-[#D1D5DB]',
-    tertiary: 'text-[#9CA3AF]',
-    muted: 'text-[#6B7280]',
-  },
-
-  // Border classes
-  border: {
-    subtle: 'border-[rgba(75,85,99,0.3)]',
-    default: 'border-[rgba(107,114,128,0.4)]',
-    strong: 'border-[rgba(156,163,175,0.6)]',
-    focus: 'border-[#8B5CF6]',
-  },
-
-  // Brand classes
-  brand: {
-    primary: 'text-[#8B5CF6]',
-    bg: 'bg-[#8B5CF6]',
-    border: 'border-[#8B5CF6]',
-  },
-} as const;
 
 export default AITheme;
