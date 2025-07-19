@@ -1,3 +1,18 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Force black background for web */
+@layer base {
+  html {
+    @apply bg-black;
+  }
+  
+  body {
+    @apply bg-black text-white;
+  }
+  
+  #root {
+    @apply bg-black min-h-screen;
+  }
+}

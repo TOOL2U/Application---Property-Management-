@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    
+    <!-- Expo web configuration -->
+    <meta name="expo-config" content="%EXPO_CONFIG%" />
+    
+    <title>Sia Moon Staff</title>
+    
+    <style>
+        /* Ensure black background everywhere */
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: #000000 !important;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        
+        /* Splash screen styles */
+        #expo-splash-screen {
+            background-color: #000000 !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        /* Root container */
+        #root {
+            background-color: #000000 !important;
+            min-height: 100vh;
+        }
+        
+        /* Override any white backgrounds */
+        * {
+            box-sizing: border-box;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000000;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div id="expo-splash-screen">
+        <img src="https://res.cloudinary.com/doez7m1hy/image/upload/w_600,h_600,c_fill,f_png,q_auto/logo-white-vector-3svg_dmz2pf" 
+             alt="Loading..." 
+             style="max-width: 200px; max-height: 200px;" />
+    </div>
+    <div id="root"></div>
+    
+    <script>
+        // Ensure black background is maintained
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.style.backgroundColor = '#000000';
+            document.documentElement.style.backgroundColor = '#000000';
+        });
+    </script>
+</body>
+</html>

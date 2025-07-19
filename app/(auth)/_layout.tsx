@@ -25,17 +25,9 @@ export default function AuthLayout() {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#0B0F1A'
+        backgroundColor: '#000000'
       }}>
         <ActivityIndicator size="large" color="#C6FF00" />
-        <Text style={{
-          color: '#FFFFFF',
-          marginTop: 20,
-          fontSize: 16,
-          fontFamily: 'Inter'
-        }}>
-          Verifying authentication...
-        </Text>
       </View>
     );
   }
@@ -45,7 +37,7 @@ export default function AuthLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: '#0B0F1A' },
+          contentStyle: { backgroundColor: '#000000' },
           animation: 'fade',
         }}
       >

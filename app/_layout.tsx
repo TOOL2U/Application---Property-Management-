@@ -1,8 +1,8 @@
 // Import Node.js polyfills first for web compatibility
 import '../polyfills/node-polyfills';
 
-// Import NativeWind CSS - temporarily disabled for debugging
-// import '../global.css';
+// Import NativeWind CSS
+import '../global.css';
 
 import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
@@ -14,6 +14,7 @@ import { PINAuthProvider } from "@/contexts/PINAuthContext";
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { JobProvider } from '@/contexts/JobContext';
 import { AppNotificationProvider } from '@/contexts/AppNotificationContext';
+import { PushNotificationProvider } from '@/contexts/PushNotificationContext';
 import { SiaMoonPaperTheme } from '@/constants/PaperTheme';
 import { initializeFirebase } from '@/lib/firebase';
 
@@ -74,23 +75,25 @@ export default function RootLayout() {
         <ThemeProvider>
           <ErrorBoundary>
             <PINAuthProvider>
-              <AppNotificationProvider>
-                <JobProvider>
-                  <ErrorBoundary>
-                    <StatusBar style="light" backgroundColor="#0B0F1A" />
-                    <Stack
-                      screenOptions={{
-                        headerShown: false,
-                        contentStyle: { backgroundColor: '#0B0F1A' },
-                      }}
-                    >
-                      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                      <Stack.Screen name="+not-found" />
-                    </Stack>
-                  </ErrorBoundary>
-                </JobProvider>
-              </AppNotificationProvider>
+              <PushNotificationProvider>
+                <AppNotificationProvider>
+                  <JobProvider>
+                    <ErrorBoundary>
+                      <StatusBar style="light" backgroundColor="#000000" />
+                      <Stack
+                        screenOptions={{
+                          headerShown: false,
+                          contentStyle: { backgroundColor: '#000000' },
+                        }}
+                      >
+                        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                        <Stack.Screen name="+not-found" />
+                      </Stack>
+                    </ErrorBoundary>
+                  </JobProvider>
+                </AppNotificationProvider>
+              </PushNotificationProvider>
             </PINAuthProvider>
         </ErrorBoundary>
       </ThemeProvider>

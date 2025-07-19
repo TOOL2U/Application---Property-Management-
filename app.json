@@ -1,15 +1,16 @@
 {
   "expo": {
-    "name": "Sia Moon Staff",
+    "name": " ",
     "slug": "sia-moon-staff",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_1024,h_1024,c_fill,f_png,q_auto/logo-white-vector-3svg_dmz2pf",
-    "userInterfaceStyle": "light",
+    "icon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_1024,h_1024,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
+    "userInterfaceStyle": "dark",
     "splash": {
-      "image": "https://res.cloudinary.com/doez7m1hy/image/upload/w_600,h_600,c_fill,f_png,q_auto/logo-white-vector-3svg_dmz2pf",
-      "resizeMode": "contain",
-      "backgroundColor": "#0B0F1A"
+      "image": "https://res.cloudinary.com/doez7m1hy/image/upload/w_600,h_600,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
+      "resizeMode": "contain", 
+      "backgroundColor": "#000000",
+      "hideExponentText": true
     },
     "assetBundlePatterns": [
       "**/*"
@@ -18,26 +19,33 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs location access to help staff navigate to properties and share their location for task management.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to help staff navigate to properties and share their location for task management."
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs location access to help staff navigate to properties and share their location for task management.",
+        "NSUserNotificationsUsageDescription": "This app needs notification access to send you important job assignments and updates.",
+        "UIBackgroundModes": ["remote-notification"]
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "https://res.cloudinary.com/doez7m1hy/image/upload/w_1024,h_1024,c_fill,f_png,q_auto/logo-white-vector-3svg_dmz2pf",
-        "backgroundColor": "#0B0F1A"
+        "foregroundImage": "https://res.cloudinary.com/doez7m1hy/image/upload/w_1024,h_1024,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
+        "backgroundColor": "#000000"
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "WAKE_LOCK"
+        "WAKE_LOCK",
+        "INTERNET",
+        "SYSTEM_ALERT_WINDOW",
+        "com.google.android.c2dm.permission.RECEIVE"
       ]
     },
     "web": {
-      "favicon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_32,h_32,c_fill,f_png,q_auto/logo-white-vector-3svg_dmz2pf",
+      "favicon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_32,h_32,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
       "bundler": "metro",
       "serviceWorkerPath": "firebase-messaging-sw.js",
+      "backgroundColor": "#000000",
+      "template": "./web/index.html",
       "config": {
         "firebase": {
           "notification": {
@@ -47,7 +55,7 @@
       }
     },
     "notification": {
-      "icon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_64,h_64,c_fill,f_png,q_auto/logo-white-vector-3svg_dmz2pf",
+      "icon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_64,h_64,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
       "color": "#8b5cf6"
     },
     "plugins": [
@@ -64,7 +72,7 @@
       [
         "expo-notifications",
         {
-          "icon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_64,h_64,c_fill,f_png,q_auto/logo-white-vector-3svg_dmz2pf",
+          "icon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_64,h_64,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
           "color": "#8b5cf6",
           "sounds": []
         }

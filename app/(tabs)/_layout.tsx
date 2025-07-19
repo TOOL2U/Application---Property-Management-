@@ -123,17 +123,9 @@ export default function TabLayout() {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#0B0F1A'
+        backgroundColor: '#000000'
       }}>
         <ActivityIndicator size="large" color="#C6FF00" />
-        <Text style={{
-          color: '#FFFFFF',
-          marginTop: 20,
-          fontSize: 16,
-          fontFamily: 'Inter'
-        }}>
-          Loading...
-        </Text>
       </View>
     );
   }

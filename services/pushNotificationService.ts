@@ -1,16 +1,16 @@
 /**
  * Push Notification Service
- * Firebase Cloud Messaging integration for job assignment notifications
+ * Comprehensive Expo push notifications with Firebase integration
  */
 
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
-import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, collection, getDocs, query, where, serverTimestamp, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Admin services are handled server-side only
-// Client-side push notifications use Expo's FCM integration
 let adminService: any = null;
 import type { 
   JobAssignment, 
@@ -19,8 +19,7 @@ import type {
   StaffAvailability 
 } from '@/types/jobAssignment';
 
-// Configure notification behavior
-// Fix: Add missing properties for NotificationBehavior type
+// Configure notification behavior for all app states
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -31,78 +30,86 @@ Notifications.setNotificationHandler({
   }),
 });
 
+export interface PushToken {
+  token: string;
+  platform: 'ios' | 'android' | 'web';
+  deviceId: string;
+  deviceName: string;
+  lastUpdated: any; // Firestore timestamp
+  isActive: boolean;
+  appVersion?: string;
+}
+
+export interface NotificationData {
+  type: 'job_assignment' | 'job_update' | 'emergency' | 'system' | 'message';
+  jobId?: string;
+  staffId?: string;
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
+  actionRequired?: boolean;
+  deepLink?: string;
+  [key: string]: any;
+}
+
+export interface NotificationPayload {
+  title: string;
+  body: string;
+  data?: NotificationData;
+  sound?: string | boolean;
+  badge?: number;
+  categoryId?: string;
+}
+
 class PushNotificationService {
   private expoPushToken: string | null = null;
+  private deviceId: string | null = null;
+  private currentStaffId: string | null = null;
+  private isInitialized: boolean = false;
+  private permissionStatus: Notifications.PermissionStatus | null = null;
   private notificationListener: any = null;
   private responseListener: any = null;
 
+  constructor() {
+    console.log('📲 PushNotificationService: Initializing...');
+    this.setupNotificationCategories();
+  }
+
   /**
-   * Initialize push notifications for the mobile app and web
+   * Initialize push notifications for the authenticated staff member
    */
   async initialize(staffId: string): Promise<boolean> {
     try {
-      console.log('🔔 Initializing push notifications for staff:', staffId);
+      console.log('� PushNotificationService: Initializing for staff:', staffId);
+      
+      this.currentStaffId = staffId;
 
-      // Check platform and device support
+      // Handle different platforms
       if (Platform.OS === 'web') {
         console.log('🌐 Web platform detected, using web push notifications');
         return await this.initializeWebPushNotifications(staffId);
       }
 
-      // Skip push notifications for non-mobile platforms during development
-      if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
-        console.log('⚠️ Push notifications not supported on platform:', Platform.OS);
-        return false;
-      }
-
-      // Check if device supports push notifications (mobile only)
+      // Check if device supports push notifications
       if (!Device.isDevice) {
         console.warn('⚠️ Push notifications only work on physical devices');
         return false;
       }
 
-      // Request permissions with error handling
-      let finalStatus: string;
-      try {
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        finalStatus = existingStatus;
-
-        if (existingStatus !== 'granted') {
-          const { status } = await Notifications.requestPermissionsAsync();
-          finalStatus = status;
-        }
-      } catch (permissionError) {
-        console.error('❌ Error requesting notification permissions:', permissionError);
+      // Request permissions
+      const permissionGranted = await this.requestPermissions();
+      if (!permissionGranted) {
+        console.warn('⚠️ Push notification permissions denied');
         return false;
       }
 
-      if (finalStatus !== 'granted') {
-        console.warn('⚠️ Push notification permissions not granted');
+      // Get push token
+      const token = await this.getPushToken();
+      if (!token) {
+        console.error('❌ Failed to get push token');
         return false;
       }
 
-      // Get Expo push token with proper error handling
-      try {
-        const projectId = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'operty-b54dc';
-
-        if (!projectId) {
-          console.error('❌ No Firebase project ID found for push notifications');
-          return false;
-        }
-
-        const token = await Notifications.getExpoPushTokenAsync({
-          projectId: projectId,
-        });
-
-        this.expoPushToken = token.data;
-        console.log('✅ Expo push token obtained:', this.expoPushToken);
-
-        // Save token to staff profile
-        await this.saveTokenToStaffProfile(staffId, this.expoPushToken);
-      } catch (tokenError) {
-        console.error('❌ Error getting Expo push token:', tokenError);
-        // Continue without token - we can still set up listeners
-      }
+      // Store token in Firestore
+      await this.storePushToken(staffId, token);
 
       // Set up notification listeners
       this.setupNotificationListeners();
@@ -112,16 +119,279 @@ class PushNotificationService {
         await this.setupAndroidChannels();
       }
 
+      this.isInitialized = true;
+      console.log('✅ PushNotificationService: Initialized successfully');
       return true;
+
     } catch (error) {
-      console.error('❌ Error initializing push notifications:', error);
+      console.error('❌ PushNotificationService: Initialization failed:', error);
       return false;
     }
   }
 
   /**
-   * Initialize web push notifications
+   * Request notification permissions
    */
+  async requestPermissions(): Promise<boolean> {
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      this.permissionStatus = finalStatus;
+
+      if (finalStatus !== 'granted') {
+        console.warn('⚠️ Notification permissions not granted:', finalStatus);
+        return false;
+      }
+
+      console.log('✅ Notification permissions granted');
+      return true;
+
+    } catch (error) {
+      console.error('❌ Failed to request notification permissions:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get Expo push token
+   */
+  async getPushToken(): Promise<string | null> {
+    try {
+      // Check if we have a cached token
+      const cachedToken = await AsyncStorage.getItem('expo_push_token');
+      if (cachedToken && this.expoPushToken === cachedToken) {
+        console.log('📱 Using cached push token');
+        return cachedToken;
+      }
+
+      console.log('📱 Getting new push token...');
+      const projectId = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'cc931fa3';
+      
+      const tokenData = await Notifications.getExpoPushTokenAsync({
+        projectId,
+      });
+
+      this.expoPushToken = tokenData.data;
+      
+      // Cache the token
+      await AsyncStorage.setItem('expo_push_token', this.expoPushToken);
+      
+      console.log('✅ Push token obtained:', this.expoPushToken.substring(0, 20) + '...');
+      return this.expoPushToken;
+
+    } catch (error) {
+      console.error('❌ Failed to get push token:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Store push token in Firestore
+   */
+  async storePushToken(staffId: string, token: string): Promise<void> {
+    try {
+      const db = await getDb();
+      
+      // Generate a unique device ID
+      this.deviceId = await this.getDeviceId();
+      
+      const tokenData: PushToken = {
+        token,
+        platform: Platform.OS as 'ios' | 'android',
+        deviceId: this.deviceId,
+        deviceName: await this.getDeviceName(),
+        lastUpdated: serverTimestamp(),
+        isActive: true,
+        appVersion: '1.0.0',
+      };
+
+      // Store in staff_accounts/{staffId}/devices/{deviceId}
+      const deviceRef = doc(db, 'staff_accounts', staffId, 'devices', this.deviceId);
+      await setDoc(deviceRef, tokenData, { merge: true });
+
+      console.log('✅ Push token stored in Firestore for device:', this.deviceId);
+
+      // Also save to staff profile for backward compatibility
+      await this.saveTokenToStaffProfile(staffId, token);
+
+      // Clean up old/inactive tokens for this staff member
+      await this.cleanupOldTokens(staffId);
+
+    } catch (error) {
+      console.error('❌ Failed to store push token:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save FCM token to staff profile for server-side notifications (backward compatibility)
+   */
+  private async saveTokenToStaffProfile(staffId: string, token: string): Promise<void> {
+    try {
+      const db = await getDb();
+      const staffRef = doc(db, 'staff_accounts', staffId);
+      
+      // Get current staff data
+      const staffDoc = await getDoc(staffRef);
+      if (!staffDoc.exists()) {
+        console.error('❌ Staff profile not found:', staffId);
+        return;
+      }
+
+      const staffData = staffDoc.data();
+      const currentTokens = staffData.fcmTokens || [];
+
+      // Add token if not already present
+      if (!currentTokens.includes(token)) {
+        await updateDoc(staffRef, {
+          fcmTokens: arrayUnion(token),
+          lastTokenUpdate: new Date(),
+          notificationPreferences: {
+            pushEnabled: true,
+            emailEnabled: staffData.notificationPreferences?.emailEnabled ?? true,
+            smsEnabled: staffData.notificationPreferences?.smsEnabled ?? false,
+            reminderMinutes: staffData.notificationPreferences?.reminderMinutes ?? 15,
+            ...staffData.notificationPreferences
+          }
+        });
+
+        console.log('✅ FCM token saved to staff profile');
+      }
+    } catch (error) {
+      console.error('❌ Error saving FCM token:', error);
+    }
+  }
+
+  /**
+   * Remove push token from Firestore (on logout)
+   */
+  async removePushToken(staffId: string): Promise<void> {
+    try {
+      if (!this.deviceId) {
+        this.deviceId = await this.getDeviceId();
+      }
+
+      const db = await getDb();
+      const deviceRef = doc(db, 'staff_accounts', staffId, 'devices', this.deviceId!);
+      await deleteDoc(deviceRef);
+
+      console.log('✅ Push token removed from Firestore');
+
+      // Clear local cache
+      await AsyncStorage.removeItem('expo_push_token');
+      this.expoPushToken = null;
+
+    } catch (error) {
+      console.error('❌ Failed to remove push token:', error);
+    }
+  }
+
+  /**
+   * Clean up old/inactive tokens
+   */
+  async cleanupOldTokens(staffId: string): Promise<void> {
+    try {
+      const db = await getDb();
+      const devicesRef = collection(db, 'staff_accounts', staffId, 'devices');
+      const snapshot = await getDocs(devicesRef);
+
+      const currentTime = Date.now();
+      const thirtyDaysAgo = currentTime - (30 * 24 * 60 * 60 * 1000); // 30 days
+
+      for (const docSnap of snapshot.docs) {
+        const deviceData = docSnap.data() as PushToken;
+        const lastUpdated = deviceData.lastUpdated?.toMillis() || 0;
+
+        // Remove tokens older than 30 days or from different devices with same token
+        if (lastUpdated < thirtyDaysAgo || 
+            (deviceData.token === this.expoPushToken && docSnap.id !== this.deviceId)) {
+          await deleteDoc(docSnap.ref);
+          console.log('🧹 Cleaned up old token for device:', docSnap.id);
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Failed to cleanup old tokens:', error);
+    }
+  }
+
+  /**
+   * Get unique device ID
+   */
+  private async getDeviceId(): Promise<string> {
+    try {
+      let deviceId = await AsyncStorage.getItem('device_id');
+      
+      if (!deviceId) {
+        // Generate a new device ID
+        deviceId = `${Platform.OS}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        await AsyncStorage.setItem('device_id', deviceId);
+      }
+
+      return deviceId;
+
+    } catch (error) {
+      console.error('❌ Failed to get device ID:', error);
+      return `${Platform.OS}_${Date.now()}_fallback`;
+    }
+  }
+
+  /**
+   * Get device name
+   */
+  private async getDeviceName(): Promise<string> {
+    try {
+      const deviceName = Device.deviceName || `${Device.brand} ${Device.modelName}` || 'Unknown Device';
+      return deviceName;
+    } catch (error) {
+      console.error('❌ Failed to get device name:', error);
+      return 'Unknown Device';
+    }
+  }
+
+  /**
+   * Setup notification categories (for action buttons)
+   */
+  private async setupNotificationCategories(): Promise<void> {
+    try {
+      await Notifications.setNotificationCategoryAsync('job_assignment', [
+        {
+          identifier: 'accept',
+          buttonTitle: 'Accept',
+          options: { opensAppToForeground: true },
+        },
+        {
+          identifier: 'decline',
+          buttonTitle: 'Decline',
+          options: { opensAppToForeground: false },
+        },
+      ]);
+
+      await Notifications.setNotificationCategoryAsync('emergency', [
+        {
+          identifier: 'respond',
+          buttonTitle: 'Respond',
+          options: { opensAppToForeground: true },
+        },
+        {
+          identifier: 'call_support',
+          buttonTitle: 'Call Support',
+          options: { opensAppToForeground: true },
+        },
+      ]);
+
+      console.log('✅ Notification categories set up');
+
+    } catch (error) {
+      console.error('❌ Failed to setup notification categories:', error);
+    }
+  }
   async initializeWebPushNotifications(staffId: string): Promise<boolean> {
     try {
       console.log('🌐 Initializing web push notifications for staff:', staffId);
@@ -575,7 +845,118 @@ class PushNotificationService {
   }
 
   /**
-   * Clean up listeners
+   * Get current notification permission status
+   */
+  getPermissionStatus(): Notifications.PermissionStatus | null {
+    return this.permissionStatus;
+  }
+
+  /**
+   * Check if notifications are enabled
+   */
+  async areNotificationsEnabled(): Promise<boolean> {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      return status === 'granted';
+    } catch (error) {
+      console.error('❌ Failed to check notification status:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get current push token
+   */
+  getCurrentPushToken(): string | null {
+    return this.expoPushToken;
+  }
+
+  /**
+   * Refresh push token
+   */
+  async refreshPushToken(): Promise<string | null> {
+    try {
+      if (!this.currentStaffId) {
+        console.error('❌ No current staff ID for token refresh');
+        return null;
+      }
+
+      const newToken = await this.getPushToken();
+      if (newToken && newToken !== this.expoPushToken) {
+        await this.storePushToken(this.currentStaffId, newToken);
+        console.log('✅ Push token refreshed');
+      }
+
+      return newToken;
+
+    } catch (error) {
+      console.error('❌ Failed to refresh push token:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Send a local notification (for testing)
+   */
+  async sendTestNotification(): Promise<void> {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '🧪 Test Notification',
+          body: 'This is a test notification from Sia Moon Staff app',
+          data: {
+            type: 'system',
+            priority: 'normal',
+          },
+          sound: true,
+          categoryIdentifier: 'job_assignment',
+        },
+        trigger: null, // Send immediately
+      });
+
+      console.log('✅ Test notification sent');
+
+    } catch (error) {
+      console.error('❌ Failed to send test notification:', error);
+    }
+  }
+
+  /**
+   * Enhanced cleanup on logout
+   */
+  async enhancedCleanup(staffId?: string): Promise<void> {
+    try {
+      console.log('🧹 PushNotificationService: Enhanced cleaning up...');
+
+      if (staffId && this.deviceId) {
+        await this.removePushToken(staffId);
+      }
+
+      this.expoPushToken = null;
+      this.deviceId = null;
+      this.currentStaffId = null;
+      this.isInitialized = false;
+      this.permissionStatus = null;
+
+      // Clean up listeners
+      if (this.notificationListener) {
+        Notifications.removeNotificationSubscription(this.notificationListener);
+        this.notificationListener = null;
+      }
+      if (this.responseListener) {
+        Notifications.removeNotificationSubscription(this.responseListener);
+        this.responseListener = null;
+      }
+
+      console.log('✅ PushNotificationService: Enhanced cleanup complete');
+
+    } catch (error) {
+      console.error('❌ PushNotificationService: Enhanced cleanup failed:', error);
+    }
+  }
+
+  /**
+   * Clean up listeners (original method)
    */
   cleanup(): void {
     if (this.notificationListener) {
