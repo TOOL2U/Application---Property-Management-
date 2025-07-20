@@ -114,26 +114,29 @@ export default async function handler(
       const staffData = staffDoc.data();
       const fcmTokens = staffData?.fcmTokens || [];
       
-      if (fcmTokens.length > 0 && staffData?.notificationPreferences?.pushEnabled !== false) {
-        await messaging.sendMulticast({
-          tokens: fcmTokens,
-          notification: {
-            title: '🔔 New Job Assignment',
-            body: `${jobAssignment.title} - ${jobAssignment.type.replace('_', ' ')} at ${jobAssignment.location.address}`
-          },
-          data: {
-            type: 'job_assigned',
-            jobId: docRef.id,
-            staffId: assignmentRequest.staffId,
-            priority: jobAssignment.priority,
-            scheduledFor: jobAssignment.scheduledFor.toISOString(),
-          },
-          android: {
-            priority: jobAssignment.priority === 'urgent' ? 'high' : 'normal',
-          }
+      // Send notification using unified service
+      try {
+        const { unifiedJobNotificationService } = await import('../../services/unifiedJobNotificationService');
+
+        const notificationResult = await unifiedJobNotificationService.sendJobAssignmentNotification({
+          jobId: docRef.id,
+          title: jobAssignment.title,
+          description: jobAssignment.description,
+          type: jobAssignment.type,
+          priority: jobAssignment.priority as 'low' | 'normal' | 'high' | 'urgent',
+          propertyName: jobAssignment.location.propertyName || 'Unknown Property',
+          propertyAddress: jobAssignment.location.address,
+          scheduledDate: jobAssignment.scheduledFor.toDate(),
+          assignedStaffId: assignmentRequest.staffId
         });
-        
-        console.log('✅ Push notification sent to staff:', assignmentRequest.staffId);
+
+        if (notificationResult.success) {
+          console.log('✅ Unified notification sent successfully:', notificationResult.eventId);
+        } else {
+          console.warn('⚠️ Unified notification had issues:', notificationResult.errors);
+        }
+      } catch (notificationError) {
+        console.error('❌ Error with unified notification service:', notificationError);
       }
     } catch (notificationError) {
       console.error('⚠️ Failed to send push notification:', notificationError);

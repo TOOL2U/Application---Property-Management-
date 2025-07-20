@@ -300,15 +300,12 @@ export default function JobAcceptanceModal({
     >
       <View style={styles.container}>
         {/* Header */}
-        <LinearGradient
-          colors={['#1a1a2e', '#16213e']}
-          style={styles.header}
-        >
+        <View style={[styles.header, { backgroundColor: '#1E2A3A' }]}>
           <Text style={styles.headerTitle}>Job Assignment</Text>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <XCircle size={24} color="#ffffff" />
           </TouchableOpacity>
-        </LinearGradient>
+        </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Job Title and Priority */}
@@ -326,10 +323,7 @@ export default function JobAcceptanceModal({
 
           {/* Job Details */}
           <View style={styles.detailsCard}>
-            <LinearGradient
-              colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)']}
-              style={styles.cardGradient}
-            >
+            <View style={styles.cardGradient}>
               <View style={styles.detailRow}>
                 <Calendar size={20} color="#8b5cf6" />
                 <View style={styles.detailContent}>
@@ -387,18 +381,15 @@ export default function JobAcceptanceModal({
                   </View>
                 </View>
               )}
-            </LinearGradient>
+            </View>
           </View>
 
           {/* Property Contacts */}
           {(job as any).contacts && (job as any).contacts.length > 0 && (
             <View style={styles.contactsCard}>
-              <LinearGradient
-                colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)']}
-                style={styles.cardGradient}
-              >
+              <View style={styles.cardGradient}>
                 <View style={styles.sectionHeader}>
-                  <Phone size={20} color="#8b5cf6" />
+                  <Phone size={20} color="#C6FF00" />
                   <Text style={styles.sectionTitle}>Property Contacts</Text>
                 </View>
                 {(job as any).contacts.map((contact: any, index: number) => (
@@ -416,7 +407,7 @@ export default function JobAcceptanceModal({
                     </TouchableOpacity>
                   </View>
                 ))}
-              </LinearGradient>
+              </View>
             </View>
           )}
 
@@ -582,7 +573,7 @@ export default function JobAcceptanceModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#0B0F1A',
   },
   header: {
     flexDirection: 'row',
@@ -596,6 +587,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#ffffff',
+    fontFamily: 'Inter_700Bold',
   },
   closeButton: {
     padding: 4,
@@ -616,6 +608,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     flex: 1,
     marginRight: 12,
+    fontFamily: 'Inter_700Bold',
   },
   priorityBadge: {
     paddingHorizontal: 12,
@@ -626,6 +619,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: '#ffffff',
+    fontFamily: 'Inter_700Bold',
   },
   typeSection: {
     marginBottom: 20,
@@ -633,37 +627,46 @@ const styles = StyleSheet.create({
   jobType: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#8b5cf6',
+    color: '#C6FF00',
+    fontFamily: 'Inter_600SemiBold',
   },
   detailsCard: {
     marginBottom: 16,
     borderRadius: 16,
-    overflow: 'hidden',
+    backgroundColor: '#1E2A3A',
+    borderWidth: 1,
+    borderColor: '#374151',
   },
   descriptionCard: {
     marginBottom: 16,
     borderRadius: 16,
-    overflow: 'hidden',
+    backgroundColor: '#1E2A3A',
+    borderWidth: 1,
+    borderColor: '#374151',
   },
   requirementsCard: {
     marginBottom: 16,
     borderRadius: 16,
-    overflow: 'hidden',
+    backgroundColor: '#1E2A3A',
+    borderWidth: 1,
+    borderColor: '#374151',
   },
   bookingCard: {
     marginBottom: 16,
     borderRadius: 16,
-    overflow: 'hidden',
+    backgroundColor: '#1E2A3A',
+    borderWidth: 1,
+    borderColor: '#374151',
   },
   rejectionCard: {
     marginBottom: 16,
     borderRadius: 16,
-    overflow: 'hidden',
+    backgroundColor: '#1E2A3A',
+    borderWidth: 1,
+    borderColor: '#374151',
   },
   cardGradient: {
     padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   detailRow: {
     flexDirection: 'row',
@@ -676,18 +679,21 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: '#8E9AAE',
     marginBottom: 2,
+    fontFamily: 'Inter_400Regular',
   },
   detailValue: {
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
+    fontFamily: 'Inter_600SemiBold',
   },
   detailSubValue: {
     fontSize: 14,
-    color: '#d1d5db',
+    color: '#8E9AAE',
     marginTop: 2,
+    fontFamily: 'Inter_400Regular',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -699,11 +705,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#ffffff',
     marginLeft: 8,
+    fontFamily: 'Inter_700Bold',
   },
   description: {
     fontSize: 16,
-    color: '#d1d5db',
+    color: '#8E9AAE',
     lineHeight: 24,
+    fontFamily: 'Inter_400Regular',
   },
   requirementItem: {
     flexDirection: 'row',
@@ -713,53 +721,61 @@ const styles = StyleSheet.create({
   },
   requirementText: {
     fontSize: 14,
-    color: '#d1d5db',
+    color: '#8E9AAE',
     flex: 1,
     lineHeight: 20,
+    fontFamily: 'Inter_400Regular',
   },
   requiredLabel: {
     fontSize: 12,
     fontWeight: 'bold',
     color: '#f59e0b',
     marginLeft: 8,
+    fontFamily: 'Inter_700Bold',
   },
   guestName: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 8,
+    fontFamily: 'Inter_700Bold',
   },
   bookingDates: {
     fontSize: 14,
-    color: '#d1d5db',
+    color: '#8E9AAE',
     marginBottom: 4,
+    fontFamily: 'Inter_400Regular',
   },
   specialRequests: {
     fontSize: 14,
-    color: '#d1d5db',
+    color: '#8E9AAE',
     marginTop: 8,
     fontStyle: 'italic',
+    fontFamily: 'Inter_400Regular',
   },
   rejectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 12,
+    fontFamily: 'Inter_700Bold',
   },
   rejectionInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#374151',
     borderRadius: 8,
     padding: 12,
     color: '#ffffff',
     fontSize: 16,
     minHeight: 80,
     textAlignVertical: 'top',
+    fontFamily: 'Inter_400Regular',
   },
   characterCount: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: '#8E9AAE',
     textAlign: 'right',
     marginTop: 4,
+    fontFamily: 'Inter_400Regular',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -784,6 +800,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#ffffff',
+    fontFamily: 'Inter_700Bold',
   },
   acceptButton: {
     borderRadius: 12,
@@ -799,10 +816,11 @@ const styles = StyleSheet.create({
   acceptButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#0B0F1A',
+    fontFamily: 'Inter_700Bold',
   },
   cancelButton: {
-    backgroundColor: 'rgba(107, 114, 128, 0.3)',
+    backgroundColor: '#374151',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -812,6 +830,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#ffffff',
+    fontFamily: 'Inter_700Bold',
   },
   confirmRejectButton: {
     borderRadius: 12,
@@ -828,38 +847,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#ffffff',
+    fontFamily: 'Inter_700Bold',
   },
   accessInstructions: {
     fontSize: 14,
-    color: '#d1d5db',
+    color: '#8E9AAE',
     marginTop: 4,
     fontStyle: 'italic',
+    fontFamily: 'Inter_400Regular',
   },
   accessCode: {
     fontSize: 14,
     color: '#22c55e',
     marginTop: 2,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   navigationButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#8b5cf6',
+    backgroundColor: '#C6FF00',
     padding: 12,
     borderRadius: 8,
     marginTop: 12,
     gap: 8,
   },
   navigationButtonText: {
-    color: '#ffffff',
+    color: '#0B0F1A',
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
   contactsCard: {
     marginBottom: 20,
     borderRadius: 16,
-    overflow: 'hidden',
+    backgroundColor: '#1E2A3A',
+    borderWidth: 1,
+    borderColor: '#374151',
   },
   contactItem: {
     flexDirection: 'row',
@@ -867,7 +892,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: '#374151',
   },
   contactInfo: {
     flex: 1,
@@ -877,10 +902,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 2,
+    fontFamily: 'Inter_600SemiBold',
   },
   contactRole: {
-    color: '#a1a1aa',
+    color: '#8E9AAE',
     fontSize: 14,
+    fontFamily: 'Inter_400Regular',
   },
   callButton: {
     flexDirection: 'row',
@@ -895,5 +922,6 @@ const styles = StyleSheet.create({
     color: '#22c55e',
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
 });

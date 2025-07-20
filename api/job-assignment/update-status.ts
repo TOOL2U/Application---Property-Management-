@@ -195,19 +195,37 @@ export default async function handler(
       // Don't fail the request if notification fails
     }
 
-    // Send webhook notification to external systems (if configured)
+    // Send status update notification using unified service
     try {
-      await sendWebhookNotification({
-        event: `job.${statusUpdate.status}` as any,
-        timestamp: new Date().toISOString(),
-        jobAssignment: updatedJob,
+      const { unifiedJobNotificationService } = await import('../../services/unifiedJobNotificationService');
+
+      // Get staff name for the notification
+      const staffDoc = await firestore.collection('staff').doc(statusUpdate.staffId).get();
+      const staffName = staffDoc.exists ? staffDoc.data()?.name : 'Unknown Staff';
+
+      const notificationResult = await unifiedJobNotificationService.sendJobStatusUpdateNotification({
+        jobId: statusUpdate.jobId,
+        title: currentJob.title,
+        description: currentJob.description,
+        type: currentJob.type,
+        priority: currentJob.priority as 'low' | 'normal' | 'high' | 'urgent',
+        propertyName: currentJob.location?.propertyName || 'Unknown Property',
+        propertyAddress: currentJob.location?.address || 'Unknown Address',
+        scheduledDate: currentJob.scheduledFor.toDate(),
+        assignedStaffId: statusUpdate.staffId,
+        assignedStaffName: staffName,
+        status: statusUpdate.status,
         previousStatus: currentJob.status,
-        triggeredBy: statusUpdate.staffId,
-        source: 'mobile'
+        completionNotes: statusUpdate.notes
       });
-    } catch (webhookError) {
-      console.error('⚠️ Failed to send webhook notification:', webhookError);
-      // Don't fail the request if webhook fails
+
+      if (notificationResult.success) {
+        console.log('✅ Status update notification sent successfully:', notificationResult.eventId);
+      } else {
+        console.warn('⚠️ Status update notification had issues:', notificationResult.errors);
+      }
+    } catch (notificationError) {
+      console.error('❌ Error with unified notification service:', notificationError);
     }
 
     console.log('✅ Job status updated successfully:', statusUpdate.jobId, statusUpdate.status);

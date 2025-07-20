@@ -251,8 +251,34 @@ class JobAssignmentService {
         source: 'mobile'
       });
 
-      // Send notification to webapp/admin about status change
-      await this.notifyStatusChange(updatedJob, currentJob.status);
+      // Send status change notification using unified service
+      try {
+        const { unifiedJobNotificationService } = await import('./unifiedJobNotificationService');
+
+        const notificationResult = await unifiedJobNotificationService.sendJobStatusUpdateNotification({
+          jobId: update.jobId,
+          title: updatedJob.title,
+          description: updatedJob.description,
+          type: updatedJob.type,
+          priority: updatedJob.priority as 'low' | 'normal' | 'high' | 'urgent',
+          propertyName: updatedJob.location?.propertyName || 'Unknown Property',
+          propertyAddress: updatedJob.location?.address || 'Unknown Address',
+          scheduledDate: updatedJob.scheduledFor.toDate(),
+          assignedStaffId: update.staffId,
+          assignedStaffName: updatedJob.assignedStaffName,
+          status: update.status,
+          previousStatus: currentJob.status,
+          completionNotes: update.notes
+        });
+
+        if (notificationResult.success) {
+          console.log('✅ Status change notification sent via unified service:', notificationResult.eventId);
+        } else {
+          console.warn('⚠️ Status change notification had issues:', notificationResult.errors);
+        }
+      } catch (notificationError) {
+        console.error('❌ Error with unified notification service:', notificationError);
+      }
 
       console.log('✅ Job status updated successfully:', update.jobId, update.status);
 

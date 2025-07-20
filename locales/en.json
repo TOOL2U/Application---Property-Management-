@@ -31,7 +31,7 @@
     "notLoggedIn": "Not Logged In",
     "pleaseLoginToReceiveJobs": "Please log in to receive job assignments",
     "jobsWaiting": "{{count}} job{{count, plural, one{} other{s}}} waiting for you!",
-    "noPendingJobs": "No pending jobs at the moment",
+    "noPendingJobs": "Click to see all jobs",
     "loginToReceiveJobs": "Log in to receive job assignments"
   },
   "auth": {
@@ -144,7 +144,6 @@
     "jobCount_zero": "job",
     "jobCount_one": "job", 
     "jobCount_other": "jobs",
-    "jobsCount": "{{count}} job{{count, plural, one{} other{s}}}",
     "active": "Active",
     "refresh": "Refresh",
     "newJobAssignment": "🔔 New Job Assignment!",

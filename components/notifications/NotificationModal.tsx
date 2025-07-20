@@ -3,7 +3,7 @@
  * Displays a dark-themed popup with notifications
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -20,6 +20,9 @@ import * as Animatable from 'react-native-animatable';
 import { useAppNotifications } from '@/contexts/AppNotificationContext';
 import { shadowStyles } from '@/utils/shadowUtils';
 import { AppNotification } from '@/services/notificationDisplayService';
+import NotificationClickPopup from '@/components/notifications/NotificationClickPopup';
+import { useRouter } from 'expo-router';
+import { showNotificationClickFeedback } from '@/utils/notificationClickHelpers';
 
 const NotificationItem: React.FC<{
   notification: AppNotification;
@@ -191,16 +194,44 @@ export const NotificationModal: React.FC = () => {
     markAllAsRead,
   } = useAppNotifications();
 
+  const router = useRouter();
+  const [clickPopupVisible, setClickPopupVisible] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<AppNotification | null>(null);
+
   const handleNotificationPress = async (notification: AppNotification) => {
     if (!notification.read) {
       await markAsRead(notification.id);
     }
     
-    // Handle navigation based on notification type
-    if (notification.jobId) {
+    // Show immediate feedback popup
+    showNotificationClickFeedback(
+      {
+        id: notification.id,
+        title: notification.title,
+        message: notification.message,
+        type: notification.type,
+        jobId: notification.jobId,
+        timestamp: notification.timestamp,
+      },
+      (jobId) => {
+        router.push(`/jobs/${jobId}`);
+        hideNotificationModal();
+      }
+    );
+  };
+
+  const handleViewDetails = (notificationId: string) => {
+    const notification = notifications.find(n => n.id === notificationId);
+    if (notification?.jobId) {
       console.log('🔔 NotificationModal: Navigate to job:', notification.jobId);
-      // Add navigation logic here if needed
+      router.push(`/jobs/${notification.jobId}`);
+      hideNotificationModal();
     }
+  };
+
+  const handleClosePopup = () => {
+    setClickPopupVisible(false);
+    setSelectedNotification(null);
   };
 
   const handleMarkAllAsRead = async () => {
@@ -208,166 +239,176 @@ export const NotificationModal: React.FC = () => {
   };
 
   return (
-    <Modal
-      visible={isModalVisible}
-      transparent
-      animationType="none"
-      statusBarTranslucent
-    >
-      <Pressable
-        style={{
-          flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          justifyContent: 'flex-start',
-          paddingTop: 60,
-        }}
-        onPress={hideNotificationModal}
+    <>
+      <Modal
+        visible={isModalVisible}
+        transparent
+        animationType="none"
+        statusBarTranslucent
       >
-        <Animatable.View
-          animation="slideInDown"
-          duration={300}
+        <Pressable
           style={{
-            backgroundColor: '#0B0F1A',
-            marginHorizontal: 16,
-            borderRadius: 20,
-            maxHeight: '80%',
-            borderWidth: 1,
-            borderColor: '#374151',
-            ...shadowStyles.large,
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            justifyContent: 'flex-start',
+            paddingTop: 60,
           }}
+          onPress={hideNotificationModal}
         >
-          <SafeAreaView edges={['top']}>
-            {/* Header */}
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: 20,
-              borderBottomWidth: 1,
-              borderBottomColor: '#374151',
-            }}>
-              <View>
-                <Text style={{
-                  color: '#F1F1F1',
-                  fontSize: 18,
-                  fontWeight: '600',
-                }}>
-                  Notifications
-                </Text>
-                {unreadCount > 0 && (
-                  <Text style={{
-                    color: '#9CA3AF',
-                    fontSize: 14,
-                    marginTop: 2,
-                  }}>
-                    {unreadCount} unread
-                  </Text>
-                )}
-              </View>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {unreadCount > 0 && (
-                  <TouchableOpacity
-                    onPress={handleMarkAllAsRead}
-                    style={{
-                      backgroundColor: 'rgba(198, 255, 0, 0.1)',
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 8,
-                      borderWidth: 1,
-                      borderColor: '#C6FF00',
-                      marginRight: 12,
-                    }}
-                  >
-                    <Text style={{
-                      color: '#C6FF00',
-                      fontSize: 12,
-                      fontWeight: '500',
-                    }}>
-                      Mark All Read
-                    </Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  onPress={hideNotificationModal}
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: '#374151',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Ionicons name="close" size={18} color="#F1F1F1" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Content */}
-            <View style={{ flex: 1, maxHeight: 500 }}>
-              {isLoading ? (
-                <View style={{
-                  flex: 1,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 40,
-                }}>
-                  <ActivityIndicator size="large" color="#C6FF00" />
-                  <Text style={{
-                    color: '#9CA3AF',
-                    fontSize: 16,
-                    marginTop: 16,
-                  }}>
-                    Loading notifications...
-                  </Text>
-                </View>
-              ) : notifications.length === 0 ? (
-                <View style={{
-                  flex: 1,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 40,
-                }}>
-                  <Ionicons name="notifications-off-outline" size={64} color="#9CA3AF" />
+          <Animatable.View
+            animation="slideInDown"
+            duration={300}
+            style={{
+              backgroundColor: '#0B0F1A',
+              marginHorizontal: 16,
+              borderRadius: 20,
+              maxHeight: '80%',
+              borderWidth: 1,
+              borderColor: '#374151',
+              ...shadowStyles.large,
+            }}
+          >
+            <SafeAreaView edges={['top']}>
+              {/* Header */}
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: 20,
+                borderBottomWidth: 1,
+                borderBottomColor: '#374151',
+              }}>
+                <View>
                   <Text style={{
                     color: '#F1F1F1',
                     fontSize: 18,
                     fontWeight: '600',
-                    marginTop: 16,
-                    marginBottom: 8,
                   }}>
-                    No Notifications
+                    Notifications
                   </Text>
-                  <Text style={{
-                    color: '#9CA3AF',
-                    fontSize: 14,
-                    textAlign: 'center',
-                  }}>
-                    You're all caught up! New notifications will appear here.
-                  </Text>
+                  {unreadCount > 0 && (
+                    <Text style={{
+                      color: '#9CA3AF',
+                      fontSize: 14,
+                      marginTop: 2,
+                    }}>
+                      {unreadCount} unread
+                    </Text>
+                  )}
                 </View>
-              ) : (
-                <ScrollView
-                  style={{ flex: 1 }}
-                  contentContainerStyle={{ padding: 20 }}
-                  showsVerticalScrollIndicator={false}
-                >
-                  {notifications.map((notification) => (
-                    <NotificationItem
-                      key={notification.id}
-                      notification={notification}
-                      onPress={handleNotificationPress}
-                      onMarkAsRead={markAsRead}
-                    />
-                  ))}
-                </ScrollView>
-              )}
-            </View>
-          </SafeAreaView>
-        </Animatable.View>
-      </Pressable>
-    </Modal>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {unreadCount > 0 && (
+                    <TouchableOpacity
+                      onPress={handleMarkAllAsRead}
+                      style={{
+                        backgroundColor: 'rgba(198, 255, 0, 0.1)',
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: '#C6FF00',
+                        marginRight: 12,
+                      }}
+                    >
+                      <Text style={{
+                        color: '#C6FF00',
+                        fontSize: 12,
+                        fontWeight: '500',
+                      }}>
+                        Mark All Read
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity
+                    onPress={hideNotificationModal}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: '#374151',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Ionicons name="close" size={18} color="#F1F1F1" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Content */}
+              <View style={{ flex: 1, maxHeight: 500 }}>
+                {isLoading ? (
+                  <View style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 40,
+                  }}>
+                    <ActivityIndicator size="large" color="#C6FF00" />
+                    <Text style={{
+                      color: '#9CA3AF',
+                      fontSize: 16,
+                      marginTop: 16,
+                    }}>
+                      Loading notifications...
+                    </Text>
+                  </View>
+                ) : notifications.length === 0 ? (
+                  <View style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 40,
+                  }}>
+                    <Ionicons name="notifications-off-outline" size={64} color="#9CA3AF" />
+                    <Text style={{
+                      color: '#F1F1F1',
+                      fontSize: 18,
+                      fontWeight: '600',
+                      marginTop: 16,
+                      marginBottom: 8,
+                    }}>
+                      No Notifications
+                    </Text>
+                    <Text style={{
+                      color: '#9CA3AF',
+                      fontSize: 14,
+                      textAlign: 'center',
+                    }}>
+                      You're all caught up! New notifications will appear here.
+                    </Text>
+                  </View>
+                ) : (
+                  <ScrollView
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ padding: 20 }}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {notifications.map((notification) => (
+                      <NotificationItem
+                        key={notification.id}
+                        notification={notification}
+                        onPress={handleNotificationPress}
+                        onMarkAsRead={markAsRead}
+                      />
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            </SafeAreaView>
+          </Animatable.View>
+        </Pressable>
+      </Modal>
+
+      {/* Notification Click Popup */}
+      <NotificationClickPopup
+        visible={clickPopupVisible}
+        notification={selectedNotification}
+        onClose={handleClosePopup}
+        onViewDetails={handleViewDetails}
+      />
+    </>
   );
 };

@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Animatable from 'react-native-animatable';
 import { useRouter, usePathname } from 'expo-router';
 import { useAppNotifications } from '@/contexts/AppNotificationContext';
+import { useStaffJobs } from '@/hooks/useStaffJobs';
 import { shadowStyles } from '@/utils/shadowUtils';
 
 interface PersistentNotificationIconProps {
@@ -17,8 +18,12 @@ interface PersistentNotificationIconProps {
 
 export const PersistentNotificationIcon: React.FC<PersistentNotificationIconProps> = ({ style }) => {
   const { unreadCount } = useAppNotifications();
+  const { pendingJobs } = useStaffJobs({ enableRealtime: true });
   const router = useRouter();
   const pathname = usePathname();
+
+  // Get pending jobs count for glow effect
+  const hasPendingJobs = pendingJobs.length > 0;
 
   // Hide notification icon on auth screens
   const isAuthScreen = pathname?.includes('/(auth)') || 
@@ -57,6 +62,27 @@ export const PersistentNotificationIcon: React.FC<PersistentNotificationIconProp
       ]}
       activeOpacity={0.8}
     >
+      {/* Glow Effect - Same as JOBS button when pending jobs exist */}
+      {hasPendingJobs && (
+        <View
+          style={{
+            position: 'absolute',
+            top: -8,
+            left: -8,
+            right: -8,
+            bottom: -8,
+            borderRadius: 32,
+            backgroundColor: '#C6FF00',
+            opacity: 0.4,
+            shadowColor: '#C6FF00',
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.6,
+            shadowRadius: 20,
+            elevation: 15,
+          }}
+        />
+      )}
+
       <Ionicons 
         name="notifications-outline" 
         size={22} 
@@ -93,20 +119,21 @@ export const PersistentNotificationIcon: React.FC<PersistentNotificationIconProp
         </Animatable.View>
       )}
       
-      {/* Pulse animation for new notifications */}
-      {unreadCount > 0 && (
+      {/* Pulse animation for pending jobs - Same as JOBS button */}
+      {hasPendingJobs && (
         <Animatable.View
           animation="pulse"
           iterationCount="infinite"
           duration={2000}
           style={{
             position: 'absolute',
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            borderWidth: 2,
-            borderColor: '#C6FF00',
-            opacity: 0.3,
+            top: -12,
+            left: -12,
+            right: -12,
+            bottom: -12,
+            borderRadius: 36,
+            borderWidth: 3,
+            borderColor: 'rgba(198, 255, 0, 0.4)',
           }}
         />
       )}

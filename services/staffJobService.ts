@@ -65,13 +65,43 @@ class StaffJobService {
         }
       }
 
-      // Fetch from Firestore
+      // First, get the Firebase UID for this staff member from staff_accounts collection
       const db = await getDb();
+      const staffAccountsRef = collection(db, 'staff_accounts');
+      const staffQuery = query(staffAccountsRef, where('__name__', '==', staffId));
+      const staffSnapshot = await getDocs(staffQuery);
+      
+      let firebaseUid = null;
+      if (!staffSnapshot.empty) {
+        const staffData = staffSnapshot.docs[0].data();
+        firebaseUid = staffData.userId;
+        console.log('🔍 StaffJobService: Found Firebase UID for staff:', firebaseUid);
+      } else {
+        console.warn('⚠️ StaffJobService: No staff account found for ID:', staffId);
+        return {
+          success: false,
+          jobs: [],
+          error: 'Staff account not found',
+        };
+      }
+
+      if (!firebaseUid) {
+        console.warn('⚠️ StaffJobService: No Firebase UID found for staff account:', staffId);
+        return {
+          success: false,
+          jobs: [],
+          error: 'No Firebase UID linked to staff account',
+        };
+      }
+
+      // Fetch jobs using the Firebase UID
       const jobsRef = collection(db, this.JOBS_COLLECTION);
+      
+      console.log('🔍 StaffJobService: Querying jobs collection with assignedStaffId:', firebaseUid);
+      
       let q = query(
         jobsRef,
-        where('assignedTo', '==', staffId),
-        orderBy('scheduledDate', 'desc')
+        where('assignedStaffId', '==', firebaseUid)
       );
 
       // Apply status filter if provided
@@ -84,8 +114,20 @@ class StaffJobService {
 
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        console.log('📄 StaffJobService: Found job document:', doc.id, {
+          status: data.status,
+          assignedStaffId: data.assignedStaffId,
+          title: data.title
+        });
         const job = this.mapFirestoreDataToJob(doc.id, data);
         jobs.push(job);
+      });
+
+      // Sort jobs by scheduled date in memory (since we can't use orderBy in the query)
+      jobs.sort((a, b) => {
+        const aDate = a.scheduledDate ? new Date(a.scheduledDate).getTime() : 0;
+        const bDate = b.scheduledDate ? new Date(b.scheduledDate).getTime() : 0;
+        return bDate - aDate; // Descending order (newest first)
       });
 
       // Cache the results
@@ -155,19 +197,42 @@ class StaffJobService {
     (async () => {
       try {
         const db = await getDb();
+        
+        // Get Firebase UID for this staff member (same logic as getStaffJobs)
+        const staffAccountsRef = collection(db, 'staff_accounts');
+        const staffQuery = query(staffAccountsRef, where('__name__', '==', staffId));
+        const staffSnapshot = await getDocs(staffQuery);
+        
+        let firebaseUid = null;
+        if (!staffSnapshot.empty) {
+          const staffData = staffSnapshot.docs[0].data();
+          firebaseUid = staffData.userId;
+          console.log('👂 StaffJobService: Real-time listener using Firebase UID:', firebaseUid);
+        } else {
+          console.warn('⚠️ StaffJobService: Cannot set up real-time listener - no staff account found for:', staffId);
+          callback([]);
+          return;
+        }
+
+        if (!firebaseUid) {
+          console.warn('⚠️ StaffJobService: Cannot set up real-time listener - no Firebase UID found for staff:', staffId);
+          callback([]);
+          return;
+        }
+        
         const jobsRef = collection(db, this.JOBS_COLLECTION);
+        
+        // Use assignedStaffId (Firebase UID) like the main getStaffJobs method
         let q = query(
           jobsRef,
-          where('assignedTo', '==', staffId),
-          orderBy('scheduledDate', 'desc')
+          where('assignedStaffId', '==', firebaseUid),
+          orderBy('createdAt', 'desc')
         );
 
         // Apply status filter if provided
         if (filters?.status && filters.status.length > 0) {
           q = query(q, where('status', 'in', filters.status));
-        }
-
-        unsubscribe = onSnapshot(
+        }        unsubscribe = onSnapshot(
           q,
           (querySnapshot) => {
             const jobs: Job[] = [];
@@ -392,6 +457,42 @@ class StaffJobService {
     });
   }
 
+  /**
+   * Safely converts a value to a Date object
+   * Handles Firestore Timestamps, JavaScript Dates, and strings
+   */
+  private safeToDate(value: any): Date | undefined {
+    if (!value) return undefined;
+    
+    try {
+      // If it's a Firestore Timestamp with toDate method
+      if (value && typeof value.toDate === 'function') {
+        return value.toDate();
+      }
+      
+      // If it's already a Date object
+      if (value instanceof Date) {
+        return value;
+      }
+      
+      // If it's a string or number, try to parse it
+      if (typeof value === 'string' || typeof value === 'number') {
+        const parsed = new Date(value);
+        return isNaN(parsed.getTime()) ? undefined : parsed;
+      }
+      
+      // If it has seconds and nanoseconds (Firestore timestamp format)
+      if (value.seconds !== undefined) {
+        return new Date(value.seconds * 1000 + (value.nanoseconds || 0) / 1000000);
+      }
+      
+      return undefined;
+    } catch (error) {
+      console.warn('⚠️ StaffJobService: Failed to parse date:', value, error);
+      return undefined;
+    }
+  }
+
   private mapFirestoreDataToJob(id: string, data: any): Job {
     return {
       id,
@@ -402,11 +503,11 @@ class StaffJobService {
       priority: data.priority || 'medium',
       assignedTo: data.assignedTo,
       assignedBy: data.assignedBy || data.createdBy,
-      assignedAt: data.assignedAt?.toDate() || data.createdAt?.toDate() || new Date(),
-      acceptedAt: data.acceptedAt?.toDate(),
-      startedAt: data.startedAt?.toDate(),
-      completedAt: data.completedAt?.toDate(),
-      scheduledDate: data.scheduledDate?.toDate() || new Date(),
+      assignedAt: this.safeToDate(data.assignedAt) || this.safeToDate(data.createdAt) || new Date(),
+      acceptedAt: this.safeToDate(data.acceptedAt),
+      startedAt: this.safeToDate(data.startedAt),
+      completedAt: this.safeToDate(data.completedAt),
+      scheduledDate: this.safeToDate(data.scheduledDate) || this.safeToDate(data.scheduledStartTime) || new Date(),
       estimatedDuration: data.estimatedDuration || 60,
       propertyId: data.propertyId || '',
       location: {
@@ -419,8 +520,8 @@ class StaffJobService {
       contacts: data.contacts || [],
       requirements: data.requirements || [],
       photos: data.photos || [],
-      createdAt: data.createdAt?.toDate() || new Date(),
-      updatedAt: data.updatedAt?.toDate() || new Date(),
+      createdAt: this.safeToDate(data.createdAt) || new Date(),
+      updatedAt: this.safeToDate(data.updatedAt) || new Date(),
       createdBy: data.createdBy || '',
       notificationsEnabled: data.notificationsEnabled ?? true,
       reminderSent: data.reminderSent ?? false,

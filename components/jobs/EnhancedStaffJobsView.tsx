@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Animatable from 'react-native-animatable';
 import { useRouter } from 'expo-router';
 import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useAppNotifications } from "@/contexts/AppNotificationContext";
@@ -23,8 +24,8 @@ import { useTranslationContext } from "@/contexts/TranslationContext";
 import { FirebaseNotificationService } from '@/lib/firebase';
 import { pushNotificationService } from '@/services/pushNotificationService';
 import * as Notifications from 'expo-notifications';
-import type { JobAssignment } from '@/types/jobAssignment';
-import { mobileJobAssignmentService as jobAssignmentService } from '@/services/jobAssignmentService';
+import type { Job } from '@/types/job';
+import { useStaffJobs } from '@/hooks/useStaffJobs';
 import JobAcceptanceModal from '@/components/jobs/JobAcceptanceModal';
 import ErrorBoundary, { JobListErrorBoundary } from '@/components/shared/ErrorBoundary';
 
@@ -34,28 +35,38 @@ export default function EnhancedStaffJobsView() {
   const { t } = useTranslationContext();
   const router = useRouter();
   
-  const [pendingJobs, setPendingJobs] = useState<JobAssignment[]>([]);
-  const [activeJobs, setActiveJobs] = useState<JobAssignment[]>([]);
-  const [completedJobs, setCompletedJobs] = useState<JobAssignment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState('pending'); // Default to pending to show newly assigned jobs
-  const [selectedJob, setSelectedJob] = useState<JobAssignment | null>(null);
+  // Use the same hook as the home screen for data consistency
+  const {
+    jobs,
+    pendingJobs,
+    activeJobs, 
+    completedJobs,
+    loading: isLoading,
+    refreshing,
+    error,
+    refreshJobs,
+    acceptJob,
+    startJob,
+    completeJob,
+    updateJobStatus
+  } = useStaffJobs({
+    enableRealtime: true,
+    enableCache: true
+  });
+  
+  const [selectedFilter, setSelectedFilter] = useState('all'); // Show all jobs by default to debug
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showAcceptanceModal, setShowAcceptanceModal] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notificationCount, setNotificationCount] = useState(0);
 
   useEffect(() => {
     if (currentProfile?.id) {
-      loadJobsAndSetupListeners();
+      setupNotificationListeners();
     }
-
-    return () => {
-      jobAssignmentService.cleanup();
-    };
   }, [currentProfile?.id]);
 
-  const loadJobsAndSetupListeners = async () => {
+  const setupNotificationListeners = async () => {
     if (!currentProfile?.id) return;
 
     try {
@@ -66,7 +77,7 @@ export default function EnhancedStaffJobsView() {
       const firebaseUid = await firebaseUidService.getFirebaseUid(currentProfile.id);
       
       if (firebaseUid) {
-        console.log('🔍 MOBILE DEBUG: Setting up listeners for Firebase UID:', firebaseUid);
+        console.log('🔍 MOBILE DEBUG: Setting up notification listeners for Firebase UID:', firebaseUid);
         
         // Initialize push notifications
         try {
@@ -76,64 +87,14 @@ export default function EnhancedStaffJobsView() {
           console.error('❌ Failed to initialize push notifications:', error);
         }
         
-        // Load jobs
-        await loadJobs();
-        
-        // Setup real-time job listeners
-        setupRealTimeListeners(firebaseUid);
-        
         // Setup notification listeners
         setupNotificationListener(firebaseUid);
       } else {
         console.error('❌ MOBILE DEBUG: No Firebase UID found for profile:', currentProfile.id);
-        // Fallback to using profile ID directly
-        await loadJobs();
-        setupRealTimeListeners(currentProfile.id);
       }
     } catch (error) {
-      console.error('❌ MOBILE DEBUG: Error setting up listeners:', error);
-      // Fallback
-      await loadJobs();
-      setupRealTimeListeners(currentProfile.id);
+      console.error('❌ MOBILE DEBUG: Error setting up notification listeners:', error);
     }
-  };
-
-  const loadJobs = async () => {
-    if (!currentProfile?.id) return;
-
-    try {
-      setIsLoading(true);
-      console.log('🔄 EnhancedStaffJobsView: Loading jobs for staff:', currentProfile.id);
-      
-      const response = await jobAssignmentService.getStaffJobs(currentProfile.id);
-      
-      console.log('📥 EnhancedStaffJobsView: Job service response:', {
-        success: response.success,
-        jobCount: response.jobs?.length || 0,
-        jobs: response.jobs?.map(j => ({ id: j.id, title: j.title, status: j.status })) || []
-      });
-      
-      if (response.success) {
-        categorizeJobs(response.jobs);
-      }
-    } catch (error) {
-      console.error('❌ EnhancedStaffJobsView: Error loading jobs:', error);
-      Alert.alert(t('common.error'), t('jobs.errorLoadingJobs'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const setupRealTimeListeners = (staffIdOrFirebaseUid: string) => {
-    if (!staffIdOrFirebaseUid) return;
-
-    jobAssignmentService.subscribeToStaffJobs(
-      staffIdOrFirebaseUid,
-      (jobs) => {
-        console.log('📱 Real-time jobs update:', jobs.length);
-        categorizeJobs(jobs);
-      }
-    );
   };
 
   const setupNotificationListener = (firebaseUid: string) => {
@@ -200,23 +161,11 @@ export default function EnhancedStaffJobsView() {
     );
   };
 
-  const categorizeJobs = (jobs: JobAssignment[]) => {
-    const pending = jobs.filter(job => job.status === 'assigned');
-    const active = jobs.filter(job => ['accepted', 'in_progress'].includes(job.status));
-    const completed = jobs.filter(job => job.status === 'completed');
-
-    setPendingJobs(pending);
-    setActiveJobs(active);
-    setCompletedJobs(completed);
-  };
-
   const onRefresh = async () => {
-    setRefreshing(true);
-    await loadJobs();
-    setRefreshing(false);
+    await refreshJobs();
   };
 
-  const handleJobPress = (job: JobAssignment) => {
+  const handleJobPress = (job: any) => {
     console.log('🔄 EnhancedStaffJobsView: Job pressed:', {
       id: job.id,
       status: job.status,
@@ -229,29 +178,22 @@ export default function EnhancedStaffJobsView() {
       setShowAcceptanceModal(true);
     } else {
       // Navigate to job details
-      // Fix: Type assertion for dynamic route
       router.push(`/jobs/${job.id}` as any);
     }
   };
 
-  const handleJobUpdated = (updatedJob: JobAssignment) => {
+  const handleJobUpdated = (updatedJob: any) => {
     // Real-time listener will handle the update
     console.log('Job updated:', updatedJob.id, updatedJob.status);
   };
 
-  const handleStartJob = async (job: JobAssignment) => {
+  const handleStartJob = async (job: any) => {
     try {
-      const response = await jobAssignmentService.updateJobStatus({
-        jobId: job.id,
-        staffId: currentProfile?.id || '',
-        status: 'in_progress',
-        startedAt: new Date()
-      });
-
-      if (response.success) {
+      const success = await startJob(job.id);
+      if (success) {
         Alert.alert(t('jobs.jobStarted'), t('jobs.jobStartedMessage'));
       } else {
-        Alert.alert(t('common.error'), response.error || t('jobs.failedToStartJob'));
+        Alert.alert(t('common.error'), t('jobs.failedToStartJob'));
       }
     } catch (error) {
       console.error('Error starting job:', error);
@@ -287,7 +229,7 @@ export default function EnhancedStaffJobsView() {
     });
   };
 
-  const renderJobCard = (job: JobAssignment) => (
+  const renderJobCard = (job: Job) => (
     <TouchableOpacity
       key={job.id}
       style={styles.jobCard}
@@ -312,7 +254,7 @@ export default function EnhancedStaffJobsView() {
         <View style={styles.jobDetails}>
           <View style={styles.jobDetailRow}>
             <Ionicons name="calendar-outline" size={16} color="#C6FF00" />
-            <Text style={styles.jobDetailText}>{formatDate(job.scheduledFor)}</Text>
+            <Text style={styles.jobDetailText}>{formatDate(job.scheduledDate)}</Text>
           </View>
           
           <View style={styles.jobDetailRow}>
@@ -331,15 +273,53 @@ export default function EnhancedStaffJobsView() {
         {/* Job Actions */}
         <View style={styles.jobActions}>
           {job.status === 'assigned' && (
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => handleJobPress(job)}
-            >
-              <View style={styles.actionButtonGradient}>
-                <Ionicons name="checkmark-circle-outline" size={16} color="#0B0F1A" />
-                <Text style={styles.actionButtonText}>{t('jobs.acceptJob')}</Text>
-              </View>
-            </TouchableOpacity>
+            <View style={styles.acceptButtonContainer}>
+              {/* Glow Effect - Same as JOBS button */}
+              <View
+                style={{
+                  position: 'absolute',
+                  top: -6,
+                  left: -6,
+                  right: -6,
+                  bottom: -6,
+                  borderRadius: 14,
+                  backgroundColor: '#C6FF00',
+                  opacity: 0.4,
+                  shadowColor: '#C6FF00',
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.6,
+                  shadowRadius: 15,
+                  elevation: 12,
+                }}
+              />
+              
+              <TouchableOpacity
+                style={[styles.actionButton, styles.acceptButton]}
+                onPress={() => handleJobPress(job)}
+              >
+                <View style={styles.actionButtonGradient}>
+                  <Ionicons name="checkmark-circle-outline" size={16} color="#0B0F1A" />
+                  <Text style={styles.actionButtonText}>{t('jobs.acceptJob')}</Text>
+                </View>
+              </TouchableOpacity>
+              
+              {/* Pulse Animation */}
+              <Animatable.View
+                animation="pulse"
+                iterationCount="infinite"
+                duration={2000}
+                style={{
+                  position: 'absolute',
+                  top: -8,
+                  left: -8,
+                  right: -8,
+                  bottom: -8,
+                  borderRadius: 16,
+                  borderWidth: 2,
+                  borderColor: 'rgba(198, 255, 0, 0.4)',
+                }}
+              />
+            </View>
           )}
 
           {job.status === 'accepted' && (
@@ -457,7 +437,7 @@ export default function EnhancedStaffJobsView() {
               </Text>
               <TouchableOpacity 
                 style={styles.refreshButton} 
-                onPress={loadJobs}
+                onPress={refreshJobs}
               >
                 <Ionicons name="refresh-outline" size={20} color="#0B0F1A" />
                 <Text style={styles.refreshButtonText}>{t('jobs.refresh')}</Text>
@@ -486,14 +466,14 @@ export default function EnhancedStaffJobsView() {
         {/* Job Acceptance Modal */}
         <JobAcceptanceModal
           visible={showAcceptanceModal}
-          job={selectedJob}
+          job={selectedJob as any} // Temporary type conversion
           staffId={currentProfile?.id || ''}
           onClose={() => {
             setShowAcceptanceModal(false);
             setSelectedJob(null);
           }}
           onJobUpdated={() => {
-            loadJobs();
+            refreshJobs();
             setShowAcceptanceModal(false);
             setSelectedJob(null);
           }}
@@ -716,6 +696,18 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 8,
     backgroundColor: '#C6FF00',
+  },
+  acceptButtonContainer: {
+    position: 'relative',
+    flex: 1,
+  },
+  acceptButton: {
+    // Additional styling for the accept button specifically
+    shadowColor: '#C6FF00',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
   },
   actionButtonGradient: {
     flexDirection: 'row',

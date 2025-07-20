@@ -49,7 +49,7 @@ const MapComponent = ({ job, userLocation }: { job: Job; userLocation: any }) =>
   return (
     <View style={styles.webMapContainer}>
       <View style={styles.webMapContent}>
-        <MapPin size={32} color="#8b5cf6" />
+        <MapPin size={32} color="#C6FF00" />
         <Text style={styles.webMapAddress}>{job.location.address}</Text>
         <Text style={styles.webMapCity}>
           {job.location.city}, {job.location.state} {job.location.zipCode}
@@ -63,10 +63,10 @@ const MapComponent = ({ job, userLocation }: { job: Job; userLocation: any }) =>
           }}
         >
           <LinearGradient
-            colors={['#8b5cf6', '#7c3aed']}
+            colors={['#C6FF00', '#A3E635']}
             style={styles.webMapButtonGradient}
           >
-            <Navigation size={16} color="#ffffff" />
+            <Navigation size={16} color="#0B0F1A" />
             <Text style={styles.webMapButtonText}>Open in Google Maps</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -375,53 +375,47 @@ export default function JobDetailsScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Job Info Card */}
         <View style={styles.card}>
-          <LinearGradient
-            colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)']}
-            style={styles.cardGradient}
-          >
+          <View style={styles.cardGradient}>
             <Text style={styles.jobTitle}>{job.title}</Text>
             <Text style={styles.jobType}>{job.type ? job.type.replace('_', ' ').toUpperCase() : 'JOB'}</Text>
             
             <View style={styles.jobMeta}>
               <View style={styles.metaItem}>
-                <Clock size={16} color="#8b5cf6" />
+                <Clock size={16} color="#C6FF00" />
                 <Text style={styles.metaText}>
                   {job.estimatedDuration || 0} min • {job.priority ? job.priority.toUpperCase() : 'NORMAL'}
                 </Text>
               </View>
               
               <View style={styles.metaItem}>
-                <Building size={16} color="#8b5cf6" />
+                <Building size={16} color="#C6FF00" />
                 <Text style={styles.metaText}>{job.location?.address || 'Location not available'}</Text>
               </View>
             </View>
 
             {job.description && (
               <View style={styles.descriptionContainer}>
-                <FileText size={16} color="#8b5cf6" />
+                <FileText size={16} color="#C6FF00" />
                 <Text style={styles.description}>{job.description}</Text>
               </View>
             )}
-          </LinearGradient>
+          </View>
         </View>
 
         {/* Map Card */}
         {job.location?.coordinates && (
           <View style={styles.card}>
-            <LinearGradient
-              colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)']}
-              style={styles.cardGradient}
-            >
+            <View style={styles.cardGradient}>
               <View style={styles.mapHeader}>
                 <Text style={styles.cardTitle}>Location & Navigation</Text>
                 <TouchableOpacity style={styles.directionsButton} onPress={handleGetDirections}>
-                  <Navigation size={16} color="#ffffff" />
+                  <Navigation size={16} color="#0B0F1A" />
                   <Text style={styles.directionsText}>Directions</Text>
                 </TouchableOpacity>
               </View>
 
               <MapComponent job={job} userLocation={userLocation} />
-            </LinearGradient>
+            </View>
           </View>
         )}
 
@@ -442,11 +436,11 @@ export default function JobDetailsScreen() {
           {job.status === 'in_progress' && (
             <TouchableOpacity style={styles.actionButton} onPress={handleCompleteJob}>
               <LinearGradient
-                colors={['#8b5cf6', '#7c3aed']}
+                colors={['#C6FF00', '#A3E635']}
                 style={styles.actionButtonGradient}
               >
-                <CheckCircle size={20} color="#ffffff" />
-                <Text style={styles.actionButtonText}>Complete Job</Text>
+                <CheckCircle size={20} color="#0B0F1A" />
+                <Text style={[styles.actionButtonText, { color: '#0B0F1A' }]}>Complete Job</Text>
               </LinearGradient>
             </TouchableOpacity>
           )}
@@ -461,7 +455,7 @@ export default function JobDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#0B0F1A',
   },
   loadingContainer: {
     flex: 1,
@@ -470,7 +464,8 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#9ca3af',
+    color: '#8E9AAE',
+    fontFamily: 'Inter_400Regular',
   },
   header: {
     flexDirection: 'row',
@@ -478,13 +473,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: '#1E2A3A',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#1E2A3A',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -494,6 +489,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#ffffff',
     textAlign: 'center',
+    fontFamily: 'Inter_700Bold',
   },
   headerSpacer: {
     width: 40,
@@ -505,24 +501,26 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginVertical: 8,
     borderRadius: 16,
-    overflow: 'hidden',
+    backgroundColor: '#1E2A3A',
+    borderWidth: 1,
+    borderColor: '#374151',
   },
   cardGradient: {
     padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   jobTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 4,
+    fontFamily: 'Inter_700Bold',
   },
   jobType: {
     fontSize: 14,
-    color: '#8b5cf6',
+    color: '#C6FF00',
     fontWeight: '600',
     marginBottom: 16,
+    fontFamily: 'Inter_600SemiBold',
   },
   jobMeta: {
     gap: 8,
@@ -535,7 +533,8 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 14,
-    color: '#d1d5db',
+    color: '#8E9AAE',
+    fontFamily: 'Inter_400Regular',
   },
   descriptionContainer: {
     flexDirection: 'row',
@@ -544,15 +543,17 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: '#8E9AAE',
     lineHeight: 20,
     flex: 1,
+    fontFamily: 'Inter_400Regular',
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 16,
+    fontFamily: 'Inter_700Bold',
   },
   mapHeader: {
     flexDirection: 'row',
@@ -563,7 +564,7 @@ const styles = StyleSheet.create({
   directionsButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#8b5cf6',
+    backgroundColor: '#C6FF00',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -572,7 +573,8 @@ const styles = StyleSheet.create({
   directionsText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#ffffff',
+    color: '#0B0F1A',
+    fontFamily: 'Inter_600SemiBold',
   },
   mapContainer: {
     height: 200,
@@ -585,9 +587,9 @@ const styles = StyleSheet.create({
   webMapContainer: {
     height: 200,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#374151',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: '#4B5563',
     overflow: 'hidden',
   },
   webMapContent: {
@@ -603,12 +605,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     marginBottom: 4,
+    fontFamily: 'Inter_700Bold',
   },
   webMapCity: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: '#8E9AAE',
     textAlign: 'center',
     marginBottom: 16,
+    fontFamily: 'Inter_400Regular',
   },
   webMapButton: {
     borderRadius: 8,
@@ -624,7 +628,8 @@ const styles = StyleSheet.create({
   webMapButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#ffffff',
+    color: '#0B0F1A',
+    fontFamily: 'Inter_600SemiBold',
   },
   actionsContainer: {
     paddingHorizontal: 20,
@@ -646,6 +651,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#ffffff',
+    fontFamily: 'Inter_700Bold',
   },
   bottomSpacing: {
     height: 20,

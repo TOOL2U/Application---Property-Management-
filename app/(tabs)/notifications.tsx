@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppNotifications } from '@/contexts/AppNotificationContext';
 import { usePINAuth } from '@/contexts/PINAuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
+import { showNotificationClickFeedback } from '@/utils/notificationClickHelpers';
+import { useRouter } from 'expo-router';
 
 interface NotificationItemProps {
   id: string;
@@ -15,6 +17,7 @@ interface NotificationItemProps {
   read: boolean;
   type: string;
   onMarkAsRead: (id: string) => void;
+  onPress: (id: string, title: string, message: string, type: string, timestamp: Date, jobId?: string) => void;
 }
 
 const NotificationItem: React.FC<NotificationItemProps> = ({
@@ -26,6 +29,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
   read,
   type,
   onMarkAsRead,
+  onPress,
 }) => {
   const { t } = useTranslation();
   
@@ -67,10 +71,23 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
     return date.toLocaleDateString();
   };
 
+  const handlePress = () => {
+    // Mark as read and show click feedback
+    if (!read) {
+      onMarkAsRead(id);
+    }
+    
+    // Extract jobId from message or type if it's a job notification
+    const jobId = type.startsWith('job_') ? id : undefined;
+    
+    // Trigger the click feedback
+    onPress(id, title, message, type, timestamp, jobId);
+  };
+
   return (
     <TouchableOpacity
       style={[styles.notificationItem, read ? styles.readItem : styles.unreadItem]}
-      onPress={() => !read && onMarkAsRead(id)}
+      onPress={handlePress}
       activeOpacity={0.7}
     >
       <View style={styles.notificationHeader}>
@@ -107,6 +124,7 @@ export default function NotificationsScreen() {
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead, deleteAllNotifications, refreshNotifications } = useAppNotifications();
   const { currentProfile } = usePINAuth();
   const { t } = useTranslation();
+  const router = useRouter();
   const [refreshing, setRefreshing] = React.useState(false);
 
   const onRefresh = React.useCallback(async () => {
@@ -121,6 +139,26 @@ export default function NotificationsScreen() {
     } catch (error) {
       console.error('Failed to mark all as read:', error);
     }
+  };
+
+  const handleNotificationPress = (id: string, title: string, message: string, type: string, timestamp: Date, jobId?: string) => {
+    console.log('🔔 NotificationScreen: Notification clicked', { id, title, type, jobId });
+    
+    // Show immediate feedback popup
+    showNotificationClickFeedback(
+      {
+        id,
+        title,
+        message,
+        type,
+        jobId,
+        timestamp,
+      },
+      (jobId) => {
+        console.log('🔔 NotificationScreen: Navigate to job:', jobId);
+        router.push(`/jobs/${jobId}`);
+      }
+    );
   };
 
   const handleDeleteAllNotifications = () => {
@@ -218,6 +256,7 @@ export default function NotificationsScreen() {
                 read={notification.read}
                 type={notification.type}
                 onMarkAsRead={markAsRead}
+                onPress={handleNotificationPress}
               />
             ))}
           </View>

@@ -42,12 +42,13 @@ class RealTimeJobNotificationService {
    * Start listening for real-time job assignments for a specific staff member
    */
   startListening(staffId: string, callbacks: NotificationCallbacks): () => void {
-    if (this.isListening) {
-      console.log('🔔 Real-time job listener already active for staff:', staffId);
-      return () => {};
-    }
+    // TEMPORARILY DISABLED: Real-time listeners to prevent duplicate notifications
+    console.log('🔕 Real-time job notification listener disabled to prevent duplicates for staff:', staffId);
 
-    console.log('🔔 Starting real-time job notification listener for staff:', staffId);
+    // TODO: Replace with unified notification service
+    return () => {
+      console.log('🔕 Real-time listener cleanup (disabled)');
+    };
 
     let unsubscribe: (() => void) | null = null;
 

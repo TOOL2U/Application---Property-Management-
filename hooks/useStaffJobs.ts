@@ -66,18 +66,25 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
 
   // Derived state
   const activeJobs = jobs.filter(job => ['accepted', 'in_progress'].includes(job.status));
-  const pendingJobs = jobs.filter(job => job.status === 'pending');
+  const pendingJobs = jobs.filter(job => job.status === 'assigned'); // Jobs assigned to staff, waiting for acceptance
   const completedJobs = jobs.filter(job => job.status === 'completed');
 
   // Load jobs function - stabilized dependencies
   const loadJobs = useCallback(async (useCache?: boolean) => {
     if (!currentProfile?.id) {
+      console.log('❌ useStaffJobs: No current profile ID available');
       setLoading(false);
       return;
     }
 
     try {
       console.log('🔄 useStaffJobs: Loading jobs for staff:', currentProfile.id);
+      console.log('🔍 useStaffJobs: Current profile details:', {
+        id: currentProfile.id,
+        name: currentProfile.name,
+        email: currentProfile.email,
+        role: currentProfile.role
+      });
       
       const response = await staffJobService.getStaffJobs(
         currentProfile.id,
@@ -90,6 +97,12 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
         setFromCache(response.fromCache || false);
         setError(null);
         console.log(`✅ useStaffJobs: Loaded ${response.jobs.length} jobs (from cache: ${response.fromCache})`);
+        console.log('🔍 useStaffJobs: Job details:', response.jobs.map(job => ({
+          id: job.id,
+          title: job.title,
+          status: job.status,
+          assignedTo: job.assignedTo
+        })));
       } else {
         setError(response.error || 'Failed to load jobs');
         console.error('❌ useStaffJobs: Failed to load jobs:', response.error);
