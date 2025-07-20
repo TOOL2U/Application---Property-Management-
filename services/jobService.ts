@@ -549,16 +549,9 @@ class JobService {
     try {
       console.log('🚀 JobService: Starting job:', jobId);
 
-      // Check if Firebase is properly initialized
-      const isFirebaseReady = await this.waitForFirebaseInit(2000);
-      if (!isFirebaseReady) {
-        console.warn('⚠️ JobService: Firebase Firestore is not ready for starting job');
-        return {
-          success: false,
-          error: 'Firebase Firestore is not ready. Please try again.',
-        };
-      }
-
+      // Get initialized Firestore instance
+      const db = await getDb();
+      
       const jobRef = doc(db, this.JOBS_COLLECTION, jobId);
       await updateDoc(jobRef, {
         status: 'in_progress',

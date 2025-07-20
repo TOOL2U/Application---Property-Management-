@@ -13,12 +13,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Animatable from 'react-native-animatable';
+import { useTranslation } from '@/hooks/useTranslation';
 import { 
   getStatusColor, 
   getPriorityColor, 
-  getStatusText, 
-  getPriorityText,
+  getStatusTextKey, 
+  getPriorityTextKey,
   getJobTypeIcon,
+  getJobTypeTextKey,
   formatJobDate,
   formatAddress,
   formatDuration,
@@ -69,11 +71,19 @@ export default function SharedJobCard({
   compact = false,
   animationDelay = 0,
 }: JobCardProps) {
-  const statusColor = getStatusColor(job.status);
-  const priorityColor = getPriorityColor(job.priority);
-  const jobIcon = getJobTypeIcon(job.jobType);
-  const statusText = getStatusText(job.status);
-  const priorityText = getPriorityText(job.priority);
+  const { t } = useTranslation();
+  
+  // Defensive programming - ensure job data is valid
+  if (!job || !job.id) {
+    console.warn('SharedJobCard: Invalid job data received:', job);
+    return null;
+  }
+  
+  const statusColor = getStatusColor(job.status || 'pending');
+  const priorityColor = getPriorityColor(job.priority || 'medium');
+  const jobIcon = getJobTypeIcon(job.jobType || 'other');
+  const statusText = t(getStatusTextKey(job.status || 'pending'));
+  const priorityText = t(getPriorityTextKey(job.priority || 'medium'));
 
   const scheduledDate = job.scheduledDate || job.scheduledFor;
   const location = job.location || job.propertyRef;
@@ -83,23 +93,23 @@ export default function SharedJobCard({
   const defaultActions = React.useMemo(() => {
     const actionsMap: Record<string, Array<any>> = {
       assigned: [
-        { label: 'Accept', action: 'accept', icon: 'checkmark-circle', color: '#22c55e' },
-        { label: 'Decline', action: 'decline', icon: 'close-circle', color: '#ef4444' },
+        { label: t('jobs.actions.accept'), action: 'accept', icon: 'checkmark-circle', color: '#22c55e' },
+        { label: t('jobs.actions.decline'), action: 'decline', icon: 'close-circle', color: '#ef4444' },
       ],
       accepted: [
-        { label: 'Start', action: 'start', icon: 'play-circle', color: '#3b82f6' },
-        { label: 'Details', action: 'details', icon: 'information-circle', color: JOB_COLORS.textSecondary },
+        { label: t('jobs.actions.start'), action: 'start', icon: 'play-circle', color: '#3b82f6' },
+        { label: t('jobs.actions.details'), action: 'details', icon: 'information-circle', color: JOB_COLORS.textSecondary },
       ],
       in_progress: [
-        { label: 'Update', action: 'update', icon: 'camera', color: '#f59e0b' },
-        { label: 'Complete', action: 'complete', icon: 'checkmark-circle', color: '#22c55e' },
+        { label: t('jobs.actions.update'), action: 'update', icon: 'camera', color: '#f59e0b' },
+        { label: t('jobs.actions.complete'), action: 'complete', icon: 'checkmark-circle', color: '#22c55e' },
       ],
       completed: [],
     };
     return actionsMap[job.status] || [
-      { label: 'Details', action: 'details', icon: 'eye-outline', color: JOB_COLORS.primary },
+      { label: t('jobs.actions.details'), action: 'details', icon: 'eye-outline', color: JOB_COLORS.primary },
     ];
-  }, [job.status]);
+  }, [job.status, t]);
 
   const finalActions = actions.length > 0 ? actions : defaultActions;
 

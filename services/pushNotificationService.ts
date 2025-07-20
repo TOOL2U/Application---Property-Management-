@@ -9,6 +9,7 @@ import { Platform } from 'react-native';
 import { doc, setDoc, deleteDoc, collection, getDocs, query, where, serverTimestamp, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
 import { getDb } from '@/lib/firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { notificationDeduplicationService } from '@/services/notificationDeduplicationService';
 
 // Admin services are handled server-side only
 let adminService: any = null;
@@ -642,6 +643,20 @@ class PushNotificationService {
   static async sendJobAssignmentNotification(job: JobAssignment): Promise<void> {
     try {
       console.log('📤 Sending job assignment notification for job:', job.id);
+
+      // Check deduplication service first
+      const shouldSend = notificationDeduplicationService.shouldAllowNotification({
+        jobId: job.id,
+        staffId: job.staffId,
+        type: 'job_assigned',
+        source: 'push',
+        timestamp: Date.now(),
+      });
+
+      if (!shouldSend) {
+        console.log('🔕 Push notification blocked by deduplication service');
+        return;
+      }
 
       // Get staff FCM tokens
       const db = await getDb();

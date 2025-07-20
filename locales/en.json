@@ -20,7 +20,19 @@
     "selectPreferredLanguage": "Select your preferred language",
     "availableLanguages": "Available Languages",
     "deviceLanguage": "Device Language",
-    "deviceLanguageInfo": "The app will automatically detect your device language on first launch. You can change it anytime from here."
+    "deviceLanguageInfo": "The app will automatically detect your device language on first launch. You can change it anytime from here.",
+    "signingOut": "Signing out...",
+    "pleaseWaitSignOut": "Please wait while we sign you out"
+  },
+  "home": {
+    "welcomeBack": "Welcome back, {{name}}",
+    "pleaseLogin": "Please log in to receive jobs",
+    "switch": "Switch",
+    "notLoggedIn": "Not Logged In",
+    "pleaseLoginToReceiveJobs": "Please log in to receive job assignments",
+    "jobsWaiting": "{{count}} job{{count, plural, one{} other{s}}} waiting for you!",
+    "noPendingJobs": "No pending jobs at the moment",
+    "loginToReceiveJobs": "Log in to receive job assignments"
   },
   "auth": {
     "selectProfile": "Select Your Profile",
@@ -31,7 +43,8 @@
     "pinError": "Incorrect PIN. Please try again.",
     "biometricLogin": "Use fingerprint or face ID",
     "logoutComplete": "Logout Complete",
-    "logoutSuccess": "You have been successfully signed out."
+    "logoutSuccess": "You have been successfully signed out.",
+    "signIn": "Log In"
   },
   "navigation": {
     "home": "Home",
@@ -92,7 +105,6 @@
     "inProgress": "In Progress",
     "pending": "Pending",
     "urgent": "Urgent",
-    "priority": "Priority",
     "dueDate": "Due Date",
     "assignedTo": "Assigned To",
     "all": "All",
@@ -106,6 +118,8 @@
     "viewDetails": "View Details",
     "createJob": "Create Job",
     "assignJob": "Assign Job",
+    "acceptJob": "Review & Accept",
+    "startJob": "Start Job",
     "jobTitle": "Job Title",
     "description": "Description",
     "location": "Location",
@@ -115,7 +129,6 @@
     "attachments": "Attachments",
     "startTime": "Start Time",
     "endTime": "End Time",
-    "status": "Status",
     "createdBy": "Created By",
     "lastUpdated": "Last Updated",
     "loadingJobs": "Loading jobs...",
@@ -130,16 +143,82 @@
     "map": "Map",
     "jobCount_zero": "job",
     "jobCount_one": "job", 
-    "jobCount_other": "jobs"
+    "jobCount_other": "jobs",
+    "jobsCount": "{{count}} job{{count, plural, one{} other{s}}}",
+    "active": "Active",
+    "refresh": "Refresh",
+    "newJobAssignment": "🔔 New Job Assignment!",
+    "jobNotificationBody": "Job: {{jobTitle}}\nProperty: {{propertyName}}",
+    "checkPendingTab": "Check the Pending tab to view details.",
+    "viewJobs": "View Jobs",
+    "jobStarted": "Job Started", 
+    "jobStartedMessage": "You have started working on this job.",
+    "failedToStartJob": "Failed to start job",
+    "failedToStartJobMessage": "Failed to start job. Please try again.",
+    "noJobsInFilter": "You have no {{filter}} jobs at the moment.",
+    "noJobsAssigned": "No jobs have been assigned to you yet.",
+    "unknownProperty": "Unknown Property",
+    "status": {
+      "pending": "Pending",
+      "assigned": "Assigned",
+      "accepted": "Accepted",
+      "inProgress": "In Progress",
+      "completed": "Completed",
+      "declined": "Declined",
+      "overdue": "Overdue",
+      "unknown": "Unknown"
+    },
+    "priority": {
+      "urgent": "Urgent",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "normal": "Normal"
+    },
+    "type": {
+      "maintenance": "Maintenance",
+      "cleaning": "Cleaning",
+      "inspection": "Inspection",
+      "plumbing": "Plumbing",
+      "electrical": "Electrical",
+      "hvac": "HVAC",
+      "landscaping": "Landscaping",
+      "security": "Security",
+      "other": "Other"
+    },
+    "actions": {
+      "accept": "Accept",
+      "decline": "Decline",
+      "start": "Start",
+      "update": "Update",
+      "complete": "Complete",
+      "details": "Details"
+    }
   },
   "notifications": {
     "title": "Notifications",
     "noNotifications": "No notifications",
     "markAllRead": "Mark All Read",
     "clearAll": "Clear All",
+    "deleteAll": "Delete All",
+    "deleteAllConfirm": "Are you sure you want to delete all {{count}} notifications? This action cannot be undone.",
+    "deleteError": "Failed to delete notifications. Please try again.",
     "newJobAssigned": "New job assigned",
     "jobCompleted": "Job completed",
-    "messageReceived": "Message received"
+    "messageReceived": "Message received",
+    "loading": "Loading notifications...",
+    "noNotificationsYet": "No notifications yet",
+    "noNotificationsMessage": "You'll receive notifications here when there are job assignments, updates, or important announcements.",
+    "unreadCount": "{{count}} unread",
+    "justNow": "Just now",
+    "minutesAgo": "{{minutes}}m ago",
+    "hoursAgo": "{{hours}}h ago",
+    "daysAgo": "{{days}}d ago",
+    "priority": {
+      "low": "LOW",
+      "medium": "MEDIUM",
+      "high": "HIGH"
+    }
   },
   "profile": {
     "editProfile": "Edit Profile",
@@ -151,6 +230,18 @@
     "role": "Job Title / Role",
     "saveChanges": "Save Changes",
     "profileUpdated": "Your profile has been updated successfully",
-    "tapToChangePhoto": "Tap to change photo"
+    "tapToChangePhoto": "Tap to change photo",
+    "status": "Status",
+    "available": "Available",
+    "busy": "Busy", 
+    "offline": "Offline",
+    "signOutMessage": "Are you sure you want to sign out? This will return you to the staff profile selection.",
+    "signOutTitle": "Sign Out",
+    "signOutSubtitle": "Sign out of your account",
+    "cancel": "Cancel",
+    "workingHours": "Working Hours",
+    "shiftsCompleted": "Shifts Completed",
+    "performance": "Performance",
+    "currentStatus": "Current Status"
   }
 }

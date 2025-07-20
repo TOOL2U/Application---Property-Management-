@@ -164,10 +164,6 @@ export function useRealtimeJobs(): UseRealtimeJobsReturn {
       setError(setupError instanceof Error ? setupError : new Error('Failed to setup real-time listener'));
       setLoading(false);
     }
-    };
-
-    // Call setup function
-    setupListener();
 
     // Cleanup function to unsubscribe from the listener
     return () => {

@@ -1,4 +1,4 @@
-pm run devicePixelRatio/**
+/**
  * BlurHeader Component
  * Reusable header with BlurView effect, rounded corners, and padding
  */

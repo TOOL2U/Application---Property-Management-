@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppNotifications } from '@/contexts/AppNotificationContext';
 import { usePINAuth } from '@/contexts/PINAuthContext';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface NotificationItemProps {
   id: string;
@@ -26,6 +27,8 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
   type,
   onMarkAsRead,
 }) => {
+  const { t } = useTranslation();
+  
   const getPriorityColor = () => {
     switch (priority) {
       case 'high': return '#FF4444';
@@ -57,10 +60,10 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
+    if (minutes < 1) return t('notifications.justNow');
+    if (minutes < 60) return t('notifications.minutesAgo', { minutes });
+    if (hours < 24) return t('notifications.hoursAgo', { hours });
+    if (days < 7) return t('notifications.daysAgo', { days });
     return date.toLocaleDateString();
   };
 
@@ -84,7 +87,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
           </Text>
           <View style={styles.metaContainer}>
             <Text style={[styles.priorityBadge, { backgroundColor: getPriorityColor() }]}>
-              {priority.toUpperCase()}
+              {t(`notifications.priority.${priority}`)}
             </Text>
             <Text style={styles.timestamp}>
               {formatTimestamp(timestamp)}
@@ -103,6 +106,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
 export default function NotificationsScreen() {
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead, deleteAllNotifications, refreshNotifications } = useAppNotifications();
   const { currentProfile } = usePINAuth();
+  const { t } = useTranslation();
   const [refreshing, setRefreshing] = React.useState(false);
 
   const onRefresh = React.useCallback(async () => {
@@ -123,15 +127,15 @@ export default function NotificationsScreen() {
     if (notifications.length === 0) return;
 
     Alert.alert(
-      'Delete All Notifications',
-      `Are you sure you want to delete all ${notifications.length} notifications? This action cannot be undone.`,
+      t('notifications.deleteAll'),
+      t('notifications.deleteAllConfirm', { count: notifications.length }),
       [
         {
-          text: 'Cancel',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Delete All',
+          text: t('notifications.deleteAll'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -139,7 +143,7 @@ export default function NotificationsScreen() {
               console.log('✅ All notifications deleted successfully');
             } catch (error) {
               console.error('❌ Failed to delete notifications:', error);
-              Alert.alert('Error', 'Failed to delete notifications. Please try again.');
+              Alert.alert(t('common.error'), t('notifications.deleteError'));
             }
           },
         },
@@ -150,9 +154,9 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
         <Text style={styles.headerSubtitle}>
-          {currentProfile?.name} • {unreadCount} unread
+          {currentProfile?.name} • {t('notifications.unreadCount', { count: unreadCount })}
         </Text>
         
         <View style={styles.actionButtonsContainer}>
@@ -162,7 +166,7 @@ export default function NotificationsScreen() {
               onPress={handleMarkAllAsRead}
             >
               <Ionicons name="checkmark-done" size={16} color="#0B0F1A" />
-              <Text style={styles.markAllText}>Mark All Read</Text>
+              <Text style={styles.markAllText}>{t('notifications.markAllRead')}</Text>
             </TouchableOpacity>
           )}
           
@@ -172,7 +176,7 @@ export default function NotificationsScreen() {
               onPress={handleDeleteAllNotifications}
             >
               <Ionicons name="trash" size={16} color="#FF4444" />
-              <Text style={styles.deleteAllText}>Delete All</Text>
+              <Text style={styles.deleteAllText}>{t('notifications.deleteAll')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -191,14 +195,14 @@ export default function NotificationsScreen() {
       >
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading notifications...</Text>
+            <Text style={styles.loadingText}>{t('notifications.loading')}</Text>
           </View>
         ) : notifications.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="notifications-outline" size={64} color="#666" />
-            <Text style={styles.emptyTitle}>No notifications yet</Text>
+            <Text style={styles.emptyTitle}>{t('notifications.noNotificationsYet')}</Text>
             <Text style={styles.emptyMessage}>
-              You'll receive notifications here when there are job assignments, updates, or important announcements.
+              {t('notifications.noNotificationsMessage')}
             </Text>
           </View>
         ) : (

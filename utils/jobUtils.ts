@@ -51,7 +51,40 @@ export const getPriorityColor = (priority: string): string => {
   }
 };
 
-// Status display text
+// Status display text - now returns translation keys
+export const getStatusTextKey = (status: string): string => {
+  if (!status || typeof status !== 'string') {
+    return 'jobs.status.unknown';
+  }
+  
+  switch (status.toLowerCase()) {
+    case 'pending': return 'jobs.status.pending';
+    case 'assigned': return 'jobs.status.assigned';
+    case 'accepted': return 'jobs.status.accepted';
+    case 'in_progress': return 'jobs.status.inProgress';
+    case 'completed': return 'jobs.status.completed';
+    case 'declined': return 'jobs.status.declined';
+    case 'overdue': return 'jobs.status.overdue';
+    default: return 'jobs.status.unknown';
+  }
+};
+
+// Priority display text - now returns translation keys
+export const getPriorityTextKey = (priority: string): string => {
+  if (!priority || typeof priority !== 'string') {
+    return 'jobs.priority.normal';
+  }
+  
+  switch (priority.toLowerCase()) {
+    case 'urgent': return 'jobs.priority.urgent';
+    case 'high': return 'jobs.priority.high';
+    case 'medium': return 'jobs.priority.medium';
+    case 'low': return 'jobs.priority.low';
+    default: return 'jobs.priority.normal';
+  }
+};
+
+// Legacy functions kept for backward compatibility
 export const getStatusText = (status: string): string => {
   switch (status) {
     case 'pending': return 'Pending';
@@ -88,6 +121,25 @@ export const getJobTypeIcon = (type: string): string => {
     case 'landscaping': return 'leaf-outline';
     case 'security': return 'shield-outline';
     default: return 'briefcase-outline';
+  }
+};
+
+// Job type display text - now returns translation keys
+export const getJobTypeTextKey = (type: string): string => {
+  if (!type || typeof type !== 'string') {
+    return 'jobs.type.general';
+  }
+  
+  switch (type.toLowerCase()) {
+    case 'maintenance': return 'jobs.type.maintenance';
+    case 'inspection': return 'jobs.type.inspection';
+    case 'repair': return 'jobs.type.repair';
+    case 'cleaning': return 'jobs.type.cleaning';
+    case 'renovation': return 'jobs.type.renovation';
+    case 'emergency': return 'jobs.type.emergency';
+    case 'preventive': return 'jobs.type.preventive';
+    case 'routine': return 'jobs.type.routine';
+    default: return 'jobs.type.general';
   }
 };
 

@@ -16,9 +16,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
+import { doc, getDoc } from 'firebase/firestore';
+import { getDb } from '@/lib/firebase';
 import { Job, JobPhoto } from '@/types/job';
 import { jobService } from '@/services/jobService';
 import { useStaffAuth } from '@/hooks/useStaffAuth';
+import { usePINAuth } from '@/contexts/PINAuthContext';
 import {
   ArrowLeft,
   MapPin,
@@ -72,10 +75,26 @@ const MapComponent = ({ job, userLocation }: { job: Job; userLocation: any }) =>
   );
 };
 
+// Safe hook wrapper to handle potential errors
+function useSafeLocalSearchParams() {
+  try {
+    return useLocalSearchParams();
+  } catch (error) {
+    console.error('❌ Error in useLocalSearchParams:', error);
+    return {};
+  }
+}
+
 export default function JobDetailsScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { currentProfile } = useStaffAuth();
   const router = useRouter();
+  const { user } = useStaffAuth();
+  const { currentProfile } = usePINAuth();
+  
+  // Safe parameter extraction with error handling
+  const params = useSafeLocalSearchParams();
+  const id = typeof params.id === 'string' ? params.id : Array.isArray(params.id) ? params.id[0] : undefined;
+  
+  console.log('🔍 JobDetails: Extracted ID from params:', { params, id });
   
   const [job, setJob] = useState<Job | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,26 +106,82 @@ export default function JobDetailsScreen() {
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
-    if (id) {
+    if (id && user?.id) {
       loadJobDetails();
       getCurrentLocation();
+    } else if (id && !user?.id) {
+      console.log('🔍 JobDetails: Waiting for user authentication...');
+    } else if (!id) {
+      console.error('❌ Job ID is missing from URL parameters');
+      // Don't show alert immediately, wait a bit for params to load
+      const timer = setTimeout(() => {
+        Alert.alert('Error', 'Job ID is missing');
+        router.back();
+      }, 1000);
+      return () => clearTimeout(timer);
     }
-  }, [id]);
+  }, [id, user?.id]);
 
   const loadJobDetails = async () => {
     if (!id || !user?.id) return;
 
     try {
       setIsLoading(true);
-      // In a real app, you'd fetch the specific job details
-      // For now, we'll simulate this
-      const response = await jobService.getStaffJobs(user.id);
-      if (response.success) {
-        const foundJob = response.jobs.find(j => j.id === id);
-        if (foundJob) {
-          setJob(foundJob);
-          setPhotos(foundJob.photos || []);
+      
+      // Try to get the specific job document directly
+      const db = await getDb();
+      const jobDocRef = doc(db, 'jobs', id);
+      const jobDoc = await getDoc(jobDocRef);
+      
+      if (jobDoc.exists()) {
+        const jobData = jobDoc.data();
+        
+        console.log('🔍 Job Details Debug:', {
+          jobId: id,
+          jobDataKeys: Object.keys(jobData),
+          assignedTo: jobData.assignedTo,
+          userId: jobData.userId,
+          assignedStaffId: jobData.assignedStaffId,
+          assignedStaffDocId: jobData.assignedStaffDocId,
+          currentUserId: user.id,
+          currentUserFirebaseId: (currentProfile as any)?.userId || 'not available'
+        });
+        
+        // More flexible verification - check multiple possible assignment fields
+        const isAssignedToUser = 
+          jobData.assignedTo === user.id ||           // Direct staff ID assignment
+          jobData.userId === user.id ||              // User ID field
+          jobData.staffId === user.id ||             // Staff ID field
+          jobData.assignedStaffId === user.id ||     // Assigned staff ID field
+          jobData.assignedStaffDocId === user.id ||  // Assigned staff document ID field
+          jobData.assignedTo === (currentProfile as any)?.userId ||      // Firebase UID assignment
+          jobData.userId === (currentProfile as any)?.userId ||          // Firebase UID in userId field
+          jobData.assignedStaffId === (currentProfile as any)?.userId || // Firebase UID in assignedStaffId
+          jobData.assignedStaffDocId === (currentProfile as any)?.userId; // Firebase UID in assignedStaffDocId
+        
+        if (isAssignedToUser) {
+          setJob({ id: jobDoc.id, ...jobData } as Job);
+          setPhotos(jobData.photos || []);
+        } else {
+          console.warn('❌ Access denied - job assignment mismatch:', {
+            jobData: { 
+              assignedTo: jobData.assignedTo, 
+              userId: jobData.userId, 
+              staffId: jobData.staffId,
+              assignedStaffId: jobData.assignedStaffId,
+              assignedStaffDocId: jobData.assignedStaffDocId
+            },
+            userData: { 
+              id: user.id, 
+              userId: (currentProfile as any)?.userId 
+            }
+          });
+          Alert.alert('Access Denied', 'You are not assigned to this job');
+          router.back();
         }
+      } else {
+        Alert.alert('Job Not Found', 'The requested job could not be found');
+        router.back();
       }
     } catch (error) {
       console.error('Error loading job details:', error);
@@ -305,19 +380,19 @@ export default function JobDetailsScreen() {
             style={styles.cardGradient}
           >
             <Text style={styles.jobTitle}>{job.title}</Text>
-            <Text style={styles.jobType}>{job.type.replace('_', ' ').toUpperCase()}</Text>
+            <Text style={styles.jobType}>{job.type ? job.type.replace('_', ' ').toUpperCase() : 'JOB'}</Text>
             
             <View style={styles.jobMeta}>
               <View style={styles.metaItem}>
                 <Clock size={16} color="#8b5cf6" />
                 <Text style={styles.metaText}>
-                  {job.estimatedDuration} min • {job.priority.toUpperCase()}
+                  {job.estimatedDuration || 0} min • {job.priority ? job.priority.toUpperCase() : 'NORMAL'}
                 </Text>
               </View>
               
               <View style={styles.metaItem}>
                 <Building size={16} color="#8b5cf6" />
-                <Text style={styles.metaText}>{job.location.address}</Text>
+                <Text style={styles.metaText}>{job.location?.address || 'Location not available'}</Text>
               </View>
             </View>
 
@@ -331,7 +406,7 @@ export default function JobDetailsScreen() {
         </View>
 
         {/* Map Card */}
-        {job.location.coordinates && (
+        {job.location?.coordinates && (
           <View style={styles.card}>
             <LinearGradient
               colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)']}

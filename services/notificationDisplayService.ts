@@ -79,13 +79,9 @@ class NotificationDisplayService {
       const notificationsRef = collection(db, 'staff_notifications');
       
       // Try multiple query approaches to find notifications
-      const knownStaffId = 'IDJrsXWiL2dCHVpveH97'; // The staff ID from logs
-      const knownStaffEmail = 'staff@siamoon.com'; // Known email
-      
       console.log('🔔 NotificationDisplay: Will try multiple queries to find notifications');
       console.log('   - Firebase UID:', firebaseUid);
-      console.log('   - Staff ID:', knownStaffId);
-      console.log('   - Staff Email:', knownStaffEmail);
+      console.log('   - Staff ID:', staffId);
       
       // Start with Firebase UID (userId field)
       let q = query(
@@ -207,7 +203,7 @@ class NotificationDisplayService {
           
           try {
             // Try with staffId field
-            const staffIdQuery = query(notificationsRef, where('staffId', '==', knownStaffId), limit(maxCount));
+            const staffIdQuery = query(notificationsRef, where('staffId', '==', staffId), limit(maxCount));
             const { getDocs } = await import('firebase/firestore');
             const staffIdSnapshot = await getDocs(staffIdQuery);
             
@@ -222,7 +218,7 @@ class NotificationDisplayService {
                   title: data.title || 'Notification',
                   message: data.message || data.body || '',
                   type: data.type || 'system',
-                  assignedTo: data.staffId || knownStaffId,
+                  assignedTo: data.staffId || staffId,
                   read: data.read || false,
                   timestamp: data.timestamp?.toDate() || new Date(),
                   jobId: data.jobId,
@@ -232,7 +228,7 @@ class NotificationDisplayService {
               });
             } else {
               // Try with assignedTo field
-              const assignedToQuery = query(notificationsRef, where('assignedTo', '==', knownStaffId), limit(maxCount));
+              const assignedToQuery = query(notificationsRef, where('assignedTo', '==', staffId), limit(maxCount));
               const assignedToSnapshot = await getDocs(assignedToQuery);
               
               console.log(`🔍 Fallback query 2 (assignedTo): ${assignedToSnapshot.size} results`);
@@ -246,7 +242,7 @@ class NotificationDisplayService {
                     title: data.title || 'Notification',
                     message: data.message || data.body || '',
                     type: data.type || 'system',
-                    assignedTo: data.assignedTo || knownStaffId,
+                    assignedTo: data.assignedTo || staffId,
                     read: data.read || false,
                     timestamp: data.timestamp?.toDate() || new Date(),
                     jobId: data.jobId,

@@ -19,18 +19,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useAppNotifications } from "@/contexts/AppNotificationContext";
+import { useTranslationContext } from "@/contexts/TranslationContext";
 import { FirebaseNotificationService } from '@/lib/firebase';
 import { pushNotificationService } from '@/services/pushNotificationService';
 import * as Notifications from 'expo-notifications';
 import type { JobAssignment } from '@/types/jobAssignment';
 import { mobileJobAssignmentService as jobAssignmentService } from '@/services/jobAssignmentService';
 import JobAcceptanceModal from '@/components/jobs/JobAcceptanceModal';
-import ActiveJobsView from '@/components/jobs/ActiveJobsView';
 import ErrorBoundary, { JobListErrorBoundary } from '@/components/shared/ErrorBoundary';
 
 export default function EnhancedStaffJobsView() {
   const { currentProfile } = usePINAuth();
   const { refreshNotifications } = useAppNotifications();
+  const { t } = useTranslationContext();
   const router = useRouter();
   
   const [pendingJobs, setPendingJobs] = useState<JobAssignment[]>([]);
@@ -38,7 +39,7 @@ export default function EnhancedStaffJobsView() {
   const [completedJobs, setCompletedJobs] = useState<JobAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState('Pending'); // Default to Pending to show newly assigned jobs
+  const [selectedFilter, setSelectedFilter] = useState('pending'); // Default to pending to show newly assigned jobs
   const [selectedJob, setSelectedJob] = useState<JobAssignment | null>(null);
   const [showAcceptanceModal, setShowAcceptanceModal] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -117,7 +118,7 @@ export default function EnhancedStaffJobsView() {
       }
     } catch (error) {
       console.error('❌ EnhancedStaffJobsView: Error loading jobs:', error);
-      Alert.alert('Error', 'Failed to load jobs. Please try again.');
+      Alert.alert(t('common.error'), t('jobs.errorLoadingJobs'));
     } finally {
       setIsLoading(false);
     }
@@ -165,8 +166,11 @@ export default function EnhancedStaffJobsView() {
             // Schedule local notification with sound for immediate alert
             await Notifications.scheduleNotificationAsync({
               content: {
-                title: '🔔 New Job Assignment!',
-                body: `Job: ${latestJob.jobTitle || 'New Job'}\nProperty: ${latestJob.propertyName || 'Unknown Property'}`,
+                title: t('jobs.newJobAssignment'),
+                body: t('jobs.jobNotificationBody', { 
+                  jobTitle: latestJob.jobTitle || t('jobs.newJob'),
+                  propertyName: latestJob.propertyName || t('jobs.unknownProperty')
+                }),
                 sound: 'default',
                 data: { 
                   jobId: latestJob.jobId,
@@ -181,11 +185,14 @@ export default function EnhancedStaffJobsView() {
           
           // Also show alert dialog
           Alert.alert(
-            '🔔 New Job Assignment!',
-            `Job: ${latestJob.jobTitle || 'New Job'}\nProperty: ${latestJob.propertyName || 'Unknown Property'}\n\nCheck the Pending tab to view details.`,
+            t('jobs.newJobAssignment'),
+            t('jobs.jobNotificationBody', { 
+              jobTitle: latestJob.jobTitle || t('jobs.newJob'),
+              propertyName: latestJob.propertyName || t('jobs.unknownProperty')
+            }) + '\n\n' + t('jobs.checkPendingTab'),
             [
-              { text: 'View Jobs', style: 'default' },
-              { text: 'OK', style: 'cancel' }
+              { text: t('jobs.viewJobs'), style: 'default' },
+              { text: t('common.ok'), style: 'cancel' }
             ]
           );
         }
@@ -223,7 +230,7 @@ export default function EnhancedStaffJobsView() {
     } else {
       // Navigate to job details
       // Fix: Type assertion for dynamic route
-      router.push(`/job-details/${job.id}` as any);
+      router.push(`/jobs/${job.id}` as any);
     }
   };
 
@@ -242,13 +249,13 @@ export default function EnhancedStaffJobsView() {
       });
 
       if (response.success) {
-        Alert.alert('Job Started', 'You have started working on this job.');
+        Alert.alert(t('jobs.jobStarted'), t('jobs.jobStartedMessage'));
       } else {
-        Alert.alert('Error', response.error || 'Failed to start job');
+        Alert.alert(t('common.error'), response.error || t('jobs.failedToStartJob'));
       }
     } catch (error) {
       console.error('Error starting job:', error);
-      Alert.alert('Error', 'Failed to start job. Please try again.');
+      Alert.alert(t('common.error'), t('jobs.failedToStartJobMessage'));
     }
   };
 
@@ -330,7 +337,7 @@ export default function EnhancedStaffJobsView() {
             >
               <View style={styles.actionButtonGradient}>
                 <Ionicons name="checkmark-circle-outline" size={16} color="#0B0F1A" />
-                <Text style={styles.actionButtonText}>Review & Accept</Text>
+                <Text style={styles.actionButtonText}>{t('jobs.acceptJob')}</Text>
               </View>
             </TouchableOpacity>
           )}
@@ -342,7 +349,7 @@ export default function EnhancedStaffJobsView() {
             >
               <View style={styles.actionButtonGradient}>
                 <Ionicons name="play-outline" size={16} color="#0B0F1A" />
-                <Text style={styles.actionButtonText}>Start Job</Text>
+                <Text style={styles.actionButtonText}>{t('jobs.startJob')}</Text>
               </View>
             </TouchableOpacity>
           )}
@@ -350,11 +357,11 @@ export default function EnhancedStaffJobsView() {
           {job.status === 'in_progress' && (
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => router.push(`/job-details/${job.id}` as any)}
+              onPress={() => router.push(`/jobs/${job.id}` as any)}
             >
               <View style={styles.actionButtonGradient}>
                 <Ionicons name="camera-outline" size={16} color="#0B0F1A" />
-                <Text style={styles.actionButtonText}>Update Progress</Text>
+                <Text style={styles.actionButtonText}>{t('jobs.viewDetails')}</Text>
               </View>
             </TouchableOpacity>
           )}
@@ -362,7 +369,7 @@ export default function EnhancedStaffJobsView() {
           {job.status === 'completed' && (
             <View style={styles.completedButton}>
               <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
-              <Text style={styles.completedButtonText}>Completed</Text>
+              <Text style={styles.completedButtonText}>{t('jobs.completed')}</Text>
             </View>
           )}
         </View>
@@ -372,23 +379,14 @@ export default function EnhancedStaffJobsView() {
 
   const getFilteredJobs = () => {
     switch (selectedFilter) {
-      case 'Pending': return pendingJobs;
-      case 'Active': return activeJobs;
-      case 'Completed': return completedJobs;
+      case 'pending': return pendingJobs;
+      case 'active': return activeJobs;
+      case 'completed': return completedJobs;
       default: return [...pendingJobs, ...activeJobs, ...completedJobs];
     }
   };
 
   const filteredJobs = getFilteredJobs();
-
-  // If Active filter is selected, render the ActiveJobsView component
-  if (selectedFilter === 'Active') {
-    return (
-      <ErrorBoundary>
-        <ActiveJobsView />
-      </ErrorBoundary>
-    );
-  }
 
   return (
     <JobListErrorBoundary>
@@ -396,9 +394,9 @@ export default function EnhancedStaffJobsView() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>My Jobs</Text>
+            <Text style={styles.headerTitle}>{t('jobs.myJobs')}</Text>
             <Text style={styles.headerSubtitle}>
-              {currentProfile?.name} • {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''}
+              {currentProfile?.name} • {t('jobs.jobsCount', { count: filteredJobs.length })}
             </Text>
           </View>
           
@@ -421,7 +419,7 @@ export default function EnhancedStaffJobsView() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filterScrollView}
           >
-            {['All', 'Pending', 'Active', 'Completed'].map((filter) => (
+            {['all', 'pending', 'active', 'completed'].map((filter) => (
               <TouchableOpacity
                 key={filter}
                 style={[
@@ -434,7 +432,7 @@ export default function EnhancedStaffJobsView() {
                   styles.filterChipText,
                   selectedFilter === filter && styles.filterChipTextActive
                 ]}>
-                  {filter}
+                  {t(`jobs.${filter}`)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -446,23 +444,23 @@ export default function EnhancedStaffJobsView() {
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#C6FF00" />
-              <Text style={styles.loadingText}>Loading jobs...</Text>
+              <Text style={styles.loadingText}>{t('jobs.loadingJobs')}</Text>
             </View>
           ) : filteredJobs.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="briefcase-outline" size={64} color="#8E9AAE" />
-              <Text style={styles.emptyTitle}>No Jobs Found</Text>
+              <Text style={styles.emptyTitle}>{t('jobs.noJobsFound')}</Text>
               <Text style={styles.emptyMessage}>
-                {selectedFilter !== 'All' 
-                  ? `You have no ${selectedFilter.toLowerCase()} jobs at the moment.`
-                  : 'No jobs have been assigned to you yet.'}
+                {selectedFilter !== 'all' 
+                  ? t('jobs.noJobsInFilter', { filter: t(`jobs.${selectedFilter}`) })
+                  : t('jobs.noJobsAssigned')}
               </Text>
               <TouchableOpacity 
                 style={styles.refreshButton} 
                 onPress={loadJobs}
               >
                 <Ionicons name="refresh-outline" size={20} color="#0B0F1A" />
-                <Text style={styles.refreshButtonText}>Refresh</Text>
+                <Text style={styles.refreshButtonText}>{t('jobs.refresh')}</Text>
               </TouchableOpacity>
             </View>
           ) : (

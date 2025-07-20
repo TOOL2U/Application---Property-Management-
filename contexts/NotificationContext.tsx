@@ -8,6 +8,7 @@ import { Alert, AppState, AppStateStatus, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { usePINAuth } from "@/contexts/PINAuthContext";
 import { realTimeJobNotificationService } from '@/services/realTimeJobNotificationService';
+import { notificationDeduplicationService } from '@/services/notificationDeduplicationService';
 import { pushNotificationService } from '@/services/pushNotificationService';
 import type { JobNotificationData, NotificationCallbacks } from '@/services/realTimeJobNotificationService';
 
@@ -125,6 +126,20 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   };
 
   const showJobNotificationBanner = (job: JobNotificationData) => {
+    // Check deduplication service
+    const shouldShow = notificationDeduplicationService.shouldAllowNotification({
+      jobId: job.jobId,
+      staffId: currentProfile?.id || '',
+      type: 'job_assigned',
+      source: 'banner',
+      timestamp: Date.now(),
+    });
+
+    if (!shouldShow) {
+      console.log('🔕 Banner notification blocked by deduplication service');
+      return;
+    }
+
     setState(prev => ({
       ...prev,
       currentJobNotification: job,
@@ -173,6 +188,20 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     const callbacks: NotificationCallbacks = {
       onNewJobAssigned: (job: JobNotificationData) => {
         console.log('🆕 New job notification received:', job.title);
+        
+        // Check deduplication service
+        const shouldShow = notificationDeduplicationService.shouldAllowNotification({
+          jobId: job.jobId,
+          staffId: currentProfile?.id || '',
+          type: 'job_assigned',
+          source: 'modal',
+          timestamp: Date.now(),
+        });
+
+        if (!shouldShow) {
+          console.log('🔕 Modal notification blocked by deduplication service');
+          return;
+        }
         
         // Show modal for urgent jobs, banner for others
         if (job.priority === 'urgent') {

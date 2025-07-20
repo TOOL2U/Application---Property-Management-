@@ -14,20 +14,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Animatable from 'react-native-animatable';
 import { usePINAuth } from "@/contexts/PINAuthContext";
+import { useTranslationContext } from "@/contexts/TranslationContext";
 import { useRouter } from 'expo-router';
 import LogoutOverlay from '@/components/auth/LogoutOverlay';
 
 // User status options
 const statusOptions = [
-  { id: 'available', label: 'Available', color: '#22c55e', icon: 'checkmark-circle' },
-  { id: 'busy', label: 'Busy', color: '#f59e0b', icon: 'time' },
-  { id: 'offline', label: 'Offline', color: '#71717A', icon: 'moon' },
+  { id: 'available', labelKey: 'profile.available', color: '#22c55e', icon: 'checkmark-circle' },
+  { id: 'busy', labelKey: 'profile.busy', color: '#f59e0b', icon: 'time' },
+  { id: 'offline', labelKey: 'profile.offline', color: '#71717A', icon: 'moon' },
 ] as const;
 
 type UserStatus = typeof statusOptions[number]['id'];
 
 export default function ProfileScreen() {
   const { currentProfile, logout, isLoading } = usePINAuth();
+  const { t } = useTranslationContext();
   const router = useRouter();
   const [userStatus, setUserStatus] = useState<UserStatus>('available');
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -37,12 +39,12 @@ export default function ProfileScreen() {
 
   const handleSignOut = () => {
     Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out? This will return you to the staff profile selection.',
+      t('profile.signOutTitle'),
+      t('profile.signOutMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('profile.cancel'), style: 'cancel' },
         {
-          text: 'Sign Out',
+          text: t('profile.signOutTitle'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -105,9 +107,9 @@ export default function ProfileScreen() {
 
     setUserStatus(nextStatus.id);
     Alert.alert(
-      'Status Updated',
-      `Your status has been changed to ${nextStatus.label}`,
-      [{ text: 'OK' }]
+      t('profile.status') + ' ' + t('common.success'),
+      `${t('profile.currentStatus')}: ${t(nextStatus.labelKey)}`,
+      [{ text: t('common.ok') }]
     );
   };
 
@@ -218,7 +220,7 @@ export default function ProfileScreen() {
               fontFamily: 'Urbanist'
             }}
           >
-            {isLoading ? 'Signing out...' : title}
+            {isLoading ? t('common.signingOut') : title}
           </Text>
           <Text
             style={{
@@ -228,7 +230,7 @@ export default function ProfileScreen() {
               fontFamily: 'Inter'
             }}
           >
-            {isLoading ? 'Please wait while we sign you out' : subtitle}
+            {isLoading ? t('common.pleaseWaitSignOut') : subtitle}
           </Text>
         </View>
 
@@ -404,7 +406,7 @@ export default function ProfileScreen() {
                     fontFamily: 'Inter'
                   }}
                 >
-                  {getCurrentStatus().label}
+                  {t(getCurrentStatus().labelKey)}
                 </Text>
               </View>
             </View>
@@ -420,8 +422,8 @@ export default function ProfileScreen() {
             >
               <ActionButton
                 icon="person-outline"
-                title="Edit Profile"
-                subtitle="Update your personal information"
+                title={t('profile.editProfile')}
+                subtitle={t('profile.personalInfo')}
                 onPress={handleEditProfile}
                 disabled={isSigningOut || isLoading}
               />
@@ -435,8 +437,8 @@ export default function ProfileScreen() {
             >
               <ActionButton
                 icon="radio-button-on-outline"
-                title="Change Status"
-                subtitle={`Currently ${getCurrentStatus().label.toLowerCase()}`}
+                title={t('profile.status')}
+                subtitle={`${t('profile.currentStatus')}: ${t(getCurrentStatus().labelKey)}`}
                 onPress={handleStatusChange}
                 disabled={isSigningOut || isLoading}
               />
@@ -467,8 +469,8 @@ export default function ProfileScreen() {
             >
               <ActionButton
                 icon="log-out-outline"
-                title="Sign Out"
-                subtitle="Sign out of your account"
+                title={t('profile.signOutTitle')}
+                subtitle={t('profile.signOutSubtitle')}
                 onPress={handleSignOut}
                 isSpecial={true}
                 showChevron={false}

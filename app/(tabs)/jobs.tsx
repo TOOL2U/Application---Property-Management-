@@ -13,14 +13,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useJobContext } from '@/contexts/JobContext';
 import { JobData } from '@/types/jobData';
 import EnhancedStaffJobsView from '@/components/jobs/EnhancedStaffJobsView';
-import JobNotificationBanner from '@/components/JobNotificationBanner';
+import { JobNotificationBanner } from '@/components/JobNotificationBanner';
 import ErrorBoundary, { JobListErrorBoundary } from '@/components/shared/ErrorBoundary';
 import SharedJobCard from '@/components/shared/SharedJobCard';
 import { useTranslation } from '@/hooks/useTranslation';
+import { shouldShowNotification } from '@/utils/notificationDedup';
 
 const filterOptions = [
   { key: 'all', label: 'jobs.all' },
@@ -31,6 +33,7 @@ const filterOptions = [
 ];
 
 export default function JobsScreen() {
+  const router = useRouter();
   const { currentProfile } = usePINAuth();
   const { t } = useTranslation();
   const { 
@@ -50,7 +53,18 @@ export default function JobsScreen() {
   const isStaffUser = currentProfile?.role && ['cleaner', 'maintenance', 'staff'].includes(currentProfile.role);
 
   // Show active job notification if there are unread notifications
-  const activeNotification = notifications.find(n => n.status !== 'read' && n.type === 'job_assigned');
+  // Get the first unread notification that should be displayed
+  const activeNotification = notifications.find(n => {
+    const isUnread = n.status !== 'read' && n.type === 'job_assigned';
+    if (!isUnread) return false;
+    
+    // Check if this notification should be shown (deduplication)
+    return shouldShowNotification(
+      n.jobId, 
+      currentProfile?.id || '', 
+      'banner'
+    );
+  });
 
   // Render Enhanced Staff Jobs View for staff users
   if (isStaffUser) {
@@ -92,12 +106,14 @@ export default function JobsScreen() {
 
   const handleJobPress = (jobData: any) => {
     console.log('View details:', jobData.id);
+    router.push(`/jobs/${jobData.id}`);
   };
 
   const handleActionPress = (jobData: any, action: string) => {
     switch (action) {
       case 'details':
         console.log('View details:', jobData.id);
+        router.push(`/jobs/${jobData.id}`);
         break;
       case 'map':
         console.log('Open map:', jobData.id);
@@ -106,13 +122,19 @@ export default function JobsScreen() {
   };
 
   const renderJobItem = ({ item: job }: { item: JobData }) => {
+    // Defensive programming - ensure job has required properties
+    if (!job || !job.id) {
+      console.warn('Invalid job data received:', job);
+      return null;
+    }
+
     const jobCardData = {
       id: job.id,
-      title: job.title,
-      description: job.description,
-      status: job.status,
+      title: job.title || 'Untitled Job',
+      description: job.description || '',
+      status: job.status || 'pending',
       priority: job.priority || 'medium',
-      jobType: job.jobType,
+      jobType: job.jobType || 'other',
       estimatedDuration: job.estimatedDuration,
       scheduledDate: job.scheduledDate,
       location: job.location,
@@ -142,7 +164,8 @@ export default function JobsScreen() {
         {/* Job Notification Banner */}
         {activeNotification && (
           <JobNotificationBanner
-            notification={activeNotification}
+            jobId={activeNotification.jobId}
+            message={`New job assigned: ${activeNotification.jobTitle}`}
             onDismiss={() => console.log('Notification dismissed')}
           />
         )}

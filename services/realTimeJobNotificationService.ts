@@ -15,6 +15,7 @@ import {
 import { getDb } from '@/lib/firebase';
 import { jobService } from '@/services/jobService';
 import type { Job } from '@/types/job';
+import { notificationDeduplicationService } from '@/services/notificationDeduplicationService';
 
 export interface JobNotificationData {
   jobId: string;
@@ -78,7 +79,8 @@ class RealTimeJobNotificationService {
             };
 
             if (change.type === 'added') {
-              this.handleNewJobAssignment(job, callbacks.onNewJobAssigned);
+              // Pass staffId to the handler for deduplication
+              this.handleNewJobAssignmentWithStaff(job, staffId, callbacks.onNewJobAssigned);
             } else if (change.type === 'modified') {
               this.handleJobUpdate(job, callbacks.onJobUpdated);
             } else if (change.type === 'removed') {
@@ -102,18 +104,56 @@ class RealTimeJobNotificationService {
   }
 
   /**
-   * Handle new job assignment
+   * Handle new job assignment with staff ID for deduplication
+   */
+  private handleNewJobAssignmentWithStaff(
+    job: JobNotificationData, 
+    staffId: string,
+    callback?: (job: JobNotificationData) => void
+  ): void {
+    const now = Date.now();
+    
+    // Use deduplication service to prevent multiple notifications
+    const shouldShow = notificationDeduplicationService.shouldAllowNotification({
+      jobId: job.jobId,
+      staffId: staffId,
+      type: 'job_assigned',
+      source: 'firestore',
+      timestamp: now,
+    });
+
+    if (!shouldShow) {
+      return;
+    }
+
+    console.log('🆕 New job assigned:', job.title, 'for property:', job.propertyName);
+    
+    this.lastNotificationTime.set(job.jobId, now);
+    
+    if (callback) {
+      callback(job);
+    }
+  }
+
+  /**
+   * Handle new job assignment (legacy method)
    */
   private handleNewJobAssignment(
     job: JobNotificationData, 
     callback?: (job: JobNotificationData) => void
   ): void {
     const now = Date.now();
-    const lastNotification = this.lastNotificationTime.get(job.jobId) || 0;
     
-    // Prevent duplicate notifications within 5 seconds
-    if (now - lastNotification < 5000) {
-      console.log('🔕 Skipping duplicate notification for job:', job.jobId);
+    // Use deduplication service to prevent multiple notifications
+    const shouldShow = notificationDeduplicationService.shouldAllowNotification({
+      jobId: job.jobId,
+      staffId: '', // Will be set by caller
+      type: 'job_assigned',
+      source: 'firestore',
+      timestamp: now,
+    });
+
+    if (!shouldShow) {
       return;
     }
 

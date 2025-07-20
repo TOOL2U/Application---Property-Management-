@@ -18,9 +18,11 @@ import { useRouter } from 'expo-router';
 import { shadowStyles } from '@/utils/shadowUtils';
 import { useStaffJobs } from '@/hooks/useStaffJobs';
 import LogoutOverlay from '@/components/auth/LogoutOverlay';
+import { useTranslation } from '@/hooks/useTranslation';
 
 export default function IndexScreen() {
   const { currentProfile, isAuthenticated, logout } = usePINAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [isSwitchingProfile, setIsSwitchingProfile] = useState(false);
@@ -152,8 +154,8 @@ export default function IndexScreen() {
               fontFamily: 'Inter_400Regular',
             }}>
               {isAuthenticated && currentProfile 
-                ? `Welcome back, ${currentProfile.name}`
-                : 'Please log in to receive jobs'
+                ? t('home.welcomeBack', { name: currentProfile.name })
+                : t('home.pleaseLogin')
               }
             </Text>
           </Animatable.View>
@@ -278,7 +280,7 @@ export default function IndexScreen() {
                     fontFamily: 'Inter_600SemiBold',
                     marginTop: 2,
                   }}>
-                    Switch
+                    {t('home.switch')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -293,7 +295,7 @@ export default function IndexScreen() {
                   marginTop: 12,
                   marginBottom: 8,
                 }}>
-                  Not Logged In
+                  {t('home.notLoggedIn')}
                 </Text>
                 <Text style={{
                   color: '#9CA3AF',
@@ -302,7 +304,7 @@ export default function IndexScreen() {
                   textAlign: 'center',
                   marginBottom: 16,
                 }}>
-                  Please log in to receive job assignments
+                  {t('home.pleaseLoginToReceiveJobs')}
                 </Text>
                 <TouchableOpacity
                   onPress={handleProfilePress}
@@ -319,7 +321,7 @@ export default function IndexScreen() {
                     fontWeight: '600',
                     fontFamily: 'Inter_600SemiBold',
                   }}>
-                    Log In
+                    {t('auth.signIn')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -403,7 +405,7 @@ export default function IndexScreen() {
                     marginRight: 12,
                   }}
                 >
-                  JOBS
+                  {t('navigation.jobs').toUpperCase()}
                 </Text>
                 
                 <Ionicons 
@@ -481,10 +483,10 @@ export default function IndexScreen() {
             >
               {isAuthenticated 
                 ? (pendingJobs.length > 0 
-                  ? `${pendingJobs.length} job${pendingJobs.length === 1 ? '' : 's'} waiting for you!`
-                  : 'No pending jobs at the moment'
+                  ? t('home.jobsWaiting', { count: pendingJobs.length })
+                  : t('home.noPendingJobs')
                 )
-                : 'Log in to receive job assignments'
+                : t('home.loginToReceiveJobs')
               }
             </Text>
           </Animatable.View>

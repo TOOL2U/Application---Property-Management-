@@ -20,19 +20,7 @@
     "selectPreferredLanguage": "Selecciona tu idioma preferido",
     "availableLanguages": "Idiomas Disponibles",
     "deviceLanguage": "Idioma del Dispositivo",
-    "deviceLanguageInfo": "La aplicación detectará automáticamente el idioma de tu dispositivo en el primer inicio. Puedes cambiarlo en cualquier momento desde aquí.",
-    "signingOut": "Cerrando sesión...",
-    "pleaseWaitSignOut": "Por favor espera mientras cerramos tu sesión"
-  },
-  "home": {
-    "welcomeBack": "Bienvenido de nuevo, {{name}}",
-    "pleaseLogin": "Por favor inicia sesión para recibir trabajos",
-    "switch": "Cambiar",
-    "notLoggedIn": "No Has Iniciado Sesión",
-    "pleaseLoginToReceiveJobs": "Por favor inicia sesión para recibir asignaciones de trabajo",
-    "jobsWaiting": "¡{{count}} trabajo{{count, plural, one{} other{s}}} esperándote!",
-    "noPendingJobs": "No hay trabajos pendientes en este momento",
-    "loginToReceiveJobs": "Inicia sesión para recibir asignaciones de trabajo"
+    "deviceLanguageInfo": "La aplicación detectará automáticamente el idioma de tu dispositivo en el primer uso. Puedes cambiarlo en cualquier momento desde aquí."
   },
   "auth": {
     "selectProfile": "Selecciona Tu Perfil",
@@ -43,8 +31,7 @@
     "pinError": "PIN incorrecto. Inténtalo de nuevo.",
     "biometricLogin": "Usa huella dactilar o Face ID",
     "logoutComplete": "Cierre de Sesión Completo",
-    "logoutSuccess": "Has cerrado sesión exitosamente.",
-    "signIn": "Iniciar Sesión"
+    "logoutSuccess": "Has cerrado sesión exitosamente."
   },
   "navigation": {
     "home": "Inicio",
@@ -104,6 +91,7 @@
     "inProgress": "En Progreso",
     "pending": "Pendiente",
     "urgent": "Urgente",
+    "priority": "Prioridad",
     "dueDate": "Fecha Límite",
     "assignedTo": "Asignado a",
     "all": "Todos",
@@ -117,8 +105,6 @@
     "viewDetails": "Ver Detalles",
     "createJob": "Crear Trabajo",
     "assignJob": "Asignar Trabajo",
-    "acceptJob": "Revisar y Aceptar",
-    "startJob": "Iniciar Trabajo",
     "jobTitle": "Título del Trabajo",
     "description": "Descripción",
     "location": "Ubicación",
@@ -128,6 +114,7 @@
     "attachments": "Adjuntos",
     "startTime": "Hora de Inicio",
     "endTime": "Hora de Fin",
+    "status": "Estado",
     "createdBy": "Creado por",
     "lastUpdated": "Última Actualización",
     "loadingJobs": "Cargando trabajos...",
@@ -137,87 +124,18 @@
     "noJobsAvailable": "No hay trabajos disponibles en este momento.",
     "clearFilters": "Limpiar Filtros",
     "tryAgain": "Intentar de Nuevo",
-    "createJobComingSoon": "¡La función de creación de trabajos estará disponible pronto!",
-    "details": "Detalles",
-    "map": "Mapa",
     "jobCount_zero": "trabajo",
     "jobCount_one": "trabajo",
-    "jobCount_other": "trabajos",
-    "jobsCount": "{{count}} trabajo{{count, plural, one{} other{s}}}",
-    "active": "Activo",
-    "refresh": "Actualizar",
-    "newJobAssignment": "🔔 ¡Nueva Asignación de Trabajo!",
-    "jobNotificationBody": "Trabajo: {{jobTitle}}\nPropiedad: {{propertyName}}",
-    "checkPendingTab": "Revisa la pestaña Pendiente para ver detalles.",
-    "viewJobs": "Ver Trabajos",
-    "jobStarted": "Trabajo Iniciado",
-    "jobStartedMessage": "Has comenzado a trabajar en este trabajo.",
-    "failedToStartJob": "Error al iniciar trabajo",
-    "failedToStartJobMessage": "Error al iniciar trabajo. Por favor intenta de nuevo.",
-    "noJobsInFilter": "No tienes trabajos {{filter}} en este momento.",
-    "noJobsAssigned": "Aún no se te han asignado trabajos.",
-    "unknownProperty": "Propiedad Desconocida",
-    "status": {
-      "pending": "Pendiente",
-      "assigned": "Asignado",
-      "accepted": "Aceptado",
-      "inProgress": "En Progreso",
-      "completed": "Completado",
-      "declined": "Rechazado",
-      "overdue": "Vencido",
-      "unknown": "Desconocido"
-    },
-    "priority": {
-      "urgent": "Urgente",
-      "high": "Alta",
-      "medium": "Media",
-      "low": "Baja",
-      "normal": "Normal"
-    },
-    "type": {
-      "maintenance": "Mantenimiento",
-      "cleaning": "Limpieza",
-      "inspection": "Inspección",
-      "plumbing": "Plomería",
-      "electrical": "Eléctrico",
-      "hvac": "HVAC",
-      "landscaping": "Jardinería",
-      "security": "Seguridad",
-      "other": "Otro"
-    },
-    "actions": {
-      "accept": "Aceptar",
-      "decline": "Rechazar",
-      "start": "Comenzar",
-      "update": "Actualizar",
-      "complete": "Completar",
-      "details": "Detalles"
-    }
+    "jobCount_other": "trabajos"
   },
   "notifications": {
     "title": "Notificaciones",
     "noNotifications": "Sin notificaciones",
     "markAllRead": "Marcar Todas Leídas",
     "clearAll": "Limpiar Todas",
-    "deleteAll": "Eliminar Todas",
-    "deleteAllConfirm": "¿Estás seguro de que quieres eliminar todas las {{count}} notificaciones? Esta acción no se puede deshacer.",
-    "deleteError": "Error al eliminar notificaciones. Por favor, inténtalo de nuevo.",
     "newJobAssigned": "Nuevo trabajo asignado",
     "jobCompleted": "Trabajo completado",
-    "messageReceived": "Mensaje recibido",
-    "loading": "Cargando notificaciones...",
-    "noNotificationsYet": "Aún no hay notificaciones",
-    "noNotificationsMessage": "Recibirás notificaciones aquí cuando haya asignaciones de trabajo, actualizaciones o anuncios importantes.",
-    "unreadCount": "{{count}} sin leer",
-    "justNow": "Ahora mismo",
-    "minutesAgo": "hace {{minutes}}m",
-    "hoursAgo": "hace {{hours}}h",
-    "daysAgo": "hace {{days}}d",
-    "priority": {
-      "low": "BAJA",
-      "medium": "MEDIA",
-      "high": "ALTA"
-    }
+    "messageReceived": "Mensaje recibido"
   },
   "profile": {
     "editProfile": "Editar Perfil",
@@ -229,18 +147,6 @@
     "role": "Título del Trabajo / Rol",
     "saveChanges": "Guardar Cambios",
     "profileUpdated": "Tu perfil ha sido actualizado exitosamente",
-    "tapToChangePhoto": "Toca para cambiar foto",
-    "status": "Estado",
-    "available": "Disponible",
-    "busy": "Ocupado",
-    "offline": "Desconectado",
-    "signOutMessage": "¿Estás seguro de que quieres cerrar sesión? Esto te regresará a la selección de perfil del personal.",
-    "signOutTitle": "Cerrar Sesión",
-    "signOutSubtitle": "Cerrar sesión de tu cuenta",
-    "cancel": "Cancelar",
-    "workingHours": "Horas de Trabajo",
-    "shiftsCompleted": "Turnos Completados",
-    "performance": "Rendimiento",
-    "currentStatus": "Estado Actual"
+    "tapToChangePhoto": "Toca para cambiar foto"
   }
 }

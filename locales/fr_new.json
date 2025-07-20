@@ -20,19 +20,7 @@
     "selectPreferredLanguage": "Sélectionnez votre langue préférée",
     "availableLanguages": "Langues Disponibles",
     "deviceLanguage": "Langue de l'Appareil",
-    "deviceLanguageInfo": "L'application détectera automatiquement la langue de votre appareil au premier lancement. Vous pouvez la changer à tout moment depuis ici.",
-    "signingOut": "Déconnexion...",
-    "pleaseWaitSignOut": "Veuillez patienter pendant que nous vous déconnectons"
-  },
-  "home": {
-    "welcomeBack": "Bon retour, {{name}}",
-    "pleaseLogin": "Veuillez vous connecter pour recevoir des tâches",
-    "switch": "Changer",
-    "notLoggedIn": "Non Connecté",
-    "pleaseLoginToReceiveJobs": "Veuillez vous connecter pour recevoir des assignations de tâches",
-    "jobsWaiting": "{{count}} tâche{{count, plural, one{} other{s}}} vous attend{{count, plural, one{} other{ent}}} !",
-    "noPendingJobs": "Aucune tâche en attente pour le moment",
-    "loginToReceiveJobs": "Connectez-vous pour recevoir des assignations de tâches"
+    "deviceLanguageInfo": "L'application détectera automatiquement la langue de votre appareil au premier lancement. Vous pouvez la changer à tout moment depuis ici."
   },
   "auth": {
     "selectProfile": "Sélectionnez Votre Profil",
@@ -43,8 +31,7 @@
     "pinError": "PIN incorrect. Veuillez réessayer.",
     "biometricLogin": "Utiliser l'empreinte digitale ou Face ID",
     "logoutComplete": "Déconnexion Terminée",
-    "logoutSuccess": "Vous avez été déconnecté avec succès.",
-    "signIn": "Se Connecter"
+    "logoutSuccess": "Vous avez été déconnecté avec succès."
   },
   "navigation": {
     "home": "Accueil",
@@ -104,6 +91,7 @@
     "inProgress": "En Cours",
     "pending": "En Attente",
     "urgent": "Urgent",
+    "priority": "Priorité",
     "dueDate": "Date Limite",
     "assignedTo": "Assigné à",
     "all": "Tous",
@@ -117,8 +105,6 @@
     "viewDetails": "Voir les Détails",
     "createJob": "Créer une Tâche",
     "assignJob": "Assigner une Tâche",
-    "acceptJob": "Examiner et Accepter",
-    "startJob": "Commencer la Tâche",
     "jobTitle": "Titre de la Tâche",
     "description": "Description",
     "location": "Emplacement",
@@ -128,6 +114,7 @@
     "attachments": "Pièces Jointes",
     "startTime": "Heure de Début",
     "endTime": "Heure de Fin",
+    "status": "Statut",
     "createdBy": "Créé par",
     "lastUpdated": "Dernière Mise à Jour",
     "loadingJobs": "Chargement des tâches...",
@@ -137,87 +124,18 @@
     "noJobsAvailable": "Il n'y a aucune tâche disponible pour le moment.",
     "clearFilters": "Effacer les Filtres",
     "tryAgain": "Réessayer",
-    "createJobComingSoon": "La fonction de création de tâches arrive bientôt !",
-    "details": "Détails",
-    "map": "Carte",
     "jobCount_zero": "tâche",
     "jobCount_one": "tâche",
-    "jobCount_other": "tâches",
-    "jobsCount": "{{count}} tâche{{count, plural, one{} other{s}}}",
-    "active": "Actif",
-    "refresh": "Actualiser",
-    "newJobAssignment": "🔔 Nouvelle Attribution de Tâche !",
-    "jobNotificationBody": "Tâche: {{jobTitle}}\nPropriété: {{propertyName}}",
-    "checkPendingTab": "Vérifiez l'onglet En Attente pour voir les détails.",
-    "viewJobs": "Voir les Tâches",
-    "jobStarted": "Tâche Commencée",
-    "jobStartedMessage": "Vous avez commencé à travailler sur cette tâche.",
-    "failedToStartJob": "Échec du démarrage de la tâche",
-    "failedToStartJobMessage": "Échec du démarrage de la tâche. Veuillez réessayer.",
-    "noJobsInFilter": "Vous n'avez aucune tâche {{filter}} pour le moment.",
-    "noJobsAssigned": "Aucune tâche ne vous a encore été assignée.",
-    "unknownProperty": "Propriété Inconnue",
-    "status": {
-      "pending": "En Attente",
-      "assigned": "Assigné",
-      "accepted": "Accepté",
-      "inProgress": "En Cours",
-      "completed": "Terminé",
-      "declined": "Refusé",
-      "overdue": "En Retard",
-      "unknown": "Inconnu"
-    },
-    "priority": {
-      "urgent": "Urgente",
-      "high": "Élevée",
-      "medium": "Moyenne",
-      "low": "Faible",
-      "normal": "Normale"
-    },
-    "type": {
-      "maintenance": "Maintenance",
-      "cleaning": "Nettoyage",
-      "inspection": "Inspection",
-      "plumbing": "Plomberie",
-      "electrical": "Électrique",
-      "hvac": "CVC",
-      "landscaping": "Aménagement Paysager",
-      "security": "Sécurité",
-      "other": "Autre"
-    },
-    "actions": {
-      "accept": "Accepter",
-      "decline": "Refuser",
-      "start": "Commencer",
-      "update": "Mettre à Jour",
-      "complete": "Terminer",
-      "details": "Détails"
-    }
+    "jobCount_other": "tâches"
   },
   "notifications": {
     "title": "Notifications",
     "noNotifications": "Aucune notification",
     "markAllRead": "Tout Marquer Lu",
     "clearAll": "Tout Effacer",
-    "deleteAll": "Tout Supprimer",
-    "deleteAllConfirm": "Êtes-vous sûr de vouloir supprimer toutes les {{count}} notifications ? Cette action ne peut pas être annulée.",
-    "deleteError": "Échec de la suppression des notifications. Veuillez réessayer.",
     "newJobAssigned": "Nouvelle tâche assignée",
     "jobCompleted": "Tâche terminée",
-    "messageReceived": "Message reçu",
-    "loading": "Chargement des notifications...",
-    "noNotificationsYet": "Aucune notification pour le moment",
-    "noNotificationsMessage": "Vous recevrez des notifications ici lorsqu'il y aura des assignations de tâches, des mises à jour ou des annonces importantes.",
-    "unreadCount": "{{count}} non lues",
-    "justNow": "À l'instant",
-    "minutesAgo": "il y a {{minutes}}m",
-    "hoursAgo": "il y a {{hours}}h",
-    "daysAgo": "il y a {{days}}j",
-    "priority": {
-      "low": "FAIBLE",
-      "medium": "MOYENNE",
-      "high": "ÉLEVÉE"
-    }
+    "messageReceived": "Message reçu"
   },
   "profile": {
     "editProfile": "Modifier le Profil",
@@ -229,18 +147,6 @@
     "role": "Titre du Poste / Rôle",
     "saveChanges": "Sauvegarder les Modifications",
     "profileUpdated": "Votre profil a été mis à jour avec succès",
-    "tapToChangePhoto": "Toucher pour changer la photo",
-    "status": "Statut",
-    "available": "Disponible",
-    "busy": "Occupé",
-    "offline": "Hors ligne",
-    "signOutMessage": "Êtes-vous sûr de vouloir vous déconnecter ? Cela vous ramènera à la sélection de profil du personnel.",
-    "signOutTitle": "Se Déconnecter",
-    "signOutSubtitle": "Se déconnecter de votre compte",
-    "cancel": "Annuler",
-    "workingHours": "Heures de Travail",
-    "shiftsCompleted": "Équipes Terminées",
-    "performance": "Performance",
-    "currentStatus": "Statut Actuel"
+    "tapToChangePhoto": "Toucher pour changer la photo"
   }
 }
