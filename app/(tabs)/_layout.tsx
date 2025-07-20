@@ -9,6 +9,7 @@ import { View, Text, Platform, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import * as Animatable from 'react-native-animatable';
+import { useTranslation } from '@/hooks/useTranslation';
 
 // AIS-inspired tab icon component with neon green theme
 const AISTabIcon = ({
@@ -109,6 +110,7 @@ const NotificationIcon = ({ focused, color, unreadCount }: { focused: boolean; c
 export default function TabLayout() {
   const { isAuthenticated, isLoading } = usePINAuth();
   const { unreadCount } = useAppNotifications();
+  const { t } = useTranslation();
   const router = useRouter();
 
   console.log('🏠 TabLayout rendered:', {
@@ -162,7 +164,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t('navigation.home'),
           tabBarIcon: ({ color, focused }) => (
             <AISTabIcon name="home" focused={focused} color={color} />
           ),
@@ -171,7 +173,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="jobs"
         options={{
-          title: 'Jobs',
+          title: t('navigation.jobs'),
           tabBarIcon: ({ color, focused }) => (
             <AISTabIcon name="briefcase" focused={focused} color={color} />
           ),
@@ -180,7 +182,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('navigation.profile'),
           tabBarIcon: ({ color, focused }) => (
             <AISTabIcon name="person" focused={focused} color={color} />
           ),
@@ -189,7 +191,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: t('navigation.settings'),
           tabBarIcon: ({ color, focused }) => (
             <AISTabIcon name="settings" focused={focused} color={color} />
           ),
@@ -198,7 +200,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          title: 'Notifications',
+          title: t('navigation.notifications'),
           tabBarIcon: ({ color, focused }) => (
             <NotificationIcon focused={focused} color={color} unreadCount={unreadCount} />
           ),

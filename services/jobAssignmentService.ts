@@ -134,18 +134,42 @@ class JobAssignmentService {
    */
   async updateJobStatus(update: JobStatusUpdate): Promise<JobStatusUpdateResponse> {
     try {
-      console.log('📱 Updating job status from mobile:', update.jobId, update.status);
+      console.log('📱 JobAssignmentService: Updating job status with data:', {
+        jobId: update.jobId,
+        status: update.status,
+        staffId: update.staffId
+      });
 
-  const db = await getFirebaseFirestore();
-  const jobRef = doc(db, 'job_assignments', update.jobId);
-  const jobDoc = await getDoc(jobRef);
+      const db = await getFirebaseFirestore();
+      const jobRef = doc(db, 'job_assignments', update.jobId);
+      
+      console.log('🔍 JobAssignmentService: Looking for job in job_assignments collection:', update.jobId);
+      const jobDoc = await getDoc(jobRef);
 
       if (!jobDoc.exists()) {
-        return {
-          success: false,
-          error: 'Job not found'
-        };
+        console.error('❌ JobAssignmentService: Job not found in job_assignments collection:', update.jobId);
+        
+        // Try looking in jobs collection as well
+        const jobsRef = doc(db, 'jobs', update.jobId);
+        console.log('🔍 JobAssignmentService: Trying jobs collection:', update.jobId);
+        const jobsDoc = await getDoc(jobsRef);
+        
+        if (!jobsDoc.exists()) {
+          console.error('❌ JobAssignmentService: Job not found in either collection:', update.jobId);
+          return {
+            success: false,
+            error: 'Job not found in any collection'
+          };
+        } else {
+          console.log('✅ JobAssignmentService: Found job in jobs collection but this service expects job_assignments');
+          return {
+            success: false,
+            error: 'Job found in wrong collection - use different service'
+          };
+        }
       }
+
+      console.log('✅ JobAssignmentService: Found job in job_assignments collection');
 
       const currentJob = { id: jobDoc.id, ...jobDoc.data() } as JobAssignment;
 
@@ -311,8 +335,8 @@ class JobAssignmentService {
             staffId: jobData.assignedStaffId || queryStaffId,
             propertyId: jobData.propertyId || 'unknown',
             status: jobData.status || 'assigned',
-            title: jobData.title || 'Untitled Job',
-            description: jobData.description || '',
+            title: jobData.jobTitle || jobData.title || 'Untitled Job',
+            description: jobData.description || jobData.specialInstructions || '',
             type: (jobData.jobType || 'other') as any,
             priority: (jobData.priority || 'medium') as any,
             estimatedDuration: typeof jobData.estimatedDuration === 'string' 
@@ -321,7 +345,7 @@ class JobAssignmentService {
                 ? jobData.estimatedDuration 
                 : 30,
             location: {
-              address: jobData.location?.address || 'Unknown Location',
+              address: jobData.propertyAddress || jobData.location?.address || 'Unknown Location',
               city: jobData.location?.city || '',
               state: jobData.location?.state || '',
               zipCode: jobData.location?.zipCode || '',
@@ -331,7 +355,7 @@ class JobAssignmentService {
             },
             assignedBy: jobData.assignedBy || 'system',
             assignedAt: jobData.assignedAt || jobData.createdAt,
-            scheduledFor: jobData.scheduledDate || jobData.createdAt,
+            scheduledFor: this.createScheduledForTimestamp(jobData.scheduledDate, jobData.scheduledStartTime) || jobData.createdAt,
             dueDate: jobData.dueDate,
             accepted: jobData.status === 'accepted' || jobData.status === 'in_progress',
             acceptedAt: jobData.acceptedAt,
@@ -676,6 +700,31 @@ class JobAssignmentService {
   await addDoc(eventsCollection, event);
     } catch (error) {
       console.error('❌ Error logging job event:', error);
+    }
+  }
+
+  /**
+   * Helper method to create a Firebase Timestamp from date and time strings
+   */
+  private createScheduledForTimestamp(scheduledDate?: string, scheduledStartTime?: string): Timestamp | null {
+    if (!scheduledDate) return null;
+    
+    try {
+      // Combine date and time strings into a full date
+      const timeStr = scheduledStartTime || '00:00';
+      const combinedDateTime = `${scheduledDate}T${timeStr}:00`;
+      const date = new Date(combinedDateTime);
+      
+      // Validate the date
+      if (isNaN(date.getTime())) {
+        console.warn('⚠️ Invalid date created from:', { scheduledDate, scheduledStartTime });
+        return null;
+      }
+      
+      return Timestamp.fromDate(date);
+    } catch (error) {
+      console.error('❌ Error creating timestamp from date strings:', error);
+      return null;
     }
   }
 

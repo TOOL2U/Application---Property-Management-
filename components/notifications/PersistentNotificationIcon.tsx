@@ -7,7 +7,7 @@ import React from 'react';
 import { TouchableOpacity, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Animatable from 'react-native-animatable';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { useAppNotifications } from '@/contexts/AppNotificationContext';
 import { shadowStyles } from '@/utils/shadowUtils';
 
@@ -18,6 +18,19 @@ interface PersistentNotificationIconProps {
 export const PersistentNotificationIcon: React.FC<PersistentNotificationIconProps> = ({ style }) => {
   const { unreadCount } = useAppNotifications();
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Hide notification icon on auth screens
+  const isAuthScreen = pathname?.includes('/(auth)') || 
+                      pathname?.includes('/select-profile') || 
+                      pathname?.includes('/select-staff-profile') ||
+                      pathname?.includes('/enter-pin') ||
+                      pathname?.includes('/create-pin');
+
+  // Don't render anything on auth screens
+  if (isAuthScreen) {
+    return null;
+  }
 
   const handlePress = () => {
     console.log('🔔 PersistentNotificationIcon: Navigating to notifications screen');

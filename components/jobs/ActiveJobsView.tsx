@@ -1,6 +1,6 @@
 /**
- * Active Jobs View Component
- * Shows all accepted jobs for the staff user with Google Maps integration and photo upload
+ * Active Jobs View Component - Redesigned
+ * Shows all accepted jobs for the staff user with modern design and proper service integration
  */
 
 import React, { useState, useEffect } from 'react';
@@ -14,130 +14,145 @@ import {
   Alert,
   Linking,
   Platform,
-  Dimensions,
-  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as ImagePicker from 'expo-image-picker';
 import { usePINAuth } from "@/contexts/PINAuthContext";
-import { useStaffJobs } from '@/hooks/useStaffJobs';
-import { jobService } from '@/services/jobService';
-import type { Job } from '@/types/job';
+import { mobileJobAssignmentService as jobAssignmentService } from '@/services/jobAssignmentService';
+import type { JobAssignment } from '@/types/jobAssignment';
 import {
   MapPin,
   Navigation,
   Clock,
   Phone,
-  Camera,
   CheckCircle,
   Play,
   Pause,
   AlertTriangle,
   User,
   Building,
-  FileText,
-  Upload,
-  ExternalLink,
+  ArrowLeft,
 } from 'lucide-react-native';
 
-const { width } = Dimensions.get('window');
-
 export default function ActiveJobsView() {
-  const { currentProfile } = usePINAuth();
+  const { currentProfile, isLoading: authLoading } = usePINAuth();
 
-  // Use the enhanced staff jobs hook with filtering for active jobs
-  const {
-    activeJobs,
-    loading: isLoading,
-    refreshing,
-    error,
-    refreshJobs,
-    startJob,
-    completeJob,
-    clearError,
-  } = useStaffJobs({
-    filters: { status: ['accepted', 'in_progress'] },
-    enableRealtime: true,
-    enableCache: true,
-  });
+  // Early return if auth is still loading
+  if (authLoading || !currentProfile) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#C6FF00" />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
+  // State management
+  const [activeJobs, setActiveJobs] = useState<JobAssignment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [expandedJob, setExpandedJob] = useState<string | null>(null);
-  const [uploadingPhotos, setUploadingPhotos] = useState<string | null>(null);
-  const [completingJob, setCompletingJob] = useState<string | null>(null);
 
-  // Show error alert when error occurs
-  useEffect(() => {
-    if (error) {
-      Alert.alert('Error', error, [
-        { text: 'OK', onPress: clearError }
-      ]);
-    }
-  }, [error, clearError]);
-
-  const openMaps = (job: Job) => {
-    const address = `${job.location.address}, ${job.location.city}, ${job.location.state} ${job.location.zipCode}`;
-    const encodedAddress = encodeURIComponent(address);
-
-    if (Platform.OS === 'ios') {
-      // Open Apple Maps
-      const url = `http://maps.apple.com/?q=${encodedAddress}`;
-      Linking.openURL(url);
-    } else {
-      // Open Google Maps
-      const url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-      Linking.openURL(url);
-    }
-  };
-
-  const pickImages = async (jobId: string) => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Required', 'Please grant camera roll permissions to upload photos.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: true,
-        quality: 0.8,
-        aspect: [4, 3],
-      });
-
-      if (!result.canceled && result.assets) {
-        setUploadingPhotos(jobId);
-        
-        // Convert assets to base64 or upload to storage
-        const photoUrls = result.assets.map(asset => asset.uri);
-        
-        const response = await jobService.uploadJobPhotos(jobId, photoUrls);
-        
-        if (response.success) {
-          Alert.alert('Success', 'Photos uploaded successfully!');
-          await loadActiveJobs(); // Refresh to show updated photos
-        } else {
-          Alert.alert('Error', response.error || 'Failed to upload photos');
-        }
-      }
-    } catch (error) {
-      console.error('Error picking images:', error);
-      Alert.alert('Error', 'Failed to pick images. Please try again.');
-    } finally {
-      setUploadingPhotos(null);
-    }
-  };
-
-  const handleCompleteJob = async (job: Job) => {
-    if (!job.photos || job.photos.length === 0) {
-      Alert.alert(
-        'Photos Required',
-        'Please upload at least one photo before completing the job.',
-        [{ text: 'OK' }]
-      );
+  // Load active jobs function
+  const loadActiveJobs = async () => {
+    if (!currentProfile?.id) {
+      setIsLoading(false);
       return;
     }
 
+    try {
+      console.log('🔄 ActiveJobsView: Loading active jobs for staff:', currentProfile.id);
+      
+      const response = await jobAssignmentService.getStaffJobs(currentProfile.id);
+      
+      if (response.success) {
+        // Filter for active jobs (accepted and in_progress)
+        const activeJobsOnly = response.jobs.filter(job => 
+          ['accepted', 'in_progress'].includes(job.status)
+        );
+        setActiveJobs(activeJobsOnly);
+        setError(null);
+        console.log(`✅ ActiveJobsView: Loaded ${activeJobsOnly.length} active jobs`);
+      } else {
+        setError(response.error || 'Failed to load jobs');
+        console.error('❌ ActiveJobsView: Failed to load jobs:', response.error);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      console.error('❌ ActiveJobsView: Error loading jobs:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const refreshJobs = async () => {
+    setRefreshing(true);
+    await loadActiveJobs();
+    setRefreshing(false);
+  };
+
+  // Load jobs on component mount and when profile changes
+  useEffect(() => {
+    loadActiveJobs();
+  }, [currentProfile?.id]);
+
+  // Navigation functions
+  const openMaps = (job: JobAssignment) => {
+    if (job.location.coordinates) {
+      const { latitude, longitude } = job.location.coordinates;
+      const urls = {
+        ios: `maps:0,0?q=${latitude},${longitude}`,
+        android: `geo:0,0?q=${latitude},${longitude}`,
+        web: `https://maps.google.com/?q=${latitude},${longitude}`
+      };
+      
+      const url = Platform.select(urls) || urls.web;
+      Linking.openURL(url).catch(() => {
+        Linking.openURL(urls.web);
+      });
+    } else if (job.location.address) {
+      const address = `${job.location.address}, ${job.location.city}, ${job.location.state}`;
+      const encodedAddress = encodeURIComponent(address);
+      
+      const urls = {
+        ios: `http://maps.apple.com/?q=${encodedAddress}`,
+        android: `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`,
+        web: `https://maps.google.com/?q=${encodedAddress}`
+      };
+      
+      const url = Platform.select(urls) || urls.web;
+      Linking.openURL(url);
+    } else {
+      Alert.alert('Navigation Error', 'No location information available for this job.');
+    }
+  };
+
+  const handleStartJob = async (job: JobAssignment) => {
+    try {
+      const response = await jobAssignmentService.updateJobStatus({
+        jobId: job.id,
+        staffId: currentProfile?.id || '',
+        status: 'in_progress'
+      });
+      
+      if (response.success) {
+        Alert.alert('Success', 'Job started successfully!');
+        await loadActiveJobs();
+      } else {
+        Alert.alert('Error', response.error || 'Failed to start job');
+      }
+    } catch (error) {
+      console.error('Error starting job:', error);
+      Alert.alert('Error', 'Failed to start job. Please try again.');
+    }
+  };
+
+  const handleCompleteJob = async (job: JobAssignment) => {
     Alert.alert(
       'Complete Job',
       `Are you sure you want to mark "${job.title}" as completed?`,
@@ -148,100 +163,55 @@ export default function ActiveJobsView() {
           style: 'default',
           onPress: async () => {
             try {
-              setCompletingJob(job.id);
-
-              const success = await completeJob(job.id, 'Job completed by staff member');
-
-              if (success) {
+              const response = await jobAssignmentService.updateJobStatus({
+                jobId: job.id,
+                staffId: currentProfile?.id || '',
+                status: 'completed'
+              });
+              
+              if (response.success) {
                 Alert.alert('Success', 'Job completed successfully!');
+                await loadActiveJobs();
               } else {
-                Alert.alert('Error', 'Failed to complete job. Please try again.');
+                Alert.alert('Error', response.error || 'Failed to complete job');
               }
             } catch (error) {
               console.error('Error completing job:', error);
               Alert.alert('Error', 'Failed to complete job. Please try again.');
-            } finally {
-              setCompletingJob(null);
             }
-          },
-        },
+          }
+        }
       ]
     );
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent': return '#ef4444';
-      case 'high': return '#f97316';
-      case 'medium': return '#eab308';
-      case 'low': return '#22c55e';
-      default: return '#6b7280';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'accepted': return '#3b82f6';
-      case 'in_progress': return '#f59e0b';
-      case 'completed': return '#22c55e';
-      default: return '#6b7280';
-    }
-  };
-
-  const renderJobCard = (job: Job) => {
+  const renderJobCard = (job: JobAssignment) => {
     const isExpanded = expandedJob === job.id;
-    const hasPhotos = job.photos && job.photos.length > 0;
 
     return (
       <View key={job.id} style={styles.jobCard}>
         <LinearGradient
           colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)']}
-          style={styles.jobCardGradient}
+          style={styles.cardGradient}
         >
           {/* Job Header */}
           <TouchableOpacity
             style={styles.jobHeader}
             onPress={() => setExpandedJob(isExpanded ? null : job.id)}
           >
-            <View style={styles.jobTitleSection}>
+            <View style={styles.jobInfo}>
               <Text style={styles.jobTitle}>{job.title}</Text>
-              <View style={styles.statusBadges}>
-                <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(job.priority) }]}>
-                  <Text style={styles.priorityText}>{job.priority.toUpperCase()}</Text>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(job.status) }]}>
-                  <Text style={styles.statusText}>{job.status.replace('_', ' ').toUpperCase()}</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Property Information */}
-            <View style={styles.propertySection}>
-              <View style={styles.propertyRow}>
-                <Building size={16} color="#8b5cf6" />
-                <Text style={styles.propertyName} numberOfLines={1}>
-                  {job.location.address}
+              <View style={styles.jobMeta}>
+                <Clock size={14} color="#a1a1aa" />
+                <Text style={styles.scheduleText}>
+                  {job.scheduledFor?.toDate()?.toLocaleDateString() || 'Not scheduled'}
                 </Text>
               </View>
-              <Text style={styles.propertyAddress}>
-                {job.location.city}, {job.location.state} {job.location.zipCode}
-              </Text>
-            </View>
-
-            {/* Schedule */}
-            <View style={styles.scheduleSection}>
-              <Clock size={16} color="#8b5cf6" />
-              <Text style={styles.scheduleText}>{formatDate(job.scheduledDate)}</Text>
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusText}>
+                  {job.status === 'accepted' ? '⏳ Ready to Start' : '🔄 In Progress'}
+                </Text>
+              </View>
             </View>
           </TouchableOpacity>
 
@@ -249,92 +219,73 @@ export default function ActiveJobsView() {
           {isExpanded && (
             <View style={styles.expandedContent}>
               {/* Description */}
-              <View style={styles.descriptionSection}>
-                <Text style={styles.sectionTitle}>Job Description</Text>
-                <Text style={styles.descriptionText}>
-                  {job.description || job.specialInstructions || 'No description provided'}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Description</Text>
+                <Text style={styles.description}>
+                  {job.description || 'No description provided'}
                 </Text>
               </View>
 
+              {/* Location */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Location</Text>
+                <Text style={styles.addressText}>
+                  {job.location.address}, {job.location.city}, {job.location.state}
+                </Text>
+                {job.location.accessCode && (
+                  <Text style={styles.accessCode}>
+                    Access Code: {job.location.accessCode}
+                  </Text>
+                )}
+              </View>
+
               {/* Contact Information */}
-              {job.contacts && job.contacts.length > 0 && (
-                <View style={styles.contactSection}>
-                  <Text style={styles.sectionTitle}>Contact Information</Text>
-                  {job.contacts.map((contact, index) => (
-                    <View key={index} style={styles.contactItem}>
-                      <View style={styles.contactInfo}>
-                        <User size={16} color="#8b5cf6" />
-                        <Text style={styles.contactName}>{contact.name} ({contact.role})</Text>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.phoneButton}
-                        onPress={() => Linking.openURL(`tel:${contact.phone}`)}
-                      >
-                        <Phone size={16} color="#22c55e" />
-                        <Text style={styles.phoneText}>{contact.phone}</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
+              {job.bookingDetails?.contactInfo && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Contact</Text>
+                  {job.bookingDetails.contactInfo.phone && (
+                    <TouchableOpacity
+                      style={styles.contactButton}
+                      onPress={() => Linking.openURL(`tel:${job.bookingDetails?.contactInfo?.phone}`)}
+                    >
+                      <Phone size={16} color="#22c55e" />
+                      <Text style={styles.contactText}>
+                        {job.bookingDetails.contactInfo.phone}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
 
-              {/* Photos Section */}
-              <View style={styles.photosSection}>
-                <View style={styles.photosSectionHeader}>
-                  <Text style={styles.sectionTitle}>Completion Photos</Text>
-                  <Text style={styles.photosCount}>
-                    {hasPhotos ? `${job.photos.length} photo${job.photos.length > 1 ? 's' : ''}` : 'No photos'}
-                  </Text>
-                </View>
-
-                {hasPhotos && (
-                  <ScrollView horizontal style={styles.photosScroll} showsHorizontalScrollIndicator={false}>
-                    {job.photos.map((photo, index) => (
-                      <Image key={index} source={{ uri: photo }} style={styles.photoThumbnail} />
-                    ))}
-                  </ScrollView>
-                )}
-
-                <TouchableOpacity
-                  style={styles.uploadButton}
-                  onPress={() => pickImages(job.id)}
-                  disabled={uploadingPhotos === job.id}
-                >
-                  <Camera size={18} color="#ffffff" />
-                  <Text style={styles.uploadButtonText}>
-                    {uploadingPhotos === job.id ? 'Uploading...' : 'Add Photos'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
               {/* Action Buttons */}
               <View style={styles.actionButtons}>
+                {/* Navigation Button */}
                 <TouchableOpacity
-                  style={styles.mapsButton}
+                  style={[styles.actionButton, styles.navigationButton]}
                   onPress={() => openMaps(job)}
                 >
-                  <Navigation size={18} color="#ffffff" />
-                  <Text style={styles.mapsButtonText}>Go to Job</Text>
+                  <Navigation size={20} color="#ffffff" />
+                  <Text style={styles.actionButtonText}>Navigate</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[
-                    styles.completeButton,
-                    (!hasPhotos || completingJob === job.id) && styles.completeButtonDisabled
-                  ]}
-                  onPress={() => handleCompleteJob(job)}
-                  disabled={!hasPhotos || completingJob === job.id}
-                >
-                  <LinearGradient
-                    colors={hasPhotos ? ['#22c55e', '#16a34a'] : ['#6b7280', '#4b5563']}
-                    style={styles.completeButtonGradient}
+                {/* Start/Complete Button */}
+                {job.status === 'accepted' ? (
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.startButton]}
+                    onPress={() => handleStartJob(job)}
                   >
-                    <CheckCircle size={18} color="#ffffff" />
-                    <Text style={styles.completeButtonText}>
-                      {completingJob === job.id ? 'Completing...' : 'Complete Job'}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                    <Play size={20} color="#ffffff" />
+                    <Text style={styles.actionButtonText}>Start Job</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.completeButton]}
+                    onPress={() => handleCompleteJob(job)}
+                  >
+                    <CheckCircle size={20} color="#ffffff" />
+                    <Text style={styles.actionButtonText}>Complete</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           )}
@@ -343,52 +294,49 @@ export default function ActiveJobsView() {
     );
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient colors={['#0f0f23', '#1a1a3e']} style={styles.backgroundGradient} />
+        <SafeAreaView style={styles.safeArea}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#8b5cf6" />
+            <Text style={styles.loadingText}>Loading active jobs...</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#1a1a2e', '#16213e']}
-        style={styles.backgroundGradient}
-      />
-
+      <LinearGradient colors={['#0f0f23', '#1a1a3e']} style={styles.backgroundGradient} />
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Active Jobs</Text>
-          <View style={styles.headerBadge}>
-            <Text style={styles.headerBadgeText}>{activeJobs.length}</Text>
-          </View>
+          <Text style={styles.jobCount}>{activeJobs.length} jobs</Text>
         </View>
 
         {/* Jobs List */}
         <ScrollView
           style={styles.jobsList}
-          showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={refreshJobs}
-              tintColor="#C6FF00"
-              colors={['#C6FF00']}
-            />
+            <RefreshControl refreshing={refreshing} onRefresh={refreshJobs} tintColor="#8b5cf6" />
           }
+          showsVerticalScrollIndicator={false}
         >
-          {isLoading ? (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Loading active jobs...</Text>
-            </View>
-          ) : activeJobs.length === 0 ? (
+          {activeJobs.length === 0 ? (
             <View style={styles.emptyState}>
-              <Play size={64} color="#6b7280" />
-              <Text style={styles.emptyStateTitle}>No Active Jobs</Text>
-              <Text style={styles.emptyStateText}>
-                You don't have any active jobs at the moment. Accept jobs from the dashboard to see them here.
+              <CheckCircle size={64} color="#4b5563" />
+              <Text style={styles.emptyTitle}>No Active Jobs</Text>
+              <Text style={styles.emptyDescription}>
+                You don't have any active jobs at the moment. Check back later or refresh to see if new jobs are available.
               </Text>
             </View>
           ) : (
-            activeJobs.map(renderJobCard)
+            activeJobs.map(job => renderJobCard(job))
           )}
-
-          <View style={styles.bottomSpacing} />
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -398,7 +346,7 @@ export default function ActiveJobsView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#0f0f23',
   },
   backgroundGradient: {
     position: 'absolute',
@@ -410,28 +358,32 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#ffffff',
+    fontSize: 16,
+    marginTop: 16,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingVertical: 16,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#ffffff',
   },
-  headerBadge: {
-    backgroundColor: '#8b5cf6',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  headerBadgeText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#ffffff',
+  jobCount: {
+    fontSize: 16,
+    color: '#8b5cf6',
+    fontWeight: '600',
   },
   jobsList: {
     flex: 1,
@@ -442,236 +394,134 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
   },
-  jobCardGradient: {
+  cardGradient: {
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   jobHeader: {
     padding: 16,
   },
-  jobTitleSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+  jobInfo: {
+    flex: 1,
   },
   jobTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#ffffff',
-    flex: 1,
-    marginRight: 12,
+    marginBottom: 8,
   },
-  statusBadges: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  priorityText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  propertySection: {
-    marginBottom: 12,
-  },
-  propertyRow: {
+  jobMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  propertyName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-    flex: 1,
-  },
-  propertyAddress: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginLeft: 24,
-  },
-  scheduleSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    marginBottom: 8,
   },
   scheduleText: {
     fontSize: 14,
+    color: '#a1a1aa',
+    marginLeft: 6,
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#8b5cf6',
     fontWeight: '600',
-    color: '#22c55e',
   },
   expandedContent: {
     paddingHorizontal: 16,
     paddingBottom: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  section: {
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#ffffff',
     marginBottom: 8,
   },
-  descriptionSection: {
-    marginBottom: 16,
-  },
-  descriptionText: {
+  description: {
     fontSize: 14,
     color: '#d1d5db',
     lineHeight: 20,
   },
-  contactSection: {
-    marginBottom: 16,
-  },
-  contactItem: {
-    marginBottom: 8,
-  },
-  contactInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  contactName: {
+  addressText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#ffffff',
+    color: '#d1d5db',
+    lineHeight: 20,
   },
-  phoneButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginLeft: 24,
-  },
-  phoneText: {
+  accessCode: {
     fontSize: 14,
     color: '#22c55e',
-    textDecorationLine: 'underline',
+    fontWeight: '600',
+    marginTop: 4,
   },
-  photosSection: {
-    marginBottom: 16,
-  },
-  photosSectionHeader: {
+  contactButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  photosCount: {
-    fontSize: 12,
-    color: '#9ca3af',
-  },
-  photosScroll: {
-    marginBottom: 12,
-  },
-  photoThumbnail: {
-    width: 80,
-    height: 80,
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
-    marginRight: 8,
+    alignSelf: 'flex-start',
   },
-  uploadButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(139, 92, 246, 0.3)',
-    borderRadius: 12,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  uploadButtonText: {
+  contactText: {
+    color: '#22c55e',
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#8b5cf6',
+    fontWeight: '600',
+    marginLeft: 8,
   },
   actionButtons: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 8,
   },
-  mapsButton: {
+  actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.3)',
-    borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 12,
+    borderRadius: 8,
     gap: 8,
   },
-  mapsButtonText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#22c55e',
+  navigationButton: {
+    backgroundColor: '#3b82f6',
+  },
+  startButton: {
+    backgroundColor: '#22c55e',
   },
   completeButton: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
+    backgroundColor: '#f59e0b',
   },
-  completeButtonDisabled: {
-    opacity: 0.5,
-  },
-  completeButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    gap: 8,
-  },
-  completeButtonText: {
-    fontSize: 14,
-    fontWeight: 'bold',
+  actionButtonText: {
     color: '#ffffff',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#9ca3af',
+    fontSize: 14,
+    fontWeight: '600',
   },
   emptyState: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
   },
-  emptyStateTitle: {
-    fontSize: 20,
+  emptyTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#ffffff',
     marginTop: 16,
     marginBottom: 8,
   },
-  emptyStateText: {
+  emptyDescription: {
     fontSize: 16,
     color: '#9ca3af',
     textAlign: 'center',
     lineHeight: 24,
-    paddingHorizontal: 20,
-  },
-  bottomSpacing: {
-    height: 20,
+    paddingHorizontal: 32,
   },
 });

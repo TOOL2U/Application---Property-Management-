@@ -102,13 +102,21 @@ export default function EnhancedStaffJobsView() {
 
     try {
       setIsLoading(true);
+      console.log('🔄 EnhancedStaffJobsView: Loading jobs for staff:', currentProfile.id);
+      
       const response = await jobAssignmentService.getStaffJobs(currentProfile.id);
+      
+      console.log('📥 EnhancedStaffJobsView: Job service response:', {
+        success: response.success,
+        jobCount: response.jobs?.length || 0,
+        jobs: response.jobs?.map(j => ({ id: j.id, title: j.title, status: j.status })) || []
+      });
       
       if (response.success) {
         categorizeJobs(response.jobs);
       }
     } catch (error) {
-      console.error('Error loading jobs:', error);
+      console.error('❌ EnhancedStaffJobsView: Error loading jobs:', error);
       Alert.alert('Error', 'Failed to load jobs. Please try again.');
     } finally {
       setIsLoading(false);
@@ -202,7 +210,14 @@ export default function EnhancedStaffJobsView() {
   };
 
   const handleJobPress = (job: JobAssignment) => {
+    console.log('🔄 EnhancedStaffJobsView: Job pressed:', {
+      id: job.id,
+      status: job.status,
+      title: job.title
+    });
+    
     if (job.status === 'assigned') {
+      console.log('✅ EnhancedStaffJobsView: Opening acceptance modal for job:', job.id);
       setSelectedJob(job);
       setShowAcceptanceModal(true);
     } else {

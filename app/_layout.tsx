@@ -15,6 +15,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { JobProvider } from '@/contexts/JobContext';
 import { AppNotificationProvider } from '@/contexts/AppNotificationContext';
 import { PushNotificationProvider } from '@/contexts/PushNotificationContext';
+import { TranslationProvider } from '@/contexts/TranslationContext';
 import { SiaMoonPaperTheme } from '@/constants/PaperTheme';
 import { initializeFirebase } from '@/lib/firebase';
 
@@ -71,33 +72,35 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <PaperProvider theme={SiaMoonPaperTheme}>
-        <ThemeProvider>
-          <ErrorBoundary>
-            <PINAuthProvider>
-              <PushNotificationProvider>
-                <AppNotificationProvider>
-                  <JobProvider>
-                    <ErrorBoundary>
-                      <StatusBar style="light" backgroundColor="#000000" />
-                      <Stack
-                        screenOptions={{
-                          headerShown: false,
-                          contentStyle: { backgroundColor: '#000000' },
-                        }}
-                      >
-                        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                        <Stack.Screen name="+not-found" />
-                      </Stack>
-                    </ErrorBoundary>
-                  </JobProvider>
-                </AppNotificationProvider>
-              </PushNotificationProvider>
-            </PINAuthProvider>
-        </ErrorBoundary>
-      </ThemeProvider>
-      </PaperProvider>
+      <TranslationProvider>
+        <PaperProvider theme={SiaMoonPaperTheme}>
+          <ThemeProvider>
+            <ErrorBoundary>
+              <PINAuthProvider>
+                <PushNotificationProvider>
+                  <AppNotificationProvider>
+                    <JobProvider>
+                      <ErrorBoundary>
+                        <StatusBar style="light" backgroundColor="#000000" />
+                        <Stack
+                          screenOptions={{
+                            headerShown: false,
+                            contentStyle: { backgroundColor: '#000000' },
+                          }}
+                        >
+                          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                          <Stack.Screen name="+not-found" />
+                        </Stack>
+                      </ErrorBoundary>
+                    </JobProvider>
+                  </AppNotificationProvider>
+                </PushNotificationProvider>
+              </PINAuthProvider>
+            </ErrorBoundary>
+          </ThemeProvider>
+        </PaperProvider>
+      </TranslationProvider>
     </ErrorBoundary>
   );
 }

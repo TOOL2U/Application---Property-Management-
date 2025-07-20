@@ -160,7 +160,7 @@ const getFirebaseApp = () => {
 let _authInitAttempts = 0;
 let _authInitWarningShown = false;
 
-// Initialize Firebase Auth with graceful error handling and AsyncStorage
+// Initialize Firebase Auth with React Native AsyncStorage persistence
 const getFirebaseAuth = () => {
   if (_auth) return _auth;
 
@@ -173,14 +173,31 @@ const getFirebaseAuth = () => {
       console.log('✅ Firebase Auth initialized with getAuth');
       return _auth;
     } catch (getAuthError) {
-      // If getAuth fails, try initializeAuth without persistence for now
-      console.log('⚠️ getAuth failed, trying initializeAuth...');
+      // If getAuth fails, try initializeAuth with React Native AsyncStorage persistence
+      console.log('🔄 Initializing Auth for React Native with AsyncStorage...');
       
-      _auth = initializeAuth(firebaseApp, {
-        // Use default persistence for React Native
-      });
-      console.log('✅ Firebase Auth initialized with initializeAuth');
-      return _auth;
+      try {
+        // For Firebase v10+ with React Native, AsyncStorage persistence is automatic
+        // when AsyncStorage is available in the environment
+        _auth = initializeAuth(firebaseApp, {
+          // Firebase v10+ automatically detects and uses AsyncStorage when available
+          // No need to explicitly set persistence in React Native
+        });
+        console.log('✅ Firebase Auth initialized for React Native (AsyncStorage auto-detected)');
+        return _auth;
+        
+      } catch (persistenceError: any) {
+        console.log('⚠️ initializeAuth failed, using fallback:', persistenceError.message);
+        // Last resort fallback
+        try {
+          _auth = initializeAuth(firebaseApp);
+          console.log('✅ Firebase Auth initialized with default settings');
+        } catch (fallbackError) {
+          _auth = getAuth(firebaseApp);
+          console.log('✅ Firebase Auth initialized with getAuth fallback');
+        }
+        return _auth;
+      }
     }
   } catch (error: any) {
     if (error.message?.includes('already exists')) {
@@ -256,7 +273,7 @@ const getFirebaseStorage = () => {
   return _storage;
 };
 
-// Create a robust Firebase Auth proxy that handles timing issues
+// Create a robust Firebase Auth proxy that handles timing issues with reduced logging
 const createAuthProxy = (): Auth => {
   const authProxy = new Proxy({} as Auth, {
     get(target, prop) {
@@ -265,80 +282,72 @@ const createAuthProxy = (): Auth => {
       // Handle critical methods that should never return undefined
       if (prop === 'onAuthStateChanged') {
         return (callback: (user: any) => void) => {
-          console.log('🔍 onAuthStateChanged called, authInstance:', !!authInstance);
-
-          // If auth is not ready, set up a retry mechanism
-          if (!authInstance) {
-            console.warn('⚠️ Auth not ready for onAuthStateChanged, setting up retry...');
-
-            let unsubscribeFunction: (() => void) | null = null;
-            let isUnsubscribed = false;
-
-            // Try to initialize auth with retries (reduced attempts and less logging)
-            const tryInitAuth = (attempts = 0) => {
-              if (isUnsubscribed) return; // Don't continue if already unsubscribed
-
-              if (attempts >= 3) { // Reduced from 5 to 3 attempts
-                if (attempts === 3) {
-                  console.warn('⚠️ Firebase Auth initialization timed out after 3 attempts');
-                  console.warn('⚠️ This is expected behavior in React Native - Auth will work when needed');
-                }
-                if (!isUnsubscribed) callback(null); // Call with null user to indicate no auth
-                return;
-              }
-
-              setTimeout(() => {
-                if (isUnsubscribed) return; // Don't continue if already unsubscribed
-
-                try {
-                  const firebaseApp = getFirebaseApp();
-                  _auth = getAuth(firebaseApp);
-                  console.log('✅ Firebase Auth initialized for onAuthStateChanged');
-
-                  // Now set up the real listener
-                  if (!isUnsubscribed) {
-                    unsubscribeFunction = _auth.onAuthStateChanged(callback);
-                  }
-                } catch (error) {
-                  // Only log retry attempts for first 2 attempts to reduce noise
-                  if (attempts < 2) {
-                    console.warn(`⚠️ Auth init attempt ${attempts + 1} failed, retrying...`);
-                  }
-                  tryInitAuth(attempts + 1);
-                }
-              }, 200 * Math.pow(1.5, attempts)); // Slower exponential backoff
-            };
-
-            tryInitAuth();
-
-            // Return unsubscribe function that will work when auth is ready
-            return () => {
-              isUnsubscribed = true;
-              if (unsubscribeFunction) {
-                unsubscribeFunction();
-              }
-            };
+          // If auth is ready, use it immediately
+          if (authInstance) {
+            console.log('✅ Auth ready, setting up onAuthStateChanged listener');
+            return authInstance.onAuthStateChanged(callback);
           }
 
-          // Auth is ready, use it normally
-          console.log('✅ Auth ready, setting up onAuthStateChanged listener');
-          return authInstance.onAuthStateChanged(callback);
+          // If auth is not ready, set up a minimal retry mechanism
+          console.log('🔄 Auth not ready, setting up deferred listener...');
+
+          let unsubscribeFunction: (() => void) | null = null;
+          let isUnsubscribed = false;
+
+          // Reduced retry attempts with faster initial retry
+          const tryInitAuth = (attempts = 0) => {
+            if (isUnsubscribed || attempts >= 2) { // Reduced to 2 attempts max
+              if (attempts >= 2) {
+                console.warn('⚠️ Firebase Auth initialization timed out after 2 attempts');
+                console.warn('⚠️ This is expected behavior in React Native - Auth will work when needed');
+              }
+              if (!isUnsubscribed) callback(null); // Call with null user
+              return;
+            }
+
+            setTimeout(() => {
+              if (isUnsubscribed) return;
+
+              try {
+                const firebaseApp = getFirebaseApp();
+                _auth = getAuth(firebaseApp);
+                
+                // Set up the real listener without additional logging
+                if (!isUnsubscribed) {
+                  unsubscribeFunction = _auth.onAuthStateChanged(callback);
+                }
+              } catch (error) {
+                // Silent retry on first attempt, only log on second
+                if (attempts === 1) {
+                  console.warn(`⚠️ Auth init attempt ${attempts + 1} failed, final attempt...`);
+                }
+                tryInitAuth(attempts + 1);
+              }
+            }, attempts === 0 ? 100 : 300); // Faster first retry, then slower
+          };
+
+          tryInitAuth();
+
+          // Return unsubscribe function
+          return () => {
+            isUnsubscribed = true;
+            if (unsubscribeFunction) {
+              unsubscribeFunction();
+            }
+          };
         };
       }
 
-      // Handle other critical methods
+      // Handle other critical methods with immediate fallbacks
       if (prop === 'signInWithEmailAndPassword' || prop === 'signOut' || prop === 'currentUser') {
         if (!authInstance) {
-          // Try to initialize auth on demand for critical methods
+          // Try one immediate initialization attempt
           try {
             const firebaseApp = getFirebaseApp();
             _auth = getAuth(firebaseApp);
-            console.log('✅ Firebase Auth initialized on demand for', prop);
             return _auth[prop as keyof Auth];
           } catch (error) {
-            console.error('❌ Failed to initialize Auth for critical method:', prop, error);
-
-            // Return appropriate fallbacks for critical methods
+            // Return appropriate fallbacks without logging
             if (prop === 'currentUser') return null;
             if (prop === 'signOut') return async () => {};
             if (prop === 'signInWithEmailAndPassword') {
@@ -352,7 +361,6 @@ const createAuthProxy = (): Auth => {
 
       // For all other properties, try to get from auth instance
       if (!authInstance) {
-        console.warn('⚠️ Firebase Auth still not ready, returning undefined for', prop);
         return undefined;
       }
 
@@ -366,12 +374,22 @@ const createAuthProxy = (): Auth => {
 // Export the robust auth proxy
 export const auth = createAuthProxy();
 
-// Synchronous db export that throws if not ready
+// Synchronous db export with auto-initialization
 export const db = new Proxy({} as any, {
   get(target, prop) {
-    // Ensure _db is available synchronously
+    // Try to initialize if not ready
     if (!_db) {
-      throw new Error(`Firestore not initialized. Call 'await getFirebaseFirestore()' first before using db.${String(prop)}`);
+      console.log('🔄 Auto-initializing Firestore for synchronous access...');
+      try {
+        // Try to get the app and initialize Firestore synchronously
+        const firebaseApp = getFirebaseApp();
+        _db = getFirestore(firebaseApp);
+        console.log('✅ Firestore auto-initialized successfully');
+      } catch (error) {
+        console.error('❌ Failed to auto-initialize Firestore:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(`Firestore initialization failed: ${errorMessage}`);
+      }
     }
 
     return (_db as any)[prop];

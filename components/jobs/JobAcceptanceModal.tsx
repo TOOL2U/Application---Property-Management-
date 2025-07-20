@@ -14,6 +14,8 @@ import {
   Alert,
   ScrollView,
   Dimensions,
+  Linking,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
@@ -24,10 +26,14 @@ import {
   AlertTriangle,
   User,
   Calendar,
-  FileText
+  FileText,
+  Navigation,
+  Phone
 } from 'lucide-react-native';
 import type { JobAssignment } from '@/types/jobAssignment';
 import { mobileJobAssignmentService as jobAssignmentService } from '@/services/jobAssignmentService';
+import { staffJobService } from '@/services/staffJobService';
+import { serverTimestamp, Timestamp } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 
@@ -56,14 +62,77 @@ export default function JobAcceptanceModal({
     try {
       setIsLoading(true);
       
-      const response = await jobAssignmentService.updateJobStatus({
-        jobId: job.id,
+      console.log('🔄 JobAcceptanceModal: Accepting job with data:', {
+        jobId: job?.id,
         staffId: staffId,
-        status: 'accepted',
-        accepted: true
+        jobObject: job ? 'exists' : 'null'
+      });
+      
+      if (!job) {
+        console.error('❌ JobAcceptanceModal: Job object is null');
+        Alert.alert('Error', 'Job not found. Please try again.');
+        return;
+      }
+      
+      if (!job.id) {
+        console.error('❌ JobAcceptanceModal: Job ID is missing');
+        Alert.alert('Error', 'Job ID is missing. Please try again.');
+        return;
+      }
+      
+      // Try staffJobService first since the debug showed the job is in 'jobs' collection
+      console.log('🔄 JobAcceptanceModal: Trying staffJobService first...');
+      let response = await staffJobService.updateJobStatus(
+        job.id,
+        'accepted',
+        staffId,
+        { acceptedAt: new Date() }
+      );
+      
+      console.log('📥 JobAcceptanceModal: StaffJobService response:', {
+        success: response.success,
+        error: response.error
+      });
+      
+      let updatedJob: JobAssignment | null = null;
+      
+      // If staffJobService fails, try jobAssignmentService as fallback
+      if (!response.success) {
+        console.log('🔄 JobAcceptanceModal: StaffJobService failed, trying jobAssignmentService...');
+        const fallbackResponse = await jobAssignmentService.updateJobStatus({
+          jobId: job.id,
+          staffId: staffId,
+          status: 'accepted',
+          accepted: true
+        });
+        
+        console.log('📥 JobAcceptanceModal: JobAssignmentService response:', {
+          success: fallbackResponse.success,
+          error: fallbackResponse.error
+        });
+        
+        // Use fallback response if it succeeded
+        if (fallbackResponse.success) {
+          response = { success: true, error: undefined };
+          updatedJob = fallbackResponse.job || null;
+        }
+      } else {
+        // If staffJobService succeeded, create updated job object manually
+        updatedJob = { 
+          ...job, 
+          status: 'accepted', 
+          accepted: true, 
+          acceptedAt: Timestamp.fromDate(new Date())
+        };
+      }
+
+      console.log('📥 JobAcceptanceModal: Service response:', {
+        success: response.success,
+        hasJob: updatedJob ? 'yes' : 'no',
+        error: response.error
       });
 
-      if (response.success && response.job) {
+      if (response.success && updatedJob) {
         Alert.alert(
           'Job Accepted! ✅',
           'You have successfully accepted this job. It will now appear in your active jobs.',
@@ -71,17 +140,18 @@ export default function JobAcceptanceModal({
             {
               text: 'OK',
               onPress: () => {
-                onJobUpdated(response.job!);
+                onJobUpdated(updatedJob!);
                 onClose();
               }
             }
           ]
         );
       } else {
+        console.error('❌ JobAcceptanceModal: Accept job failed:', response.error);
         Alert.alert('Error', response.error || 'Failed to accept job');
       }
     } catch (error) {
-      console.error('Error accepting job:', error);
+      console.error('❌ JobAcceptanceModal: Exception accepting job:', error);
       Alert.alert('Error', 'Failed to accept job. Please try again.');
     } finally {
       setIsLoading(false);
@@ -97,15 +167,45 @@ export default function JobAcceptanceModal({
     try {
       setIsLoading(true);
       
-      const response = await jobAssignmentService.updateJobStatus({
-        jobId: job.id,
-        staffId: staffId,
-        status: 'rejected',
-        accepted: false,
-        rejectionReason: rejectionReason.trim()
-      });
+      // Try staffJobService first since the debug showed the job is in 'jobs' collection
+      console.log('🔄 JobAcceptanceModal: Rejecting job with staffJobService first...');
+      let response = await staffJobService.updateJobStatus(
+        job.id,
+        'rejected',
+        staffId,
+        { rejectionReason: rejectionReason.trim(), rejectedAt: new Date() }
+      );
+      
+      let updatedJob: JobAssignment | null = null;
+      
+      // If staffJobService fails, try jobAssignmentService as fallback
+      if (!response.success) {
+        console.log('🔄 JobAcceptanceModal: StaffJobService failed, trying jobAssignmentService...');
+        const fallbackResponse = await jobAssignmentService.updateJobStatus({
+          jobId: job.id,
+          staffId: staffId,
+          status: 'rejected',
+          accepted: false,
+          rejectionReason: rejectionReason.trim()
+        });
+        
+        // Use fallback response if it succeeded
+        if (fallbackResponse.success) {
+          response = { success: true, error: undefined };
+          updatedJob = fallbackResponse.job || null;
+        }
+      } else {
+        // If staffJobService succeeded, create updated job object manually
+        updatedJob = { 
+          ...job, 
+          status: 'rejected', 
+          accepted: false, 
+          rejectionReason: rejectionReason.trim(),
+          rejectedAt: Timestamp.fromDate(new Date())
+        };
+      }
 
-      if (response.success && response.job) {
+      if (response.success && updatedJob) {
         Alert.alert(
           'Job Rejected',
           'You have rejected this job. The admin will be notified.',
@@ -113,7 +213,7 @@ export default function JobAcceptanceModal({
             {
               text: 'OK',
               onPress: () => {
-                onJobUpdated(response.job!);
+                onJobUpdated(updatedJob!);
                 onClose();
                 setRejectionReason('');
                 setShowRejectionInput(false);
@@ -148,6 +248,47 @@ export default function JobAcceptanceModal({
       case 'low': return '#22c55e';
       default: return '#6b7280';
     }
+  };
+
+  const handleNavigateToProperty = async () => {
+    if (!job?.location?.coordinates) {
+      Alert.alert('Navigation Error', 'Property location coordinates not available.');
+      return;
+    }
+
+    const { latitude, longitude } = job.location.coordinates;
+    const label = (job as any).propertyName || job.title || 'Property Location';
+    
+    // Different URL schemes for iOS and Android
+    const url = Platform.select({
+      ios: `maps:0,0?q=${label}@${latitude},${longitude}`,
+      android: `geo:0,0?q=${latitude},${longitude}(${label})`,
+    });
+
+    const webUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+
+    try {
+      if (url) {
+        const supported = await Linking.canOpenURL(url);
+        if (supported) {
+          await Linking.openURL(url);
+        } else {
+          await Linking.openURL(webUrl);
+        }
+      } else {
+        await Linking.openURL(webUrl);
+      }
+    } catch (error) {
+      console.error('Error opening maps:', error);
+      Alert.alert('Error', 'Unable to open maps application');
+    }
+  };
+
+  const handleCallContact = (phone: string) => {
+    const phoneUrl = `tel:${phone}`;
+    Linking.openURL(phoneUrl).catch(() => {
+      Alert.alert('Error', 'Unable to make phone call');
+    });
   };
 
   return (
@@ -213,8 +354,29 @@ export default function JobAcceptanceModal({
                   <Text style={styles.detailSubValue}>
                     {job.location.city}, {job.location.state} {job.location.zipCode}
                   </Text>
+                  {job.location.accessInstructions && (
+                    <Text style={styles.accessInstructions}>
+                      Access: {job.location.accessInstructions}
+                    </Text>
+                  )}
+                  {job.location.accessCode && (
+                    <Text style={styles.accessCode}>
+                      Access Code: {job.location.accessCode}
+                    </Text>
+                  )}
                 </View>
               </View>
+
+              {/* Navigation Button */}
+              {job.location.coordinates && (
+                <TouchableOpacity 
+                  style={styles.navigationButton}
+                  onPress={handleNavigateToProperty}
+                >
+                  <Navigation size={16} color="#ffffff" />
+                  <Text style={styles.navigationButtonText}>Navigate to Property</Text>
+                </TouchableOpacity>
+              )}
 
               {job.dueDate && (
                 <View style={styles.detailRow}>
@@ -227,6 +389,36 @@ export default function JobAcceptanceModal({
               )}
             </LinearGradient>
           </View>
+
+          {/* Property Contacts */}
+          {(job as any).contacts && (job as any).contacts.length > 0 && (
+            <View style={styles.contactsCard}>
+              <LinearGradient
+                colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)']}
+                style={styles.cardGradient}
+              >
+                <View style={styles.sectionHeader}>
+                  <Phone size={20} color="#8b5cf6" />
+                  <Text style={styles.sectionTitle}>Property Contacts</Text>
+                </View>
+                {(job as any).contacts.map((contact: any, index: number) => (
+                  <View key={index} style={styles.contactItem}>
+                    <View style={styles.contactInfo}>
+                      <Text style={styles.contactName}>{contact.name}</Text>
+                      <Text style={styles.contactRole}>{contact.role}</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.callButton}
+                      onPress={() => handleCallContact(contact.phone)}
+                    >
+                      <Phone size={16} color="#22c55e" />
+                      <Text style={styles.callButtonText}>Call</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </LinearGradient>
+            </View>
+          )}
 
           {/* Description */}
           {job.description && (
@@ -636,5 +828,72 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#ffffff',
+  },
+  accessInstructions: {
+    fontSize: 14,
+    color: '#d1d5db',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  accessCode: {
+    fontSize: 14,
+    color: '#22c55e',
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  navigationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#8b5cf6',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+    gap: 8,
+  },
+  navigationButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  contactsCard: {
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  contactItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  contactName: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  contactRole: {
+    color: '#a1a1aa',
+    fontSize: 14,
+  },
+  callButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    gap: 6,
+  },
+  callButtonText: {
+    color: '#22c55e',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

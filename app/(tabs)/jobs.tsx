@@ -20,11 +20,19 @@ import EnhancedStaffJobsView from '@/components/jobs/EnhancedStaffJobsView';
 import JobNotificationBanner from '@/components/JobNotificationBanner';
 import ErrorBoundary, { JobListErrorBoundary } from '@/components/shared/ErrorBoundary';
 import SharedJobCard from '@/components/shared/SharedJobCard';
+import { useTranslation } from '@/hooks/useTranslation';
 
-const filterOptions = ['All', 'Assigned', 'In Progress', 'Scheduled', 'Completed'];
+const filterOptions = [
+  { key: 'all', label: 'jobs.all' },
+  { key: 'assigned', label: 'jobs.assigned' },
+  { key: 'inProgress', label: 'jobs.inProgress' },
+  { key: 'scheduled', label: 'jobs.scheduled' },
+  { key: 'completed', label: 'jobs.completed' }
+];
 
 export default function JobsScreen() {
   const { currentProfile } = usePINAuth();
+  const { t } = useTranslation();
   const { 
     jobs, 
     assignedJobs, 
@@ -36,7 +44,7 @@ export default function JobsScreen() {
   } = useJobContext();
   
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState('All');
+  const [selectedFilter, setSelectedFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   const isStaffUser = currentProfile?.role && ['cleaner', 'maintenance', 'staff'].includes(currentProfile.role);
@@ -62,11 +70,11 @@ export default function JobsScreen() {
   // Filter jobs based on selected filter and search query
   const filteredJobs = jobs.filter((job: JobData) => {
     // Filter by status
-    const statusMatches = selectedFilter === 'All' || 
-      (selectedFilter === 'Assigned' && job.status === 'assigned') ||
-      (selectedFilter === 'In Progress' && job.status === 'in_progress') ||
-      (selectedFilter === 'Scheduled' && job.status === 'pending') ||
-      (selectedFilter === 'Completed' && job.status === 'completed');
+    const statusMatches = selectedFilter === 'all' || 
+      (selectedFilter === 'assigned' && job.status === 'assigned') ||
+      (selectedFilter === 'inProgress' && job.status === 'in_progress') ||
+      (selectedFilter === 'scheduled' && job.status === 'pending') ||
+      (selectedFilter === 'completed' && job.status === 'completed');
 
     // Filter by search query
     const searchMatches = searchQuery === '' || 
@@ -79,7 +87,7 @@ export default function JobsScreen() {
   });
 
   const handleCreateJob = () => {
-    Alert.alert('Create Job', 'Job creation feature coming soon!');
+    Alert.alert(t('jobs.createJob'), t('jobs.createJobComingSoon'));
   };
 
   const handleJobPress = (jobData: any) => {
@@ -120,8 +128,8 @@ export default function JobsScreen() {
           onActionPress={handleActionPress}
           compact={false}
           actions={[
-            { label: 'Details', action: 'details', icon: 'eye-outline' },
-            { label: 'Map', action: 'map', icon: 'map-outline' },
+            { label: t('jobs.details'), action: 'details', icon: 'eye-outline' },
+            { label: t('jobs.map'), action: 'map', icon: 'map-outline' },
           ]}
         />
       </View>
@@ -142,9 +150,9 @@ export default function JobsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Jobs</Text>
+            <Text style={styles.headerTitle}>{t('navigation.jobs')}</Text>
             <Text style={styles.headerSubtitle}>
-              {currentProfile?.name} • {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''}
+              {currentProfile?.name} • {filteredJobs.length} {t(`jobs.jobCount_${filteredJobs.length === 1 ? 'one' : 'other'}`)}
             </Text>
           </View>
           
@@ -153,7 +161,7 @@ export default function JobsScreen() {
             onPress={handleCreateJob}
           >
             <Ionicons name="add" size={20} color="#0B0F1A" />
-            <Text style={styles.createButtonText}>Create Job</Text>
+            <Text style={styles.createButtonText}>{t('jobs.createJob')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -163,7 +171,7 @@ export default function JobsScreen() {
             <Ionicons name="search-outline" size={20} color="#8E9AAE" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search jobs..."
+              placeholder={t('jobs.searchJobs')}
               placeholderTextColor="#8E9AAE"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -185,18 +193,18 @@ export default function JobsScreen() {
           >
             {filterOptions.map((filter) => (
               <TouchableOpacity
-                key={filter}
-                onPress={() => setSelectedFilter(filter)}
+                key={filter.key}
+                onPress={() => setSelectedFilter(filter.key)}
                 style={[
                   styles.filterChip,
-                  selectedFilter === filter && styles.filterChipActive
+                  selectedFilter === filter.key && styles.filterChipActive
                 ]}
               >
                 <Text style={[
                   styles.filterChipText,
-                  selectedFilter === filter && styles.filterChipTextActive
+                  selectedFilter === filter.key && styles.filterChipTextActive
                 ]}>
-                  {filter}
+                  {t(filter.label)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -208,35 +216,35 @@ export default function JobsScreen() {
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#C6FF00" />
-              <Text style={styles.loadingText}>Loading jobs...</Text>
+              <Text style={styles.loadingText}>{t('jobs.loadingJobs')}</Text>
             </View>
           ) : error ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="alert-circle-outline" size={64} color="#FF4444" />
-              <Text style={styles.emptyTitle}>Error Loading Jobs</Text>
+              <Text style={styles.emptyTitle}>{t('jobs.errorLoadingJobs')}</Text>
               <Text style={styles.emptyMessage}>{error}</Text>
               <TouchableOpacity style={styles.retryButton} onPress={refreshJobs}>
-                <Text style={styles.retryButtonText}>Try Again</Text>
+                <Text style={styles.retryButtonText}>{t('jobs.tryAgain')}</Text>
               </TouchableOpacity>
             </View>
           ) : filteredJobs.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="briefcase-outline" size={64} color="#8E9AAE" />
-              <Text style={styles.emptyTitle}>No Jobs Found</Text>
+              <Text style={styles.emptyTitle}>{t('jobs.noJobsFound')}</Text>
               <Text style={styles.emptyMessage}>
-                {searchQuery || selectedFilter !== 'All' 
-                  ? 'No jobs match your current search or filter criteria.'
-                  : 'There are no jobs available at the moment.'}
+                {searchQuery || selectedFilter !== 'all' 
+                  ? t('jobs.noJobsMatch')
+                  : t('jobs.noJobsAvailable')}
               </Text>
-              {(searchQuery || selectedFilter !== 'All') && (
+              {(searchQuery || selectedFilter !== 'all') && (
                 <TouchableOpacity 
                   style={styles.clearFiltersButton} 
                   onPress={() => {
                     setSearchQuery('');
-                    setSelectedFilter('All');
+                    setSelectedFilter('all');
                   }}
                 >
-                  <Text style={styles.clearFiltersButtonText}>Clear Filters</Text>
+                  <Text style={styles.clearFiltersButtonText}>{t('jobs.clearFilters')}</Text>
                 </TouchableOpacity>
               )}
             </View>

@@ -9,6 +9,7 @@ import {
   Linking,
   StatusBar,
   Image,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useRouter } from 'expo-router';
 import LogoutOverlay from '@/components/auth/LogoutOverlay';
+import LanguagePicker from '@/components/settings/LanguagePicker';
+import { useTranslation } from '@/hooks/useTranslation';
 import * as Animatable from 'react-native-animatable';
 
 interface SettingItem {
@@ -32,6 +35,7 @@ interface SettingItem {
 
 export default function SettingsScreen() {
   const { currentProfile, logout } = usePINAuth();
+  const { t, currentLanguageInfo } = useTranslation();
   const router = useRouter();
 
   // Role-based access
@@ -44,15 +48,29 @@ export default function SettingsScreen() {
   const [biometric, setBiometric] = useState(false);
   const [autoSync, setAutoSync] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  
+  // Language settings
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  
+  // Push Notification Settings
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [notificationVolume, setNotificationVolume] = useState(75);
+  const [notificationSound, setNotificationSound] = useState('default');
+  const [urgentNotifications, setUrgentNotifications] = useState(true);
+  const [jobNotifications, setJobNotifications] = useState(true);
+  const [messageNotifications, setMessageNotifications] = useState(true);
+  const [systemNotifications, setSystemNotifications] = useState(true);
+  const [loudMode, setLoudMode] = useState(false);
+  const [vibration, setVibration] = useState(true);
 
   const handleSignOut = () => {
     Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out? This will return you to the staff profile selection.',
+      t('auth.signOut'),
+      t('auth.signOutConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Sign Out',
+          text: t('auth.signOut'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -79,10 +97,10 @@ export default function SettingsScreen() {
               // Show user-friendly error message
               const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
               Alert.alert(
-                'Logout Complete',
-                `You have been successfully signed out.\n\n${errorMessage ? `Note: ${errorMessage}` : ''}`,
+                t('auth.logoutComplete'),
+                `${t('auth.logoutSuccess')}\n\n${errorMessage ? `${t('common.note')}: ${errorMessage}` : ''}`,
                 [{
-                  text: 'Continue',
+                  text: t('common.continue'),
                   onPress: () => {
                     // Ensure navigation happens even if there were errors
                     router.replace('/(auth)/select-profile');
@@ -100,53 +118,71 @@ export default function SettingsScreen() {
 
   const handleContactSupport = () => {
     Alert.alert(
-      'Contact Support',
-      'How would you like to contact support?',
+      t('settings.contactSupport'),
+      t('settings.contactSupportQuestion'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Email',
+          text: t('settings.email'),
           onPress: () => Linking.openURL('mailto:support@siamoon.com'),
         },
         {
-          text: 'Phone',
+          text: t('settings.phone'),
           onPress: () => Linking.openURL('tel:+1234567890'),
         },
       ]
     );
   };
 
+  const handleNotificationSettings = () => {
+    setShowNotificationModal(true);
+  };
+
+  const testNotificationSound = () => {
+    // In a real app, this would play the selected notification sound
+    Alert.alert(t('settings.testSound'), t('settings.testSoundMessage', { sound: notificationSound, volume: notificationVolume }));
+  };
+
+  const availableSounds = [
+    { id: 'default', name: 'Default', icon: 'musical-note' },
+    { id: 'chime', name: 'Chime', icon: 'notifications' },
+    { id: 'bell', name: 'Bell', icon: 'notifications-outline' },
+    { id: 'urgent', name: 'Urgent Alert', icon: 'warning' },
+    { id: 'loud-beep', name: 'Loud Beep', icon: 'volume-high' },
+    { id: 'air-horn', name: 'Air Horn', icon: 'megaphone' },
+    { id: 'siren', name: 'Emergency Siren', icon: 'alarm' },
+  ];
+
   const settingsData: SettingItem[] = [
     // Account Section
     {
       id: 'view-profile',
-      title: 'View Profile',
-      subtitle: 'View your profile and status',
+      title: t('settings.viewProfile'),
+      subtitle: t('settings.viewProfileSubtitle'),
       icon: 'person-outline',
       type: 'navigation',
       onPress: () => router.push('/profile-view'),
     },
     {
       id: 'edit-profile',
-      title: 'Edit Profile',
-      subtitle: 'Update your personal information',
+      title: t('settings.editProfile'),
+      subtitle: t('settings.editProfileSubtitle'),
       icon: 'create-outline',
       type: 'navigation',
       onPress: () => router.push('/(modal)/edit-profile'),
     },
     {
       id: 'notifications',
-      title: 'Push Notifications',
-      subtitle: 'Receive job updates and alerts',
+      title: t('settings.pushNotifications'),
+      subtitle: `${notifications ? t('common.enabled') : t('common.disabled')} • ${t('settings.volume')}: ${notificationVolume}% • ${loudMode ? t('settings.loudMode') : t('settings.normalMode')}`,
       icon: 'notifications-outline',
-      type: 'toggle',
-      value: notifications,
-      onToggle: setNotifications,
+      type: 'navigation',
+      onPress: handleNotificationSettings,
     },
     {
       id: 'biometric',
-      title: 'Biometric Login',
-      subtitle: 'Use fingerprint or face ID',
+      title: t('settings.biometricLogin'),
+      subtitle: t('settings.biometricSubtitle'),
       icon: 'finger-print-outline',
       type: 'toggle',
       value: biometric,
@@ -156,8 +192,8 @@ export default function SettingsScreen() {
     // App Settings
     {
       id: 'autoSync',
-      title: 'Auto Sync',
-      subtitle: 'Automatically sync data when online',
+      title: t('settings.autoSync'),
+      subtitle: t('settings.autoSyncSubtitle'),
       icon: 'sync-outline',
       type: 'toggle',
       value: autoSync,
@@ -165,54 +201,57 @@ export default function SettingsScreen() {
     },
     {
       id: 'language',
-      title: 'Language',
-      subtitle: 'English (US)',
+      title: t('settings.language'),
+      subtitle: `${currentLanguageInfo?.flag} ${currentLanguageInfo?.nativeName || 'English'}`,
       icon: 'language-outline',
       type: 'navigation',
-      onPress: () => Alert.alert('Language', 'Language settings coming soon!'),
+      onPress: () => {
+        console.log('🌐 Settings: Language button pressed, opening language picker');
+        setShowLanguagePicker(true);
+      },
     },
 
     // Admin Only Settings
     ...(isAdminOrManager ? [
       {
         id: 'admin-panel',
-        title: 'Admin Panel',
-        subtitle: 'Access administrative features',
+        title: t('settings.adminPanel'),
+        subtitle: t('settings.adminPanelSubtitle'),
         icon: 'shield-outline' as keyof typeof Ionicons.glyphMap,
         type: 'navigation' as const,
-        onPress: () => Alert.alert('Admin Panel', 'Admin panel features coming soon!'),
+        onPress: () => Alert.alert(t('settings.adminPanel'), t('settings.adminPanelComingSoon')),
       },
       {
         id: 'manage-staff',
-        title: 'Manage Staff',
-        subtitle: 'Staff accounts and permissions',
+        title: t('settings.manageStaff'),
+        subtitle: t('settings.manageStaffSubtitle'),
         icon: 'people-outline' as keyof typeof Ionicons.glyphMap,
         type: 'navigation' as const,
-        onPress: () => Alert.alert('Staff Management', 'Staff management coming soon!'),
+        onPress: () => Alert.alert(t('settings.staffManagement'), t('settings.staffManagementComingSoon')),
       },
     ] : []),
 
     // Support & Info
     {
       id: 'help',
-      title: 'Help & Support',
-      subtitle: 'Get help or contact support',
+      title: t('settings.helpSupport'),
+      subtitle: t('settings.helpSupportSubtitle'),
       icon: 'help-circle-outline',
       type: 'action',
       onPress: handleContactSupport,
     },
     {
       id: 'about',
-      title: 'About',
-      subtitle: 'App version and information',
+      title: t('settings.about'),
+      subtitle: t('settings.aboutSubtitle'),
       icon: 'information-circle-outline',
       type: 'navigation',
-      onPress: () => Alert.alert('About', 'Sia Moon Property Management\nVersion 1.0.0\n\nBuilt with React Native & Expo'),
+      onPress: () => Alert.alert(t('settings.about'), t('settings.aboutText')),
     },
     {
       id: 'privacy',
-      title: 'Privacy Policy',
-      subtitle: 'View our privacy policy',
+      title: t('settings.privacyPolicy'),
+      subtitle: t('settings.privacyPolicySubtitle'),
       icon: 'document-text-outline',
       type: 'action',
       onPress: () => Linking.openURL('https://siamoon.com/privacy'),
@@ -221,8 +260,8 @@ export default function SettingsScreen() {
     // Danger Zone
     {
       id: 'signout',
-      title: 'Sign Out',
-      subtitle: 'Sign out of your account',
+      title: t('auth.signOut'),
+      subtitle: t('settings.signOutSubtitle'),
       icon: 'log-out-outline',
       type: 'action',
       onPress: handleSignOut,
@@ -474,6 +513,324 @@ export default function SettingsScreen() {
       <LogoutOverlay
         visible={isSigningOut}
         message="Signing out..."
+      />
+
+      {/* Push Notification Settings Modal */}
+      <Modal
+        visible={showNotificationModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowNotificationModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#0B0F1A' }}>
+          <SafeAreaView style={{ flex: 1 }}>
+            {/* Modal Header */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 20,
+              paddingVertical: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: '#1E2A3A',
+            }}>
+              <TouchableOpacity
+                onPress={() => setShowNotificationModal(false)}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: 'rgba(198, 255, 0, 0.1)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 16,
+                }}
+              >
+                <Ionicons name="close" size={20} color="#C6FF00" />
+              </TouchableOpacity>
+              <Text style={{
+                color: 'white',
+                fontSize: 20,
+                fontWeight: 'bold',
+                flex: 1,
+              }}>
+                Push Notification Settings
+              </Text>
+            </View>
+
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
+              {/* Main Toggle */}
+              <View style={{
+                backgroundColor: '#1C1F2A',
+                borderRadius: 16,
+                padding: 20,
+                marginBottom: 20,
+                borderWidth: 1,
+                borderColor: '#374151',
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: 'white', fontSize: 18, fontWeight: '600' }}>
+                      Enable Push Notifications
+                    </Text>
+                    <Text style={{ color: '#9CA3AF', fontSize: 14, marginTop: 4 }}>
+                      Receive job updates and important alerts
+                    </Text>
+                  </View>
+                  <Switch
+                    value={notifications}
+                    onValueChange={setNotifications}
+                    trackColor={{ false: '#374151', true: 'rgba(198, 255, 0, 0.3)' }}
+                    thumbColor={notifications ? '#C6FF00' : '#9CA3AF'}
+                  />
+                </View>
+              </View>
+
+              {notifications && (
+                <>
+                  {/* Volume Control */}
+                  <View style={{
+                    backgroundColor: '#1C1F2A',
+                    borderRadius: 16,
+                    padding: 20,
+                    marginBottom: 20,
+                    borderWidth: 1,
+                    borderColor: '#374151',
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                      <Text style={{ color: 'white', fontSize: 16, fontWeight: '600' }}>
+                        Volume: {notificationVolume}%
+                      </Text>
+                      <TouchableOpacity
+                        onPress={testNotificationSound}
+                        style={{
+                          backgroundColor: 'rgba(198, 255, 0, 0.2)',
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                        }}
+                      >
+                        <Text style={{ color: '#C6FF00', fontSize: 12, fontWeight: '600' }}>
+                          Test Sound
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                    
+                    {/* Custom Volume Slider using TouchableOpacity */}
+                    <View style={{ marginBottom: 16 }}>
+                      <View style={{
+                        height: 6,
+                        backgroundColor: '#374151',
+                        borderRadius: 3,
+                        position: 'relative',
+                      }}>
+                        <View style={{
+                          height: 6,
+                          backgroundColor: '#C6FF00',
+                          borderRadius: 3,
+                          width: `${notificationVolume}%`,
+                        }} />
+                        <TouchableOpacity
+                          style={{
+                            position: 'absolute',
+                            left: `${Math.max(0, notificationVolume - 2)}%`,
+                            top: -5,
+                            width: 16,
+                            height: 16,
+                            backgroundColor: '#C6FF00',
+                            borderRadius: 8,
+                            borderWidth: 2,
+                            borderColor: '#0B0F1A',
+                          }}
+                        />
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                        <TouchableOpacity onPress={() => setNotificationVolume(25)}>
+                          <Text style={{ color: '#9CA3AF', fontSize: 12 }}>25%</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setNotificationVolume(50)}>
+                          <Text style={{ color: '#9CA3AF', fontSize: 12 }}>50%</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setNotificationVolume(75)}>
+                          <Text style={{ color: '#9CA3AF', fontSize: 12 }}>75%</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setNotificationVolume(100)}>
+                          <Text style={{ color: '#9CA3AF', fontSize: 12 }}>100%</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Loud Mode Toggle */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: 'white', fontSize: 16, fontWeight: '600' }}>
+                          Loud Mode
+                        </Text>
+                        <Text style={{ color: '#9CA3AF', fontSize: 14, marginTop: 4 }}>
+                          Extra loud notifications for urgent alerts
+                        </Text>
+                      </View>
+                      <Switch
+                        value={loudMode}
+                        onValueChange={setLoudMode}
+                        trackColor={{ false: '#374151', true: 'rgba(239, 68, 68, 0.3)' }}
+                        thumbColor={loudMode ? '#ef4444' : '#9CA3AF'}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Sound Selection */}
+                  <View style={{
+                    backgroundColor: '#1C1F2A',
+                    borderRadius: 16,
+                    padding: 20,
+                    marginBottom: 20,
+                    borderWidth: 1,
+                    borderColor: '#374151',
+                  }}>
+                    <Text style={{ color: 'white', fontSize: 16, fontWeight: '600', marginBottom: 16 }}>
+                      Notification Sound
+                    </Text>
+                    {availableSounds.map((sound) => (
+                      <TouchableOpacity
+                        key={sound.id}
+                        onPress={() => setNotificationSound(sound.id)}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          paddingVertical: 12,
+                          borderBottomWidth: sound.id !== availableSounds[availableSounds.length - 1].id ? 1 : 0,
+                          borderBottomColor: '#374151',
+                        }}
+                      >
+                        <View style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 16,
+                          backgroundColor: notificationSound === sound.id ? 'rgba(198, 255, 0, 0.2)' : 'rgba(156, 163, 175, 0.2)',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: 12,
+                        }}>
+                          <Ionicons
+                            name={sound.icon as keyof typeof Ionicons.glyphMap}
+                            size={16}
+                            color={notificationSound === sound.id ? '#C6FF00' : '#9CA3AF'}
+                          />
+                        </View>
+                        <Text style={{
+                          color: notificationSound === sound.id ? '#C6FF00' : 'white',
+                          fontSize: 16,
+                          fontWeight: notificationSound === sound.id ? '600' : '400',
+                          flex: 1,
+                        }}>
+                          {sound.name}
+                        </Text>
+                        {notificationSound === sound.id && (
+                          <Ionicons name="checkmark-circle" size={20} color="#C6FF00" />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Notification Types */}
+                  <View style={{
+                    backgroundColor: '#1C1F2A',
+                    borderRadius: 16,
+                    padding: 20,
+                    marginBottom: 20,
+                    borderWidth: 1,
+                    borderColor: '#374151',
+                  }}>
+                    <Text style={{ color: 'white', fontSize: 16, fontWeight: '600', marginBottom: 16 }}>
+                      Notification Types
+                    </Text>
+                    
+                    {[
+                      { key: 'urgent', value: urgentNotifications, setter: setUrgentNotifications, title: 'Urgent Alerts', subtitle: 'Emergency and high-priority notifications', icon: 'warning' },
+                      { key: 'job', value: jobNotifications, setter: setJobNotifications, title: 'Job Updates', subtitle: 'New assignments and job status changes', icon: 'briefcase' },
+                      { key: 'message', value: messageNotifications, setter: setMessageNotifications, title: 'Messages', subtitle: 'Chat messages and team communications', icon: 'chatbubble' },
+                      { key: 'system', value: systemNotifications, setter: setSystemNotifications, title: 'System Updates', subtitle: 'App updates and maintenance notices', icon: 'settings' },
+                    ].map((item, index) => (
+                      <View key={item.key} style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingVertical: 12,
+                        borderBottomWidth: index < 3 ? 1 : 0,
+                        borderBottomColor: '#374151',
+                      }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                          <View style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 16,
+                            backgroundColor: 'rgba(198, 255, 0, 0.2)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: 12,
+                          }}>
+                            <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={16} color="#C6FF00" />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: 'white', fontSize: 16, fontWeight: '600' }}>
+                              {item.title}
+                            </Text>
+                            <Text style={{ color: '#9CA3AF', fontSize: 14, marginTop: 2 }}>
+                              {item.subtitle}
+                            </Text>
+                          </View>
+                        </View>
+                        <Switch
+                          value={item.value}
+                          onValueChange={item.setter}
+                          trackColor={{ false: '#374151', true: 'rgba(198, 255, 0, 0.3)' }}
+                          thumbColor={item.value ? '#C6FF00' : '#9CA3AF'}
+                        />
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Additional Settings */}
+                  <View style={{
+                    backgroundColor: '#1C1F2A',
+                    borderRadius: 16,
+                    padding: 20,
+                    marginBottom: 20,
+                    borderWidth: 1,
+                    borderColor: '#374151',
+                  }}>
+                    <Text style={{ color: 'white', fontSize: 16, fontWeight: '600', marginBottom: 16 }}>
+                      Additional Settings
+                    </Text>
+                    
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: 'white', fontSize: 16, fontWeight: '600' }}>
+                          Vibration
+                        </Text>
+                        <Text style={{ color: '#9CA3AF', fontSize: 14, marginTop: 4 }}>
+                          Vibrate device when notifications arrive
+                        </Text>
+                      </View>
+                      <Switch
+                        value={vibration}
+                        onValueChange={setVibration}
+                        trackColor={{ false: '#374151', true: 'rgba(198, 255, 0, 0.3)' }}
+                        thumbColor={vibration ? '#C6FF00' : '#9CA3AF'}
+                      />
+                    </View>
+                  </View>
+                </>
+              )}
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      </Modal>
+
+      {/* Language Picker Modal */}
+      <LanguagePicker
+        visible={showLanguagePicker}
+        onClose={() => setShowLanguagePicker(false)}
       />
     </View>
   );

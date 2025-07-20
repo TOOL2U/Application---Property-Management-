@@ -219,6 +219,7 @@ class StaffJobService {
     try {
       console.log(`🔄 StaffJobService: Updating job ${jobId} status to ${status}`);
 
+      const db = await getDb();
       const jobRef = doc(db, this.JOBS_COLLECTION, jobId);
       const updateData: Record<string, any> = {
         status,
@@ -272,6 +273,7 @@ class StaffJobService {
    */
   async enableOfflineMode(): Promise<void> {
     try {
+      const db = await getDb();
       await disableNetwork(db);
       console.log('📴 StaffJobService: Offline mode enabled');
     } catch (error) {
@@ -284,6 +286,7 @@ class StaffJobService {
    */
   async disableOfflineMode(): Promise<void> {
     try {
+      const db = await getDb();
       await enableNetwork(db);
       console.log('📶 StaffJobService: Online mode enabled');
     } catch (error) {
@@ -416,9 +419,11 @@ class StaffJobService {
       contacts: data.contacts || [],
       requirements: data.requirements || [],
       photos: data.photos || [],
-      notes: data.notes || [],
       createdAt: data.createdAt?.toDate() || new Date(),
       updatedAt: data.updatedAt?.toDate() || new Date(),
+      createdBy: data.createdBy || '',
+      notificationsEnabled: data.notificationsEnabled ?? true,
+      reminderSent: data.reminderSent ?? false,
     };
   }
 }
