@@ -144,6 +144,8 @@
     "jobCount_zero": "job",
     "jobCount_one": "job", 
     "jobCount_other": "jobs",
+    "jobsCount": "{{count}} job{{count, plural, one{} other{s}}}",
+    "jobscount": "{{count}} job{{count, plural, one{} other{s}}}",
     "active": "Active",
     "refresh": "Refresh",
     "newJobAssignment": "🔔 New Job Assignment!",

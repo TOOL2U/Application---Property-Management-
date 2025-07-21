@@ -180,6 +180,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="fieldops"
+        options={{
+          title: 'AI Assistant',
+          tabBarIcon: ({ color, focused }) => (
+            <AISTabIcon name="hardware-chip" focused={focused} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: t('navigation.profile'),

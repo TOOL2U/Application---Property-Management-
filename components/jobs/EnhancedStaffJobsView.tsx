@@ -27,6 +27,7 @@ import * as Notifications from 'expo-notifications';
 import type { Job } from '@/types/job';
 import { useStaffJobs } from '@/hooks/useStaffJobs';
 import JobAcceptanceModal from '@/components/jobs/JobAcceptanceModal';
+import FieldOpsAssistant from '@/components/ai/FieldOpsAssistant';
 import ErrorBoundary, { JobListErrorBoundary } from '@/components/shared/ErrorBoundary';
 
 export default function EnhancedStaffJobsView() {
@@ -57,6 +58,8 @@ export default function EnhancedStaffJobsView() {
   const [selectedFilter, setSelectedFilter] = useState('all'); // Show all jobs by default to debug
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showAcceptanceModal, setShowAcceptanceModal] = useState(false);
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
+  const [aiAssistantJob, setAIAssistantJob] = useState<Job | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notificationCount, setNotificationCount] = useState(0);
 
@@ -185,6 +188,12 @@ export default function EnhancedStaffJobsView() {
   const handleJobUpdated = (updatedJob: any) => {
     // Real-time listener will handle the update
     console.log('Job updated:', updatedJob.id, updatedJob.status);
+  };
+
+  const handleOpenAIAssistant = (job: Job) => {
+    console.log('🤖 EnhancedStaffJobsView: Opening AI Assistant for job:', job.id);
+    setAIAssistantJob(job);
+    setShowAIAssistant(true);
   };
 
   const handleStartJob = async (job: any) => {
@@ -335,15 +344,27 @@ export default function EnhancedStaffJobsView() {
           )}
 
           {job.status === 'in_progress' && (
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => router.push(`/jobs/${job.id}` as any)}
-            >
-              <View style={styles.actionButtonGradient}>
-                <Ionicons name="camera-outline" size={16} color="#0B0F1A" />
-                <Text style={styles.actionButtonText}>{t('jobs.viewDetails')}</Text>
-              </View>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                style={[styles.actionButton, { flex: 1 }]}
+                onPress={() => router.push(`/jobs/${job.id}` as any)}
+              >
+                <View style={styles.actionButtonGradient}>
+                  <Ionicons name="camera-outline" size={16} color="#0B0F1A" />
+                  <Text style={styles.actionButtonText}>{t('jobs.viewDetails')}</Text>
+                </View>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.actionButton, { backgroundColor: '#C6FF00', flex: 1 }]}
+                onPress={() => handleOpenAIAssistant(job)}
+              >
+                <View style={styles.actionButtonGradient}>
+                  <Ionicons name="hardware-chip-outline" size={16} color="#0B0F1A" />
+                  <Text style={styles.actionButtonText}>AI Help</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
           )}
 
           {job.status === 'completed' && (
@@ -376,7 +397,7 @@ export default function EnhancedStaffJobsView() {
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle}>{t('jobs.myJobs')}</Text>
             <Text style={styles.headerSubtitle}>
-              {currentProfile?.name} • {t('jobs.jobsCount', { count: filteredJobs.length })}
+              {currentProfile?.name}
             </Text>
           </View>
           
@@ -478,6 +499,18 @@ export default function EnhancedStaffJobsView() {
             setSelectedJob(null);
           }}
         />
+
+        {/* AI Assistant Modal */}
+        {aiAssistantJob && (
+          <FieldOpsAssistant
+            job={aiAssistantJob}
+            visible={showAIAssistant}
+            onClose={() => {
+              setShowAIAssistant(false);
+              setAIAssistantJob(null);
+            }}
+          />
+        )}
       </SafeAreaView>
     </JobListErrorBoundary>
   );
