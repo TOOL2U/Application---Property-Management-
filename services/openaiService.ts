@@ -282,6 +282,51 @@ Format as a numbered list with brief descriptions and estimated time for each ta
 
     return this.callOpenAI(prompt, systemMessage);
   }
+
+  // Generate staff performance audit analysis
+  async generateStaffAuditAnalysis(auditData: {
+    staffName: string;
+    performanceData: any[];
+    metrics: any;
+  }): Promise<OpenAIResponse> {
+    const systemMessage = `You are a professional workplace auditor analyzing staff performance data. Provide constructive, fair, and actionable feedback based on quantitative performance metrics. Focus on reliability, quality of work, punctuality, and areas for improvement.`;
+
+    const prompt = `Please analyze the following staff member's weekly performance data and provide a comprehensive audit report.
+
+Staff Member: ${auditData.staffName}
+Week Summary:
+- Total Jobs: ${auditData.performanceData.length}
+- Completed: ${auditData.metrics.completedJobs}
+- Declined: ${auditData.metrics.declinedJobs}
+- Late Completions: ${auditData.metrics.lateJobs}
+- On-time Completions: ${auditData.metrics.completedOnTime}
+- Missing Proof/Photos: ${auditData.metrics.missingProof}
+- Average Completion Time: ${auditData.metrics.averageCompletionTime.toFixed(1)} hours
+- Time Efficiency: ${auditData.metrics.estimatedVsActualTime.toFixed(0)}%
+
+Detailed Job Data:
+${auditData.performanceData.map((job: any) => 
+  `Job ${job.jobId}: ${job.jobType} at ${job.propertyAddress} - Status: ${job.status}, Photos: ${job.photos}, Duration: ${job.actualDuration?.toFixed(1) || 'N/A'}h`
+).join('\n')}
+
+Please provide a JSON response with:
+1. A trust score (1-100) based on reliability, punctuality, and consistency
+2. A quality score (1-100) based on job completion quality and proof provided
+3. A brief professional comment (2-3 sentences) summarizing overall performance
+4. 2-3 specific recommendations for improvement
+5. Any flagged issues that require management attention
+
+Respond in JSON format:
+{
+  "trustScore": number,
+  "qualityScore": number,
+  "comment": "string",
+  "recommendations": ["string1", "string2"],
+  "flaggedIssues": ["string1", "string2"]
+}`;
+
+    return this.callOpenAI(prompt, systemMessage);
+  }
 }
 
 // Export singleton instance

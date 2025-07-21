@@ -15,7 +15,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
+import { Modal, Portal } from 'react-native-paper';
 import * as Animatable from 'react-native-animatable';
 import { useRouter } from 'expo-router';
 import { usePINAuth } from "@/contexts/PINAuthContext";
@@ -27,7 +28,8 @@ import * as Notifications from 'expo-notifications';
 import type { Job } from '@/types/job';
 import { useStaffJobs } from '@/hooks/useStaffJobs';
 import JobAcceptanceModal from '@/components/jobs/JobAcceptanceModal';
-import FieldOpsAssistant from '@/components/ai/FieldOpsAssistant';
+import { JobStartConfirmation } from '@/components/jobs/JobStartConfirmation';
+import { JobPhotoChecklistModal } from '@/components/jobs/JobPhotoChecklistModal';
 import ErrorBoundary, { JobListErrorBoundary } from '@/components/shared/ErrorBoundary';
 
 export default function EnhancedStaffJobsView() {
@@ -58,8 +60,9 @@ export default function EnhancedStaffJobsView() {
   const [selectedFilter, setSelectedFilter] = useState('all'); // Show all jobs by default to debug
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showAcceptanceModal, setShowAcceptanceModal] = useState(false);
-  const [showAIAssistant, setShowAIAssistant] = useState(false);
-  const [aiAssistantJob, setAIAssistantJob] = useState<Job | null>(null);
+  const [showJobStartModal, setShowJobStartModal] = useState(false);
+  const [showPhotoChecklistModal, setShowPhotoChecklistModal] = useState(false);
+  const [jobToStart, setJobToStart] = useState<Job | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notificationCount, setNotificationCount] = useState(0);
 
@@ -190,23 +193,28 @@ export default function EnhancedStaffJobsView() {
     console.log('Job updated:', updatedJob.id, updatedJob.status);
   };
 
-  const handleOpenAIAssistant = (job: Job) => {
-    console.log('🤖 EnhancedStaffJobsView: Opening AI Assistant for job:', job.id);
-    setAIAssistantJob(job);
-    setShowAIAssistant(true);
+  const handleStartJob = async (job: Job) => {
+    // Open job start confirmation modal instead of directly starting
+    setJobToStart(job);
+    setShowJobStartModal(true);
   };
 
-  const handleStartJob = async (job: any) => {
+  const handleJobStartConfirmed = async (job: Job) => {
     try {
-      const success = await startJob(job.id);
-      if (success) {
-        Alert.alert(t('jobs.jobStarted'), t('jobs.jobStartedMessage'));
-      } else {
-        Alert.alert(t('common.error'), t('jobs.failedToStartJob'));
-      }
+      // The JobStartConfirmation component handles the actual job start logic
+      console.log('✅ Job started successfully:', job.id);
+      
+      // Refresh jobs to get updated status
+      refreshJobs();
+      
+      // Auto-open photo checklist for newly started jobs
+      setTimeout(() => {
+        setJobToStart(job);
+        setShowPhotoChecklistModal(true);
+      }, 500);
+      
     } catch (error) {
-      console.error('Error starting job:', error);
-      Alert.alert(t('common.error'), t('jobs.failedToStartJobMessage'));
+      console.error('Error in job start confirmation:', error);
     }
   };
 
@@ -344,26 +352,18 @@ export default function EnhancedStaffJobsView() {
           )}
 
           {job.status === 'in_progress' && (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
-                style={[styles.actionButton, { flex: 1 }]}
-                onPress={() => router.push(`/jobs/${job.id}` as any)}
-              >
-                <View style={styles.actionButtonGradient}>
-                  <Ionicons name="camera-outline" size={16} color="#0B0F1A" />
-                  <Text style={styles.actionButtonText}>{t('jobs.viewDetails')}</Text>
-                </View>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: '#C6FF00', flex: 1 }]}
-                onPress={() => handleOpenAIAssistant(job)}
-              >
-                <View style={styles.actionButtonGradient}>
-                  <Ionicons name="hardware-chip-outline" size={16} color="#0B0F1A" />
-                  <Text style={styles.actionButtonText}>AI Help</Text>
-                </View>
-              </TouchableOpacity>
+            <View style={{ flexDirection: 'column', gap: 8 }}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={[styles.actionButton, { flex: 1 }]}
+                  onPress={() => router.push(`/jobs/${job.id}` as any)}
+                >
+                  <View style={styles.actionButtonGradient}>
+                    <Ionicons name="camera-outline" size={16} color="#0B0F1A" />
+                    <Text style={styles.actionButtonText}>{t('jobs.viewDetails')}</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -500,14 +500,30 @@ export default function EnhancedStaffJobsView() {
           }}
         />
 
-        {/* AI Assistant Modal */}
-        {aiAssistantJob && (
-          <FieldOpsAssistant
-            job={aiAssistantJob}
-            visible={showAIAssistant}
-            onClose={() => {
-              setShowAIAssistant(false);
-              setAIAssistantJob(null);
+        {/* Job Start Confirmation Modal */}
+        {jobToStart && (
+          <JobStartConfirmation
+            job={jobToStart}
+            visible={showJobStartModal}
+            onDismiss={() => {
+              setShowJobStartModal(false);
+              setJobToStart(null);
+            }}
+            onJobStarted={handleJobStartConfirmed}
+          />
+        )}
+
+        {/* Photo Checklist Modal */}
+        {jobToStart && (
+          <JobPhotoChecklistModal
+            job={jobToStart}
+            visible={showPhotoChecklistModal}
+            onDismiss={() => {
+              setShowPhotoChecklistModal(false);
+              setJobToStart(null);
+            }}
+            onChecklistComplete={(canComplete) => {
+              console.log('Photo checklist completion status:', canComplete);
             }}
           />
         )}

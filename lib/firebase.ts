@@ -177,18 +177,17 @@ const getFirebaseAuth = () => {
       console.log('🔄 Initializing Auth for React Native with AsyncStorage...');
       
       try {
-        // For Firebase v10+ with React Native, AsyncStorage persistence is automatic
-        // when AsyncStorage is available in the environment
+        // For React Native - AsyncStorage is automatically used in Firebase v10+
+        // when @react-native-async-storage/async-storage is installed
         _auth = initializeAuth(firebaseApp, {
-          // Firebase v10+ automatically detects and uses AsyncStorage when available
-          // No need to explicitly set persistence in React Native
+          // Firebase v10+ automatically detects AsyncStorage in React Native environment
         });
-        console.log('✅ Firebase Auth initialized for React Native (AsyncStorage auto-detected)');
+        console.log('✅ Firebase Auth initialized for React Native with AsyncStorage');
         return _auth;
         
       } catch (persistenceError: any) {
-        console.log('⚠️ initializeAuth failed, using fallback:', persistenceError.message);
-        // Last resort fallback
+        console.log('⚠️ initializeAuth failed, trying default:', persistenceError.message);
+        // Fallback without explicit persistence
         try {
           _auth = initializeAuth(firebaseApp);
           console.log('✅ Firebase Auth initialized with default settings');

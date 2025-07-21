@@ -11,6 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { PaperProvider } from 'react-native-paper';
 import { PINAuthProvider } from "@/contexts/PINAuthContext";
+import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { JobProvider } from '@/contexts/JobContext';
 import { AppNotificationProvider } from '@/contexts/AppNotificationContext';
@@ -18,6 +19,7 @@ import { PushNotificationProvider } from '@/contexts/PushNotificationContext';
 import { TranslationProvider } from '@/contexts/TranslationContext';
 import { SiaMoonPaperTheme } from '@/constants/PaperTheme';
 import { initializeFirebase } from '@/lib/firebase';
+import { AppAuditIntegration } from '@/components/audit/AppAuditIntegration';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -76,27 +78,31 @@ export default function RootLayout() {
         <PaperProvider theme={SiaMoonPaperTheme}>
           <ThemeProvider>
             <ErrorBoundary>
-              <PINAuthProvider>
-                <PushNotificationProvider>
-                  <AppNotificationProvider>
-                    <JobProvider>
-                      <ErrorBoundary>
-                        <StatusBar style="light" backgroundColor="#000000" />
-                        <Stack
-                          screenOptions={{
-                            headerShown: false,
-                            contentStyle: { backgroundColor: '#000000' },
-                          }}
-                        >
-                          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                          <Stack.Screen name="+not-found" />
-                        </Stack>
-                      </ErrorBoundary>
-                    </JobProvider>
-                  </AppNotificationProvider>
-                </PushNotificationProvider>
-              </PINAuthProvider>
+              <AuthProvider>
+                <PINAuthProvider>
+                  <PushNotificationProvider>
+                    <AppNotificationProvider>
+                      <JobProvider>
+                        <AppAuditIntegration>
+                          <ErrorBoundary>
+                            <StatusBar style="light" backgroundColor="#000000" />
+                            <Stack
+                              screenOptions={{
+                                headerShown: false,
+                                contentStyle: { backgroundColor: '#000000' },
+                              }}
+                            >
+                              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                              <Stack.Screen name="+not-found" />
+                            </Stack>
+                          </ErrorBoundary>
+                        </AppAuditIntegration>
+                      </JobProvider>
+                    </AppNotificationProvider>
+                  </PushNotificationProvider>
+                </PINAuthProvider>
+              </AuthProvider>
             </ErrorBoundary>
           </ThemeProvider>
         </PaperProvider>
