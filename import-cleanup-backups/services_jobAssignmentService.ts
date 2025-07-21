@@ -3,7 +3,22 @@
  * Real-time job assignment integration between webapp and mobile app
  */
 
-import { collection, doc, addDoc, updateDoc, getDoc, getDocs, query, where, orderBy, writeBatch, onSnapshot, serverTimestamp, Timestamp,  } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  // Fix: Remove unused imports
+  // limit, writeBatch,
+  onSnapshot,
+  serverTimestamp,
+  Timestamp,
+} from 'firebase/firestore';
 import { getFirebaseFirestore, FirebaseAuthService } from '@/lib/firebase';
 import { firebaseUidService } from './firebaseUidService';
 import type {

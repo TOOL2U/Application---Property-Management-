@@ -4,6 +4,7 @@
  * Updated with dark theme design system
  */
 
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,

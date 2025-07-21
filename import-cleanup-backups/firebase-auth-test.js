@@ -61,6 +61,7 @@ async function testFirebaseAuthConfiguration() {
       } catch (initError) {
         if (initError.message.includes('already exists')) {
           console.log('ℹ️ Auth already initialized, getting existing instance...');
+          const auth3 = getAuth(app);
           console.log('✅ Retrieved existing Auth instance');
         } else {
           console.log('⚠️ initializeAuth failed:', initError.message);

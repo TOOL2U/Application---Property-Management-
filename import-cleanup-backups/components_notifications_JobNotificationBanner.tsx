@@ -3,6 +3,7 @@
  * Shows a slide-down banner notification for new job assignments
  */
 
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,

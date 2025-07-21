@@ -5,6 +5,7 @@
  */
 
 import { openaiService } from './openaiService';
+import { aiLoggingService } from './aiLoggingService';
 import { 
   collection, 
   doc, 

@@ -3,7 +3,7 @@
  * Prevents notification spam and ensures system stability
  */
 
-import { doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { getDb } from '../lib/firebase';
 
 export interface RateLimitConfig {

@@ -3,6 +3,7 @@
  * Manages local PIN-based authentication for staff profiles
  */
 
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { localStaffService, StaffProfile, StaffSession } from '../services/localStaffService';
 import { staffSyncService, getStaffSyncService } from '../services/staffSyncService';
 import { initializeFirebase } from '../lib/firebase';

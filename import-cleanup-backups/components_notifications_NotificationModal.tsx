@@ -3,6 +3,7 @@
  * Displays a dark-themed popup with notifications
  */
 
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -14,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Animatable from 'react-native-animatable';
 import { useAppNotifications } from '@/contexts/AppNotificationContext';
 import { shadowStyles } from '@/utils/shadowUtils';

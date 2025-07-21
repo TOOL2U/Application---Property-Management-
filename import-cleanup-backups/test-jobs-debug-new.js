@@ -99,6 +99,7 @@ async function debugDatabase() {
   // Test simple document access to verify permissions
   try {
     const testQuery = query(collection(db, 'jobs'), limit(1));
+    const testSnapshot = await getDocs(testQuery);
     console.log('\n✅ Firestore connection working');
   } catch (error) {
     console.error('\n❌ Firestore access failed:', error.message);

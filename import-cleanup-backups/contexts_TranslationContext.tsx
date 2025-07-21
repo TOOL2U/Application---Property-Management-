@@ -3,6 +3,8 @@
  * Provides translation state to all components and forces re-renders on language change
  */
 
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import i18nService, { SupportedLanguage } from '../services/i18nService';
 
 interface TranslationContextType {
   // Translation function

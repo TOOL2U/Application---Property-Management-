@@ -17,17 +17,15 @@ import { Card, Chip, ProgressBar } from 'react-native-paper';
 import { FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 
-import { useTranslation } from '@/hooks/useTranslation';
-import { shadowStyles } from '@/utils/shadowUtils';
-import { usePINAuth } from '@/contexts/PINAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTranslationContext } from '@/contexts/TranslationContext';
 import { aiLoggingService } from '@/services/aiLoggingService';
 import { FOALogTimeline } from '@/components/ai/FOALogTimeline';
 import AIAnalytics from '@/components/ai/AIAnalytics';
 
 export default function AIAssistantScreen() {
-  const { t } = useTranslation();
-  const { currentProfile } = usePINAuth();
+  const { user } = useAuth();
+  const { t } = useTranslationContext();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'timeline' | 'analytics' | 'recent'>('recent');
@@ -35,20 +33,20 @@ export default function AIAssistantScreen() {
   const [analytics, setAnalytics] = useState<any>(null);
 
   useEffect(() => {
-    if (currentProfile) {
+    if (user) {
       loadAIData();
     }
-  }, [currentProfile]);
+  }, [user]);
 
   const loadAIData = async () => {
-    if (!currentProfile) return;
+    if (!user) return;
     
     try {
       setLoading(true);
       
       // Load recent AI interactions and analytics
       const [analyticsData] = await Promise.all([
-        aiLoggingService.getStaffAIAnalytics(currentProfile.id),
+        aiLoggingService.getStaffAIAnalytics(user.id),
       ]);
       
       setAnalytics(analyticsData);
@@ -234,7 +232,7 @@ export default function AIAssistantScreen() {
           
           <View className="space-y-3">
             <TouchableOpacity
-              onPress={() => router.push('/ai-hub')}
+              onPress={() => router.push('/fieldops')}
               className="bg-blue-600 py-3 px-4 rounded-lg flex-row items-center"
             >
               <FontAwesome5 name="robot" size={20} color="white" />
@@ -260,7 +258,7 @@ export default function AIAssistantScreen() {
     </View>
   );
 
-  if (loading && !currentProfile) {
+  if (loading && !user) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#0B0F1A' }}>
         <View className="flex-1 justify-center items-center">
@@ -288,13 +286,13 @@ export default function AIAssistantScreen() {
         
         {activeTab === 'recent' && renderRecentActivities()}
         
-        {activeTab === 'timeline' && currentProfile && (
+        {activeTab === 'timeline' && user && (
           <View className="px-4">
-            <FOALogTimeline staffId={currentProfile.id} />
+            <FOALogTimeline staffId={user.id} />
           </View>
         )}
         
-        {activeTab === 'analytics' && currentProfile && (
+        {activeTab === 'analytics' && user && (
           <View className="px-4">
             <AIAnalytics />
           </View>

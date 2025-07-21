@@ -1,6 +1,7 @@
 import { Storage } from '../utils/storage';
 import { realtimeDB, BookingData, StaffAssignment, PropertyStatus } from '../lib/realtimeDatabase';
 import { webhookService } from './webhookService';
+import { cloudinaryService } from './cloudinaryService';
 
 interface SyncConfig {
   enableRealtimeSync: boolean;

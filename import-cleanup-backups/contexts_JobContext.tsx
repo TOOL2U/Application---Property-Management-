@@ -3,6 +3,7 @@
  * Implements real-time Firebase listener for job assignments
  */
 
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   collection,
   query,
@@ -16,7 +17,7 @@ import {
   Unsubscribe,
   getFirestore
 } from 'firebase/firestore';
-import { getFirebaseFirestore, initializeFirebase } from '@/lib/firebase';
+import { getFirebaseApp, getFirebaseFirestore, initializeFirebase } from '@/lib/firebase';
 import { JobData, JobNotificationData, JobResponse, JobStatusUpdate } from '@/types/jobData';
 import { usePINAuth } from '@/contexts/PINAuthContext';
 

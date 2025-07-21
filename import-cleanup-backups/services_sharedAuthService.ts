@@ -1,4 +1,4 @@
-import { signOut } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { collection, getDocs, doc, getDoc, query, where } from 'firebase/firestore';
 import { auth, getDb } from '../lib/firebase';
 import { StaffAccount } from './authService';

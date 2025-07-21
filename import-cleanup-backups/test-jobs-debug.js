@@ -66,6 +66,7 @@ async function debugFirestore() {
     console.log('🧪 Testing document access...');
     try {
       const testDocRef = doc(db, 'jobs', 'test');
+      const testDoc = await getDoc(testDocRef);
       // Test simple document access to verify permissions
 console.log('✅ Firestore connection working');
 

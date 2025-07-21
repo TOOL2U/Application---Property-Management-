@@ -3,6 +3,7 @@
  * Shows in-app notification when a new job is assigned
  */
 
+import React, { useState } from 'react';
 import {
   View,
   Text,
