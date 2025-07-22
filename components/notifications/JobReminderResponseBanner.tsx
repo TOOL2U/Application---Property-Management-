@@ -31,12 +31,10 @@ const { width, height } = Dimensions.get('window');
 
 interface JobReminderResponseBannerProps {
   onNavigateToJob?: (jobId: string) => void;
-  onOpenFOAChat?: (jobId: string, message: string) => void;
 }
 
 export default function JobReminderResponseBanner({
   onNavigateToJob,
-  onOpenFOAChat,
 }: JobReminderResponseBannerProps) {
   const { lastNotificationResponse, clearLastResponse } = useJobReminderNotifications();
   const navigation = useNavigation();
@@ -86,21 +84,6 @@ export default function JobReminderResponseBanner({
     }
   };
 
-  // Open FOA chat with preparation message
-  const handleOpenFOAChat = () => {
-    if (lastNotificationResponse?.jobId && lastNotificationResponse?.foaMessage) {
-      handleDismiss();
-      
-      if (onOpenFOAChat) {
-        onOpenFOAChat(lastNotificationResponse.jobId, lastNotificationResponse.foaMessage);
-      } else {
-        // Default navigation to FOA chat
-        // navigation.navigate('/(tabs)/foa-chat', { jobId: lastNotificationResponse.jobId });
-        console.log('Open FOA chat for job:', lastNotificationResponse.jobId);
-      }
-    }
-  };
-
   if (!visible || !lastNotificationResponse) {
     return null;
   }
@@ -139,7 +122,7 @@ export default function JobReminderResponseBanner({
               <View style={styles.headerText}>
                 <Text style={styles.title}>Job Starting Soon!</Text>
                 <Text style={styles.subtitle}>
-                  Your FOA assistant has preparation tips ready
+                  Time to prepare for your job
                 </Text>
               </View>
               <TouchableOpacity 
@@ -149,18 +132,6 @@ export default function JobReminderResponseBanner({
                 <X size={20} color="#ffffff" />
               </TouchableOpacity>
             </View>
-
-            {/* FOA Message */}
-            {lastNotificationResponse.foaMessage && (
-              <View style={styles.foaMessageContainer}>
-                <View style={styles.foaIcon}>
-                  <Brain size={16} color="#6366f1" />
-                </View>
-                <Text style={styles.foaMessage}>
-                  {lastNotificationResponse.foaMessage}
-                </Text>
-              </View>
-            )}
 
             {/* Action Buttons */}
             <View style={styles.actions}>
@@ -172,16 +143,6 @@ export default function JobReminderResponseBanner({
                 <Text style={styles.primaryActionText}>View Job</Text>
                 <ArrowRight size={16} color="#6366f1" />
               </TouchableOpacity>
-
-              {lastNotificationResponse.foaMessage && (
-                <TouchableOpacity
-                  style={styles.secondaryAction}
-                  onPress={handleOpenFOAChat}
-                >
-                  <Brain size={18} color="#ffffff" />
-                  <Text style={styles.secondaryActionText}>Chat with FOA</Text>
-                </TouchableOpacity>
-              )}
             </View>
 
             {/* Time indicator */}

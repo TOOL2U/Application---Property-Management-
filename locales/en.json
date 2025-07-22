@@ -196,8 +196,7 @@
       "start": "Start",
       "update": "Update",
       "complete": "Complete",
-      "details": "Details",
-      "aiHelp": "AI Help"
+      "details": "Details"
     },
     "ai": {
       "fieldOpsAssistant": "Field Ops Assistant",

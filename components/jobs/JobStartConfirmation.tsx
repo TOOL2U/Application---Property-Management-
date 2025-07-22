@@ -132,12 +132,8 @@ export const JobStartConfirmation: React.FC<JobStartConfirmationProps> = ({
       // Show success message
       Alert.alert(
         '✅ Job Started!',
-        `${job.title} is now in progress. The Field Ops Assistant is ready to help you.`,
+        `${job.title} is now in progress. You can view job details and updates in the Jobs tab.`,
         [
-          {
-            text: 'Open Assistant',
-            onPress: () => router.push('/ai-hub'),
-          },
           {
             text: 'Continue',
             style: 'default',
