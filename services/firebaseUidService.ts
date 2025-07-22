@@ -1,10 +1,12 @@
 /**
  * Firebase UID Mapping Service
  * Maps staff profiles to Firebase UIDs for web app integration
+ * Updated to reduce authentication timeout warnings
  */
 
 import { auth, getFirebaseFirestore } from '@/lib/firebase';
-import { onAuthStateChanged, signInAnonymously, User } from 'firebase/auth';
+import { signInAnonymously, User } from 'firebase/auth';
+import { enhancedAuthService } from './enhancedAuthService';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -27,13 +29,14 @@ class FirebaseUidService {
   }
 
   /**
-   * Initialize Firebase authentication
+   * Initialize Firebase authentication with enhanced service
    */
   private async initializeAuth(): Promise<void> {
     try {
       console.log('🔐 FirebaseUid: Initializing authentication...');
 
-      onAuthStateChanged(auth, (user) => {
+      // Use enhanced auth service to reduce timeout warnings
+      enhancedAuthService.onAuthStateChanged((user: User | null) => {
         this.currentUser = user;
         if (user) {
           console.log('✅ FirebaseUid: User authenticated:', user.uid);
@@ -42,10 +45,11 @@ class FirebaseUidService {
         }
       });
 
-      // For development/testing, ensure we have a user
-      if (!auth.currentUser) {
-        console.log('🔄 FirebaseUid: Signing in anonymously for development...');
-        await signInAnonymously(auth);
+      // Ensure we have an authenticated user
+      const user = await enhancedAuthService.getCurrentUser();
+      if (!user) {
+        console.log('🔄 FirebaseUid: Ensuring authentication...');
+        // The enhanced service will handle anonymous sign-in automatically
       }
 
     } catch (error) {
