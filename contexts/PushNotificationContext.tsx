@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { usePINAuth } from './PINAuthContext';
 import { pushNotificationService, NotificationData, NotificationPayload } from '@/services/pushNotificationService';
+import { firebaseUidService } from '@/services/firebaseUidService';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { Alert } from 'react-native';
@@ -51,12 +52,31 @@ export const PushNotificationProvider: React.FC<PushNotificationProviderProps> =
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [isPermissionDenied, setIsPermissionDenied] = useState(false);
 
+  // Debug logging for authentication state
+  useEffect(() => {
+    console.log('🔍 PushNotificationContext: Auth state changed', {
+      isAuthenticated,
+      hasProfile: !!currentProfile,
+      profileId: currentProfile?.id,
+    });
+  }, [isAuthenticated, currentProfile]);
+
   // Initialize push notifications when user authenticates
   useEffect(() => {
+    console.log('🔍 PushNotificationContext: Effect triggered', {
+      isAuthenticated,
+      hasProfile: !!currentProfile?.id,
+      profileId: currentProfile?.id,
+    });
+    
     if (isAuthenticated && currentProfile?.id) {
+      console.log('✅ PushNotificationContext: Conditions met, calling initializePushNotifications');
       initializePushNotifications();
     } else if (!isAuthenticated) {
+      console.log('🧹 PushNotificationContext: Not authenticated, cleaning up');
       cleanupPushNotifications();
+    } else {
+      console.log('⏳ PushNotificationContext: Waiting for authentication or profile');
     }
   }, [isAuthenticated, currentProfile?.id]);
 
@@ -75,16 +95,25 @@ export const PushNotificationProvider: React.FC<PushNotificationProviderProps> =
 
   const initializePushNotifications = async () => {
     try {
-      if (!currentProfile?.id) {
-        console.error('❌ PushNotificationContext: No current profile for initialization');
+      if (!currentProfile?.id || !isAuthenticated) {
+        console.log('⚠️ PushNotificationContext: No authenticated profile, skipping initialization');
         return;
       }
 
       console.log('📲 PushNotificationContext: Initializing for staff:', currentProfile.id);
 
-      const success = await pushNotificationService.initialize(currentProfile.id);
+      // Get Firebase UID for the current staff member
+      const firebaseUid = await firebaseUidService.getFirebaseUid(currentProfile.id);
       
-      if (success) {
+      if (!firebaseUid) {
+        console.error('❌ PushNotificationContext: No Firebase UID found for staff:', currentProfile.id);
+        setIsInitialized(false);
+        return;
+      }
+
+      console.log('📲 PushNotificationContext: Using Firebase UID for token registration:', firebaseUid);
+
+      const success = await pushNotificationService.initialize(firebaseUid);      if (success) {
         setIsInitialized(true);
         setIsPermissionDenied(false);
         
@@ -117,7 +146,11 @@ export const PushNotificationProvider: React.FC<PushNotificationProviderProps> =
       console.log('🧹 PushNotificationContext: Cleaning up...');
       
       if (currentProfile?.id) {
-        await pushNotificationService.enhancedCleanup(currentProfile.id);
+        // Get Firebase UID for cleanup
+        const firebaseUid = await firebaseUidService.getFirebaseUid(currentProfile.id);
+        if (firebaseUid) {
+          await pushNotificationService.enhancedCleanup(firebaseUid);
+        }
       }
       
       setIsInitialized(false);

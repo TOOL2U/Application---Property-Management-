@@ -1,6 +1,9 @@
 // Import Node.js polyfills first for web compatibility
 import '../polyfills/node-polyfills';
 
+// Import gesture handler first (required for React Native)
+import 'react-native-gesture-handler';
+
 // Import NativeWind CSS
 import '../global.css';
 
@@ -10,6 +13,8 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { PaperProvider } from 'react-native-paper';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PINAuthProvider } from "@/contexts/PINAuthContext";
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -73,40 +78,45 @@ export default function RootLayout() {
   }
 
   return (
-    <ErrorBoundary>
-      <TranslationProvider>
-        <PaperProvider theme={SiaMoonPaperTheme}>
-          <ThemeProvider>
-            <ErrorBoundary>
-              <AuthProvider>
-                <PINAuthProvider>
-                  <PushNotificationProvider>
-                    <AppNotificationProvider>
-                      <JobProvider>
-                        <AppAuditIntegration>
-                          <ErrorBoundary>
-                            <StatusBar style="light" backgroundColor="#000000" />
-                            <Stack
-                              screenOptions={{
-                                headerShown: false,
-                                contentStyle: { backgroundColor: '#000000' },
-                              }}
-                            >
-                              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                              <Stack.Screen name="+not-found" />
-                            </Stack>
-                          </ErrorBoundary>
-                        </AppAuditIntegration>
-                      </JobProvider>
-                    </AppNotificationProvider>
-                  </PushNotificationProvider>
-                </PINAuthProvider>
-              </AuthProvider>
-            </ErrorBoundary>
-          </ThemeProvider>
-        </PaperProvider>
-      </TranslationProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ErrorBoundary>
+          <TranslationProvider>
+            <PaperProvider theme={SiaMoonPaperTheme}>
+              <ThemeProvider>
+                <ErrorBoundary>
+                  <AuthProvider>
+                    <PINAuthProvider>
+                      <PushNotificationProvider>
+                        <AppNotificationProvider>
+                          <JobProvider>
+                            <AppAuditIntegration>
+                              <ErrorBoundary>
+                                <StatusBar style="light" backgroundColor="#000000" />
+                                <Stack
+                                  screenOptions={{
+                                    headerShown: false,
+                                    contentStyle: { backgroundColor: '#000000' },
+                                  }}
+                                >
+                                  <Stack.Screen name="debug-touch" options={{ headerShown: false }} />
+                                  <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                                  <Stack.Screen name="+not-found" />
+                                </Stack>
+                              </ErrorBoundary>
+                            </AppAuditIntegration>
+                          </JobProvider>
+                        </AppNotificationProvider>
+                      </PushNotificationProvider>
+                    </PINAuthProvider>
+                  </AuthProvider>
+                </ErrorBoundary>
+              </ThemeProvider>
+            </PaperProvider>
+          </TranslationProvider>
+        </ErrorBoundary>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

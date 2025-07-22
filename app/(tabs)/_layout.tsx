@@ -109,13 +109,20 @@ const NotificationIcon = ({ focused, color, unreadCount }: { focused: boolean; c
 
 export default function TabLayout() {
   const { isAuthenticated, isLoading } = usePINAuth();
-  const { unreadCount } = useAppNotifications();
+  const { unreadCount, notifications } = useAppNotifications();
   const { t } = useTranslation();
   const router = useRouter();
 
   console.log('🏠 TabLayout rendered:', {
     isAuthenticated,
     isLoading
+  });
+
+  // DEBUG: Log notification state for troubleshooting
+  console.log('🔔 TabLayout: Notification state:', {
+    unreadCount,
+    totalNotifications: notifications.length,
+    notificationIds: notifications.map(n => n.id).slice(0, 3)
   });
 
   // Show loading screen while checking authentication

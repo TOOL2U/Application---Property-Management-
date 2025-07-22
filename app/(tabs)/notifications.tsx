@@ -127,6 +127,21 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = React.useState(false);
 
+  // DEBUG: Log notification data to see what's being received
+  console.log('🔔 NotificationsScreen: Current state:', {
+    notificationCount: notifications.length,
+    unreadCount,
+    isLoading,
+    currentProfile: currentProfile?.id,
+    notifications: notifications.map(n => ({
+      id: n.id,
+      title: n.title,
+      read: n.read,
+      type: n.type,
+      timestamp: n.timestamp
+    }))
+  });
+
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
     refreshNotifications();

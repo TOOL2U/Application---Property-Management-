@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { usePINAuth } from "@/contexts/PINAuthContext";
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Text } from 'react-native';
 import { Logo } from '@/components/ui/Logo';
 
 export default function Index() {
@@ -22,8 +22,27 @@ export default function Index() {
   }, [isAuthenticated, isLoading, hasInitialized]);
 
   return (
-    <View className="flex-1 justify-center items-center bg-dark-bg">
-      <Logo size="appIcon" style={{ marginBottom: 24 }} />
+    <View style={{
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#000000'
+    }}>
+      <Logo
+        size="appIcon"
+        style={{ marginBottom: 32 }}
+        accessibilityLabel="Sia Moon Staff App Logo"
+      />
+      <Text style={{
+        color: '#ffffff',
+        fontSize: 28,
+        fontWeight: 'bold',
+        marginBottom: 24,
+        textAlign: 'center',
+        letterSpacing: 1
+      }}>
+        Sia Moon Staff
+      </Text>
       <ActivityIndicator size="large" color="#8b5cf6" />
     </View>
   );

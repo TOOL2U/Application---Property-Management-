@@ -20,6 +20,7 @@ import {
 import { getFirebaseApp, getFirebaseFirestore, initializeFirebase } from '@/lib/firebase';
 import { JobData, JobNotificationData, JobResponse, JobStatusUpdate } from '@/types/jobData';
 import { usePINAuth } from '@/contexts/PINAuthContext';
+import { firebaseUidService } from '@/services/firebaseUidService';
 
 interface JobContextType {
   // Job Data
@@ -120,63 +121,77 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.log('📡 JobContext: Setting up real-time listeners for staff:', currentProfile.id);
       setLoading(true);
 
-      const db = await getDb();
-
-      // Set up job listener
-      const jobsQuery = query(
-        collection(db, 'jobs'),
-        where('assignedStaffId', '==', currentProfile.id),
-        orderBy('createdAt', 'desc')
-      );
-
-      jobsUnsubscribe = onSnapshot(
-        jobsQuery,
-        (snapshot) => {
-          const jobList: JobData[] = [];
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            jobList.push({
-              id: doc.id,
-              ...data,
-              // Convert Firebase timestamps to proper format
-              createdAt: data.createdAt?.toDate?.() || data.createdAt,
-              updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
-              lastNotificationAt: data.lastNotificationAt?.toDate?.() || data.lastNotificationAt,
-            } as JobData);
-          });
-          
-          console.log('🔄 JobContext: Jobs updated -', jobList.length, 'jobs for staff:', currentProfile.id);
-          setJobs(jobList);
-          setError(null);
-          setLoading(false);
-          setIsConnected(true);
-          setLastUpdate(new Date());
-        },
-        (error) => {
-          console.error('❌ JobContext: Jobs listener error:', error);
-          setError('Failed to load jobs');
+      try {
+        // Get Firebase UID for the current staff member
+        const firebaseUid = await firebaseUidService.getFirebaseUid(currentProfile.id);
+        
+        if (!firebaseUid) {
+          console.error('❌ JobContext: No Firebase UID found for staff:', currentProfile.id);
+          setError('Unable to get Firebase UID for staff member');
           setLoading(false);
           setIsConnected(false);
+          return;
         }
-      );
 
-      // Set up notifications listener
-      const notificationsQuery = query(
-        collection(db, 'staff_notifications'),
-        where('staffId', '==', currentProfile.id),
-        orderBy('createdAt', 'desc')
-      );
+        console.log('🔍 JobContext: Using Firebase UID for queries:', firebaseUid);
+        
+        const db = await getDb();
 
-      notificationsUnsubscribe = onSnapshot(
-        notificationsQuery,
-        (snapshot) => {
-          const notificationList: JobNotificationData[] = [];
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            notificationList.push({
-              ...(data as Omit<JobNotificationData, 'id'>),
-              id: doc.id,
-              // Convert Firebase timestamps
+        // Set up job listener using Firebase UID
+        const jobsQuery = query(
+          collection(db, 'jobs'),
+          where('assignedStaffId', '==', firebaseUid),
+          orderBy('createdAt', 'desc')
+        );
+
+        jobsUnsubscribe = onSnapshot(
+          jobsQuery,
+          (snapshot) => {
+            const jobList: JobData[] = [];
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              jobList.push({
+                id: doc.id,
+                ...data,
+                // Convert Firebase timestamps to proper format
+                createdAt: data.createdAt?.toDate?.() || data.createdAt,
+                updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
+                lastNotificationAt: data.lastNotificationAt?.toDate?.() || data.lastNotificationAt,
+              } as JobData);
+            });
+            
+            console.log('🔄 JobContext: Jobs updated -', jobList.length, 'jobs for Firebase UID:', firebaseUid);
+            setJobs(jobList);
+            setError(null);
+            setLoading(false);
+            setIsConnected(true);
+            setLastUpdate(new Date());
+          },
+          (error) => {
+            console.error('❌ JobContext: Jobs listener error:', error);
+            setError('Failed to load jobs');
+            setLoading(false);
+            setIsConnected(false);
+          }
+        );
+
+        // Set up notifications listener (using Firebase UID for notifications)
+        const notificationsQuery = query(
+          collection(db, 'staff_notifications'),
+          where('userId', '==', firebaseUid),
+          orderBy('createdAt', 'desc')
+        );
+
+        notificationsUnsubscribe = onSnapshot(
+          notificationsQuery,
+          (snapshot) => {
+            const notificationList: JobNotificationData[] = [];
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              notificationList.push({
+                ...(data as Omit<JobNotificationData, 'id'>),
+                id: doc.id,
+                // Convert Firebase timestamps
               createdAt: data.createdAt?.toDate?.() || data.createdAt,
               expiresAt: data.expiresAt?.toDate?.() || data.expiresAt,
               readAt: data.readAt?.toDate?.() || data.readAt,
@@ -191,8 +206,15 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       );
 
-      setUnsubscribeJobs(() => jobsUnsubscribe!);
-      setUnsubscribeNotifications(() => notificationsUnsubscribe!);
+        setUnsubscribeJobs(() => jobsUnsubscribe!);
+        setUnsubscribeNotifications(() => notificationsUnsubscribe!);
+        
+      } catch (error) {
+        console.error('❌ JobContext: Error setting up listeners:', error);
+        setError('Failed to initialize job listeners');
+        setLoading(false);
+        setIsConnected(false);
+      }
     };
 
     setupListeners();

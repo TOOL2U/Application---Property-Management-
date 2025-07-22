@@ -77,16 +77,16 @@ class PushNotificationService {
   /**
    * Initialize push notifications for the authenticated staff member
    */
-  async initialize(staffId: string): Promise<boolean> {
+  async initialize(firebaseUid: string): Promise<boolean> {
     try {
-      console.log('� PushNotificationService: Initializing for staff:', staffId);
+      console.log('📲 PushNotificationService: Initializing for Firebase UID:', firebaseUid);
       
-      this.currentStaffId = staffId;
+      this.currentStaffId = firebaseUid;
 
       // Handle different platforms
       if (Platform.OS === 'web') {
         console.log('🌐 Web platform detected, using web push notifications');
-        return await this.initializeWebPushNotifications(staffId);
+        return await this.initializeWebPushNotifications(firebaseUid);
       }
 
       // Check if device supports push notifications
@@ -109,8 +109,8 @@ class PushNotificationService {
         return false;
       }
 
-      // Store token in Firestore
-      await this.storePushToken(staffId, token);
+      // Store token in Firestore with Firebase UID
+      await this.storePushToken(firebaseUid, token);
 
       // Set up notification listeners
       this.setupNotificationListeners();
@@ -172,7 +172,9 @@ class PushNotificationService {
       }
 
       console.log('📱 Getting new push token...');
-      const projectId = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'cc931fa3';
+      
+      // Use EAS project ID from app.json for push tokens
+      const projectId = '6272f8f0-68ec-4141-a6a9-ae547b7400b2'; // From app.json extra.eas.projectId
       
       const tokenData = await Notifications.getExpoPushTokenAsync({
         projectId,
@@ -195,7 +197,7 @@ class PushNotificationService {
   /**
    * Store push token in Firestore
    */
-  async storePushToken(staffId: string, token: string): Promise<void> {
+  async storePushToken(firebaseUid: string, token: string): Promise<void> {
     try {
       const db = await getDb();
       
@@ -212,17 +214,18 @@ class PushNotificationService {
         appVersion: '1.0.0',
       };
 
-      // Store in staff_accounts/{staffId}/devices/{deviceId}
-      const deviceRef = doc(db, 'staff_accounts', staffId, 'devices', this.deviceId);
+      // Store device token in a structure the webapp can find
+      // Using Firebase UID as the key for webapp compatibility
+      const deviceRef = doc(db, 'staff_device_tokens', firebaseUid, 'devices', this.deviceId);
       await setDoc(deviceRef, tokenData, { merge: true });
 
-      console.log('✅ Push token stored in Firestore for device:', this.deviceId);
+      console.log('✅ Push token stored in Firestore for Firebase UID:', firebaseUid);
 
-      // Also save to staff profile for backward compatibility
-      await this.saveTokenToStaffProfile(staffId, token);
+      // Also save to main staff_device_tokens collection for easier webapp access
+      await this.saveTokenToMainCollection(firebaseUid, token);
 
       // Clean up old/inactive tokens for this staff member
-      await this.cleanupOldTokens(staffId);
+      await this.cleanupOldTokens(firebaseUid);
 
     } catch (error) {
       console.error('❌ Failed to store push token:', error);
@@ -231,56 +234,49 @@ class PushNotificationService {
   }
 
   /**
-   * Save FCM token to staff profile for server-side notifications (backward compatibility)
+   * Save token to main collection for webapp access
    */
-  private async saveTokenToStaffProfile(staffId: string, token: string): Promise<void> {
+  private async saveTokenToMainCollection(firebaseUid: string, token: string): Promise<void> {
     try {
       const db = await getDb();
-      const staffRef = doc(db, 'staff_accounts', staffId);
       
-      // Get current staff data
-      const staffDoc = await getDoc(staffRef);
-      if (!staffDoc.exists()) {
-        console.error('❌ Staff profile not found:', staffId);
-        return;
-      }
+      // Store in a collection structure the webapp expects
+      const tokenDocRef = doc(db, 'staff_device_tokens', firebaseUid);
+      
+      await setDoc(tokenDocRef, {
+        firebaseUid,
+        fcmTokens: [token], // Store as array like webapp expects
+        expoTokens: [token], // Also store as expo tokens
+        lastUpdated: serverTimestamp(),
+        platform: Platform.OS,
+        deviceId: this.deviceId,
+        isActive: true
+      }, { merge: true });
 
-      const staffData = staffDoc.data();
-      const currentTokens = staffData.fcmTokens || [];
+      console.log('✅ Token saved to main collection for webapp access');
 
-      // Add token if not already present
-      if (!currentTokens.includes(token)) {
-        await updateDoc(staffRef, {
-          fcmTokens: arrayUnion(token),
-          lastTokenUpdate: new Date(),
-          notificationPreferences: {
-            pushEnabled: true,
-            emailEnabled: staffData.notificationPreferences?.emailEnabled ?? true,
-            smsEnabled: staffData.notificationPreferences?.smsEnabled ?? false,
-            reminderMinutes: staffData.notificationPreferences?.reminderMinutes ?? 15,
-            ...staffData.notificationPreferences
-          }
-        });
-
-        console.log('✅ FCM token saved to staff profile');
-      }
     } catch (error) {
-      console.error('❌ Error saving FCM token:', error);
+      console.error('❌ Error saving token to main collection:', error);
     }
   }
 
   /**
    * Remove push token from Firestore (on logout)
    */
-  async removePushToken(staffId: string): Promise<void> {
+  async removePushToken(firebaseUid: string): Promise<void> {
     try {
       if (!this.deviceId) {
         this.deviceId = await this.getDeviceId();
       }
 
       const db = await getDb();
-      const deviceRef = doc(db, 'staff_accounts', staffId, 'devices', this.deviceId!);
+      // Remove from new collection structure
+      const deviceRef = doc(db, 'staff_device_tokens', firebaseUid, 'devices', this.deviceId!);
       await deleteDoc(deviceRef);
+
+      // Remove main token document
+      const tokenDocRef = doc(db, 'staff_device_tokens', firebaseUid);
+      await deleteDoc(tokenDocRef);
 
       console.log('✅ Push token removed from Firestore');
 
@@ -296,25 +292,21 @@ class PushNotificationService {
   /**
    * Clean up old/inactive tokens
    */
-  async cleanupOldTokens(staffId: string): Promise<void> {
+  async cleanupOldTokens(firebaseUid: string): Promise<void> {
     try {
       const db = await getDb();
-      const devicesRef = collection(db, 'staff_accounts', staffId, 'devices');
-      const snapshot = await getDocs(devicesRef);
+      
+      // Clean up from new collection structure
+      const devicesQuery = query(
+        collection(db, 'staff_device_tokens', firebaseUid, 'devices'),
+        where('isActive', '==', false)
+      );
 
-      const currentTime = Date.now();
-      const thirtyDaysAgo = currentTime - (30 * 24 * 60 * 60 * 1000); // 30 days
-
+      const snapshot = await getDocs(devicesQuery);
+      
       for (const docSnap of snapshot.docs) {
-        const deviceData = docSnap.data() as PushToken;
-        const lastUpdated = deviceData.lastUpdated?.toMillis() || 0;
-
-        // Remove tokens older than 30 days or from different devices with same token
-        if (lastUpdated < thirtyDaysAgo || 
-            (deviceData.token === this.expoPushToken && docSnap.id !== this.deviceId)) {
-          await deleteDoc(docSnap.ref);
-          console.log('🧹 Cleaned up old token for device:', docSnap.id);
-        }
+        await deleteDoc(docSnap.ref);
+        console.log('🧹 Cleaned up old token for device:', docSnap.id);
       }
 
     } catch (error) {
@@ -880,13 +872,6 @@ class PushNotificationService {
   }
 
   /**
-   * Get current push token
-   */
-  getCurrentPushToken(): string | null {
-    return this.expoPushToken;
-  }
-
-  /**
    * Refresh push token
    */
   async refreshPushToken(): Promise<string | null> {
@@ -939,12 +924,12 @@ class PushNotificationService {
   /**
    * Enhanced cleanup on logout
    */
-  async enhancedCleanup(staffId?: string): Promise<void> {
+  async enhancedCleanup(firebaseUid?: string): Promise<void> {
     try {
       console.log('🧹 PushNotificationService: Enhanced cleaning up...');
 
-      if (staffId && this.deviceId) {
-        await this.removePushToken(staffId);
+      if (firebaseUid && this.deviceId) {
+        await this.removePushToken(firebaseUid);
       }
 
       this.expoPushToken = null;
@@ -983,9 +968,9 @@ class PushNotificationService {
   }
 
   /**
-   * Get current push token
+   * Get current cached push token
    */
-  getPushToken(): string | null {
+  getCurrentPushToken(): string | null {
     return this.expoPushToken;
   }
 }
