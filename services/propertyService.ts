@@ -35,6 +35,15 @@ export interface PropertyContact {
   email?: string;
 }
 
+export interface PropertyRequirementTemplate {
+  id: string;
+  description: string;
+  isRequired: boolean;
+  category: 'safety' | 'cleaning' | 'maintenance' | 'inspection' | 'photo' | 'other';
+  estimatedTime?: number; // minutes
+  notes?: string;
+}
+
 export interface Property {
   id: string;
   name: string;
@@ -51,6 +60,7 @@ export interface Property {
   hasAirConditioning?: boolean;
   hasLaundry?: boolean;
   isActive: boolean;
+  requirementsTemplate?: PropertyRequirementTemplate[]; // Job requirements template
   googleMapsLocation?: {
     latitude: number;
     longitude: number;
@@ -105,6 +115,49 @@ class PropertyService {
         error: error instanceof Error ? error.message : 'Failed to get property'
       };
     }
+  }
+
+  /**
+   * Get property requirements template for job creation
+   */
+  async getPropertyRequirementsTemplate(propertyId: string): Promise<PropertyRequirementTemplate[]> {
+    try {
+      console.log('📋 PropertyService: Getting requirements template for property:', propertyId);
+
+      const response = await this.getProperty(propertyId);
+      
+      if (!response.success || !response.property) {
+        console.warn('⚠️ PropertyService: Property not found, returning empty requirements');
+        return [];
+      }
+
+      const requirements = response.property.requirementsTemplate || [];
+      console.log(`✅ PropertyService: Found ${requirements.length} requirements in template`);
+      
+      return requirements;
+    } catch (error) {
+      console.error('❌ PropertyService: Error getting property requirements template:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Convert property requirements template to job requirements format
+   */
+  static convertTemplateToJobRequirements(template: PropertyRequirementTemplate[]): any[] {
+    return template.map(item => ({
+      id: item.id,
+      description: item.description,
+      isCompleted: false,
+      isRequired: item.isRequired,
+      category: item.category,
+      photos: [],
+      notes: '',
+      estimatedTime: item.estimatedTime,
+      templateNotes: item.notes,
+      completedAt: null,
+      completedBy: null,
+    }));
   }
 
   /**

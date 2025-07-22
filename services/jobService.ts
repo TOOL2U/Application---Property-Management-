@@ -20,13 +20,7 @@ import {
   Timestamp,
   writeBatch,
 } from 'firebase/firestore';
-import { 
-  ref, 
-  uploadBytes, 
-  getDownloadURL, 
-  deleteObject 
-} from 'firebase/storage';
-import { getDb, storage } from '../lib/firebase';
+import { getDb } from '../lib/firebase';
 import {
   Job,
   JobStatus,
@@ -40,8 +34,13 @@ import {
   LocationUpdate,
 } from '../types/job';
 
+// Import Firebase Storage functions directly for better error handling
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getApp } from 'firebase/app';
+
 class JobService {
   private readonly JOBS_COLLECTION = 'jobs';
+  private readonly COMPLETED_JOBS_COLLECTION = 'completed_jobs';
   private readonly JOB_PHOTOS_COLLECTION = 'job_photos';
   private readonly JOB_ASSIGNMENTS_COLLECTION = 'job_assignments';
   private readonly LOCATION_UPDATES_COLLECTION = 'location_updates';
@@ -53,8 +52,13 @@ class JobService {
     const startTime = Date.now();
 
     while (Date.now() - startTime < maxWaitMs) {
-      if (db && typeof db.collection !== 'undefined') {
-        return true;
+      try {
+        const db = await getDb();
+        if (db && typeof db.collection !== 'undefined') {
+          return true;
+        }
+      } catch (error) {
+        // Continue waiting
       }
 
       // Wait 100ms before checking again
@@ -345,6 +349,7 @@ class JobService {
         };
       }
 
+      const db = await getDb();
       const jobRef = doc(db, this.JOBS_COLLECTION, request.jobId);
       const jobDoc = await getDoc(jobRef);
 
@@ -393,6 +398,7 @@ class JobService {
     try {
       console.log('❌ JobService: Declining job:', jobId, 'for staff:', staffId);
 
+      const db = await getDb();
       const jobRef = doc(db, this.JOBS_COLLECTION, jobId);
       const jobDoc = await getDoc(jobRef);
 
@@ -436,80 +442,13 @@ class JobService {
   }
 
   /**
-   * Complete a job with photos
-   */
-  async completeJob(jobId: string, staffId: string, photos: string[], completionNotes?: string): Promise<JobResponse> {
-    try {
-      console.log('✅ JobService: Completing job:', jobId, 'for staff:', staffId);
-
-      if (!photos || photos.length === 0) {
-        return {
-          success: false,
-          error: 'At least one photo is required to complete the job',
-        };
-      }
-
-      const jobRef = doc(db, this.JOBS_COLLECTION, jobId);
-      const jobDoc = await getDoc(jobRef);
-
-      if (!jobDoc.exists()) {
-        return {
-          success: false,
-          error: 'Job not found',
-        };
-      }
-
-      const jobData = jobDoc.data();
-
-      // Verify the job is assigned to this staff member
-      if (jobData.assignedTo !== staffId) {
-        return {
-          success: false,
-          error: 'Job not assigned to this staff member',
-        };
-      }
-
-      // Verify the job is in an acceptable state for completion
-      if (!['accepted', 'in_progress'].includes(jobData.status)) {
-        return {
-          success: false,
-          error: 'Job cannot be completed in its current state',
-        };
-      }
-
-      // Update job status to completed
-      await updateDoc(jobRef, {
-        status: 'completed',
-        completedAt: serverTimestamp(),
-        photos: photos,
-        completionNotes: completionNotes || '',
-        actualDuration: jobData.startedAt ?
-          Math.round((Date.now() - jobData.startedAt.toDate().getTime()) / (1000 * 60)) :
-          jobData.estimatedDuration,
-        updatedAt: serverTimestamp(),
-      });
-
-      console.log('✅ JobService: Job completed successfully');
-      return {
-        success: true,
-        message: 'Job completed successfully',
-      };
-    } catch (error) {
-      console.error('❌ JobService: Error completing job:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to complete job',
-      };
-    }
-  }
-
-  /**
    * Upload photos for a job
    */
   async uploadJobPhotos(jobId: string, photos: string[]): Promise<JobResponse> {
     try {
       console.log('📸 JobService: Uploading photos for job:', jobId);
 
+      const db = await getDb();
       const jobRef = doc(db, this.JOBS_COLLECTION, jobId);
       const jobDoc = await getDoc(jobRef);
 
@@ -578,53 +517,83 @@ class JobService {
    */
   async completeJob(request: CompleteJobRequest): Promise<JobResponse> {
     try {
-      console.log('🏁 JobService: Completing job:', request.jobId);
+      console.log('🏁 JobService: Completing job and moving to completed collection:', request.jobId);
 
+      const db = await getDb();
       const batch = writeBatch(db);
+      
+      // Step 1: Get the current job data
       const jobRef = doc(db, this.JOBS_COLLECTION, request.jobId);
+      const jobDoc = await getDoc(jobRef);
 
-      // Update job status and completion details
-      batch.update(jobRef, {
+      if (!jobDoc.exists()) {
+        return {
+          success: false,
+          error: 'Job not found',
+        };
+      }
+
+      const jobData = jobDoc.data();
+
+      // Step 2: Update requirements with completion data
+      let updatedRequirements = jobData.requirements || [];
+      if (request.requirements && request.requirements.length > 0 && jobData.requirements && jobData.requirements.length > 0) {
+        updatedRequirements = jobData.requirements.map((req: any) => {
+          const update = request.requirements.find(r => r.id === req.id);
+          if (update) {
+            return {
+              ...req,
+              isCompleted: update.isCompleted,
+              completedAt: update.isCompleted ? new Date() : null,
+              completedBy: update.isCompleted ? request.staffId : null,
+              notes: update.notes || req.notes,
+              photos: update.photos || req.photos,
+            };
+          }
+          return req;
+        });
+      }
+
+      // Step 3: Create completed job document with all data
+      const completedJobData = {
+        ...jobData,
+        // Completion metadata
         status: 'completed',
         completedAt: serverTimestamp(),
+        completedBy: request.staffId,
         actualDuration: request.actualDuration,
         completionNotes: request.completionNotes,
         actualCost: request.actualCost || null,
+        
+        // Updated requirements
+        requirements: updatedRequirements,
+        
+        // Photo URLs (from completion)
+        photos: request.photos || [],
+        
+        // Timestamps
         updatedAt: serverTimestamp(),
-      });
+        movedToCompletedAt: serverTimestamp(),
+        
+        // Original job metadata for reference
+        originalJobId: request.jobId,
+        originalCreatedAt: jobData.createdAt,
+      };
 
-      // Update requirements
-      if (request.requirements && request.requirements.length > 0) {
-        const jobDoc = await getDoc(jobRef);
-        if (jobDoc.exists()) {
-          const jobData = jobDoc.data();
-          const updatedRequirements = jobData.requirements?.map((req: any) => {
-            const update = request.requirements.find(r => r.id === req.id);
-            if (update) {
-              return {
-                ...req,
-                isCompleted: update.isCompleted,
-                completedAt: update.isCompleted ? new Date() : null,
-                completedBy: update.isCompleted ? request.staffId : null,
-                notes: update.notes || req.notes,
-                photos: update.photos || req.photos,
-              };
-            }
-            return req;
-          });
+      // Step 4: Add to completed_jobs collection
+      const completedJobRef = doc(db, this.COMPLETED_JOBS_COLLECTION, request.jobId);
+      batch.set(completedJobRef, completedJobData);
 
-          batch.update(jobRef, {
-            requirements: updatedRequirements,
-          });
-        }
-      }
+      // Step 5: Remove from active jobs collection
+      batch.delete(jobRef);
 
+      // Step 6: Commit the transaction
       await batch.commit();
 
-      console.log('✅ JobService: Job completed successfully');
+      console.log('✅ JobService: Job completed and moved to completed_jobs collection successfully');
       return {
         success: true,
-        message: 'Job completed successfully',
+        message: 'Job completed and moved to completed collection successfully',
       };
     } catch (error) {
       console.error('❌ JobService: Error completing job:', error);
@@ -636,12 +605,118 @@ class JobService {
   }
 
   /**
+   * Get completed jobs from the completed_jobs collection
+   * For webapp management access
+   */
+  async getCompletedJobs(filters?: {
+    staffId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    propertyId?: string;
+    limit?: number;
+  }): Promise<JobListResponse> {
+    try {
+      console.log('📊 JobService: Getting completed jobs from completed_jobs collection');
+
+      const db = await getDb();
+      const completedJobsRef = collection(db, this.COMPLETED_JOBS_COLLECTION);
+      
+      // Build query with filters
+      let q = query(completedJobsRef, orderBy('completedAt', 'desc'));
+      
+      if (filters?.staffId) {
+        q = query(q, where('completedBy', '==', filters.staffId));
+      }
+      
+      if (filters?.propertyId) {
+        q = query(q, where('propertyId', '==', filters.propertyId));
+      }
+      
+      if (filters?.startDate) {
+        q = query(q, where('completedAt', '>=', filters.startDate));
+      }
+      
+      if (filters?.endDate) {
+        q = query(q, where('completedAt', '<=', filters.endDate));
+      }
+      
+      if (filters?.limit) {
+        q = query(q, limit(filters.limit));
+      }
+
+      const snapshot = await getDocs(q);
+      const completedJobs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Job[];
+
+      console.log(`✅ JobService: Retrieved ${completedJobs.length} completed jobs`);
+      return {
+        success: true,
+        jobs: completedJobs,
+        total: completedJobs.length,
+        page: 1,
+        limit: filters?.limit || completedJobs.length,
+      };
+    } catch (error) {
+      console.error('❌ JobService: Error getting completed jobs:', error);
+      return {
+        success: false,
+        jobs: [],
+        total: 0,
+        page: 1,
+        limit: 0,
+        error: error instanceof Error ? error.message : 'Failed to get completed jobs',
+      };
+    }
+  }
+
+  /**
+   * Get a single completed job by ID
+   * For webapp management access
+   */
+  async getCompletedJobById(jobId: string): Promise<JobResponse> {
+    try {
+      console.log('📋 JobService: Getting completed job by ID:', jobId);
+
+      const db = await getDb();
+      const completedJobRef = doc(db, this.COMPLETED_JOBS_COLLECTION, jobId);
+      const completedJobDoc = await getDoc(completedJobRef);
+
+      if (!completedJobDoc.exists()) {
+        return {
+          success: false,
+          error: 'Completed job not found',
+        };
+      }
+
+      const completedJob = {
+        id: completedJobDoc.id,
+        ...completedJobDoc.data()
+      } as Job;
+
+      console.log('✅ JobService: Retrieved completed job successfully');
+      return {
+        success: true,
+        job: completedJob,
+      };
+    } catch (error) {
+      console.error('❌ JobService: Error getting completed job:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get completed job',
+      };
+    }
+  }
+
+  /**
    * Reject a job assignment
    */
   async rejectJob(request: RejectJobRequest): Promise<JobResponse> {
     try {
       console.log('❌ JobService: Rejecting job:', request.jobId);
 
+      const db = await getDb();
       const jobRef = doc(db, this.JOBS_COLLECTION, request.jobId);
       await updateDoc(jobRef, {
         status: 'rejected',
@@ -666,6 +741,52 @@ class JobService {
   }
 
   /**
+   * Apply property requirements template to job data
+   * Call this before creating a job to add property requirements
+   */
+  async applyPropertyRequirementsToJob(jobData: any, propertyId: string): Promise<any> {
+    try {
+      console.log('� JobService: Applying property requirements to job:', propertyId);
+
+      // Get property requirements template
+      const { propertyService } = await import('./propertyService');
+      const requirementsTemplate = await propertyService.getPropertyRequirementsTemplate(propertyId);
+      
+      // Convert template to job requirements format
+      const requirements = requirementsTemplate.map(item => ({
+        id: item.id,
+        description: item.description,
+        isCompleted: false,
+        isRequired: item.isRequired,
+        category: item.category,
+        photos: [],
+        notes: '',
+        estimatedTime: item.estimatedTime,
+        templateNotes: item.notes,
+        completedAt: null,
+        completedBy: null,
+      }));
+
+      console.log(`✅ JobService: Applied ${requirements.length} requirements from property template`);
+
+      // Return job data with requirements
+      return {
+        ...jobData,
+        requirements,
+        propertyId,
+      };
+    } catch (error) {
+      console.error('❌ JobService: Error applying property requirements:', error);
+      // Return original job data if there's an error
+      return {
+        ...jobData,
+        requirements: [],
+        propertyId,
+      };
+    }
+  }
+
+  /**
    * Upload job photo
    */
   async uploadJobPhoto(
@@ -676,18 +797,51 @@ class JobService {
   ): Promise<{ success: boolean; photo?: JobPhoto; error?: string }> {
     try {
       console.log('📸 JobService: Uploading photo for job:', jobId);
+      console.log('📸 JobService: Image URI:', imageUri);
+      console.log('📸 JobService: Photo type:', type);
+
+      // Validate inputs
+      if (!jobId || !imageUri) {
+        throw new Error('Missing required parameters: jobId or imageUri');
+      }
+
+      // Get Firebase Storage instance directly
+      let storageInstance;
+      try {
+        console.log('🔄 Getting Firebase Storage instance...');
+        const app = getApp();
+        storageInstance = getStorage(app);
+        console.log('✅ Firebase Storage instance obtained successfully');
+      } catch (storageError) {
+        console.error('❌ Failed to get Firebase Storage instance:', storageError);
+        const errorMessage = storageError instanceof Error ? storageError.message : 'Unknown error';
+        throw new Error(`Firebase Storage is not available: ${errorMessage}`);
+      }
 
       // Create unique filename
       const timestamp = Date.now();
       const filename = `job_${jobId}_${type}_${timestamp}.jpg`;
-      const photoRef = ref(storage, `job_photos/${jobId}/${filename}`);
+      
+      console.log('📁 JobService: Creating storage reference for:', filename);
+      console.log('🗄️ JobService: Storage instance type:', typeof storageInstance);
+      const photoRef = ref(storageInstance, `job_photos/${jobId}/${filename}`);
 
+      console.log('🌐 JobService: Fetching image from URI...');
       // Convert image URI to blob
       const response = await fetch(imageUri);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      }
+      
       const blob = await response.blob();
+      console.log('📊 JobService: Image blob created, size:', blob.size);
 
+      console.log('⬆️ JobService: Uploading to Firebase Storage...');
       // Upload to Firebase Storage
       const uploadResult = await uploadBytes(photoRef, blob);
+      
+      console.log('🔗 JobService: Getting download URL...');
       const downloadURL = await getDownloadURL(uploadResult.ref);
 
       // Create photo document
@@ -702,6 +856,7 @@ class JobService {
         mimeType: blob.type,
       };
 
+      console.log('📝 JobService: Adding photo document to Firestore...');
       // Add photo to Firestore
       const db = await getDb();
       const photoDocRef = await addDoc(collection(db, this.JOB_PHOTOS_COLLECTION), {
@@ -722,6 +877,14 @@ class JobService {
       };
     } catch (error) {
       console.error('❌ JobService: Error uploading photo:', error);
+      console.error('❌ JobService: Error details:', {
+        jobId,
+        imageUri,
+        type,
+        description,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : 'No stack trace'
+      });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to upload photo',

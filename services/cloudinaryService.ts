@@ -41,7 +41,7 @@ class CloudinaryService {
 
   constructor() {
     this.config = {
-      cloudName: 'doez7m1hy',
+      cloudName: 'dkamf5p9a',
       apiKey: '316689738793838',
       uploadPreset: 'property_management_staff_profile', // Use the correct preset directly
     };
@@ -472,7 +472,7 @@ class CloudinaryService {
       }),
       
       // Original SVG (no transformations)
-      original: `https://res.cloudinary.com/doez7m1hy/image/upload/${logoId}`,
+      original: `https://res.cloudinary.com/dkamf5p9a/image/upload/${logoId}`,
     };
   }
 

@@ -36,7 +36,9 @@ const firebaseConfig = {
 console.log('🔥 Firebase Config Check:', {
   hasApiKey: !!firebaseConfig.apiKey,
   projectId: firebaseConfig.projectId,
-  authDomain: firebaseConfig.authDomain
+  authDomain: firebaseConfig.authDomain,
+  storageBucket: firebaseConfig.storageBucket,
+  hasStorageBucket: !!firebaseConfig.storageBucket
 });
 
 // Validate required config - allow development mode
@@ -267,9 +269,23 @@ const getRealtimeDatabase = () => {
 // Initialize Storage (lazy)
 const getFirebaseStorage = () => {
   if (_storage) return _storage;
-  const firebaseApp = getFirebaseApp();
-  _storage = getStorage(firebaseApp);
-  return _storage;
+  
+  try {
+    console.log('🗄️ Initializing Firebase Storage...');
+    const firebaseApp = getFirebaseApp();
+    
+    if (!firebaseConfig.storageBucket) {
+      console.error('❌ Storage bucket not configured');
+      throw new Error('Firebase Storage bucket not configured. Please check EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET environment variable.');
+    }
+    
+    _storage = getStorage(firebaseApp);
+    console.log('✅ Firebase Storage initialized successfully with bucket:', firebaseConfig.storageBucket);
+    return _storage;
+  } catch (error) {
+    console.error('❌ Firebase Storage initialization failed:', error);
+    throw error;
+  }
 };
 
 // Create a robust Firebase Auth proxy that handles timing issues with reduced logging

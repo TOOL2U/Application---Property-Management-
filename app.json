@@ -4,10 +4,10 @@
     "slug": "sia-moon-staff",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_1024,h_1024,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
+    "icon": "https://res.cloudinary.com/dkamf5p9a/image/upload/w_1024,h_1024,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "https://res.cloudinary.com/doez7m1hy/image/upload/w_600,h_600,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
+      "image": "https://res.cloudinary.com/dkamf5p9a/image/upload/w_600,h_600,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
       "resizeMode": "contain",
       "backgroundColor": "#000000",
       "hideExponentText": true
@@ -33,7 +33,7 @@
     "android": {
       "package": "com.shauntool2u.siamoonstaff",
       "adaptiveIcon": {
-        "foregroundImage": "https://res.cloudinary.com/doez7m1hy/image/upload/w_1024,h_1024,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
+        "foregroundImage": "https://res.cloudinary.com/dkamf5p9a/image/upload/w_1024,h_1024,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
         "backgroundColor": "#000000"
       },
       "permissions": [
@@ -50,7 +50,7 @@
       ]
     },
     "web": {
-      "favicon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_32,h_32,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
+      "favicon": "https://res.cloudinary.com/dkamf5p9a/image/upload/w_32,h_32,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
       "bundler": "metro",
       "serviceWorkerPath": "firebase-messaging-sw.js",
       "backgroundColor": "#000000",
@@ -64,7 +64,7 @@
       }
     },
     "notification": {
-      "icon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_64,h_64,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
+      "icon": "https://res.cloudinary.com/dkamf5p9a/image/upload/w_64,h_64,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
       "color": "#8b5cf6"
     },
     "plugins": [
@@ -81,7 +81,7 @@
       [
         "expo-notifications",
         {
-          "icon": "https://res.cloudinary.com/doez7m1hy/image/upload/w_64,h_64,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
+          "icon": "https://res.cloudinary.com/dkamf5p9a/image/upload/w_64,h_64,c_fill,f_png,q_auto/Logo%20-%20Black-bg%20-%20Sia%20Moon",
           "color": "#8b5cf6",
           "sounds": []
         }

@@ -29,21 +29,38 @@ export default function Index() {
       backgroundColor: '#000000'
     }}>
       <Logo
-        size="appIcon"
-        style={{ marginBottom: 32 }}
+        size="large"
+        style={{ 
+          marginBottom: 40,
+          shadowColor: '#C6FF00',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.3,
+          shadowRadius: 10,
+        }}
         accessibilityLabel="Sia Moon Staff App Logo"
       />
       <Text style={{
         color: '#ffffff',
-        fontSize: 28,
+        fontSize: 32,
         fontWeight: 'bold',
-        marginBottom: 24,
+        marginBottom: 16,
         textAlign: 'center',
-        letterSpacing: 1
+        letterSpacing: 2,
+        fontFamily: 'Inter_700Bold',
       }}>
-        Sia Moon Staff
+        Sia Moon
       </Text>
-      <ActivityIndicator size="large" color="#8b5cf6" />
+      <Text style={{
+        color: '#C6FF00',
+        fontSize: 18,
+        marginBottom: 40,
+        textAlign: 'center',
+        letterSpacing: 1,
+        fontFamily: 'Inter_500Medium',
+      }}>
+        Property Management Staff
+      </Text>
+      <ActivityIndicator size="large" color="#C6FF00" />
     </View>
   );
 }

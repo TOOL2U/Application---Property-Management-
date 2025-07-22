@@ -144,9 +144,21 @@ class JobSessionAuditService {
         updatedAt: data.startTime,
         lastActivityAt: data.startTime,
         
-        // Context for AI
-        jobDetails: data.jobDetails,
-        staffDetails: data.staffDetails,
+        // Context for AI - sanitize undefined values for Firestore
+        jobDetails: {
+          title: data.jobDetails?.title || 'Untitled Job',
+          description: data.jobDetails?.description || '',
+          category: data.jobDetails?.category || 'general',
+          priority: data.jobDetails?.priority || 'medium',
+          ...(data.jobDetails?.estimatedDuration !== undefined && { estimatedDuration: data.jobDetails.estimatedDuration }),
+          ...(data.jobDetails?.specialInstructions !== undefined && { specialInstructions: data.jobDetails.specialInstructions }),
+        },
+        staffDetails: {
+          staffId: data.staffDetails?.staffId || data.staffId,
+          name: data.staffDetails?.name || 'Unknown Staff',
+          role: data.staffDetails?.role || 'staff',
+          ...(data.staffDetails?.department !== undefined && { department: data.staffDetails.department }),
+        },
       };
 
       const db = await getDb();

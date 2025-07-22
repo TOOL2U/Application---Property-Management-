@@ -13,6 +13,7 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
@@ -28,8 +29,8 @@ import * as Notifications from 'expo-notifications';
 import type { Job } from '@/types/job';
 import { useStaffJobs } from '@/hooks/useStaffJobs';
 import JobAcceptanceModal from '@/components/jobs/JobAcceptanceModal';
-import { JobStartConfirmation } from '@/components/jobs/JobStartConfirmation';
-import { JobPhotoChecklistModal } from '@/components/jobs/JobPhotoChecklistModal';
+import { JobStartModal } from '@/components/jobs/JobStartModal';
+import { JobExecutionScreen } from '@/components/jobs/JobExecutionScreen';
 import ErrorBoundary, { JobListErrorBoundary } from '@/components/shared/ErrorBoundary';
 
 export default function EnhancedStaffJobsView() {
@@ -61,7 +62,6 @@ export default function EnhancedStaffJobsView() {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showAcceptanceModal, setShowAcceptanceModal] = useState(false);
   const [showJobStartModal, setShowJobStartModal] = useState(false);
-  const [showPhotoChecklistModal, setShowPhotoChecklistModal] = useState(false);
   const [jobToStart, setJobToStart] = useState<Job | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notificationCount, setNotificationCount] = useState(0);
@@ -201,17 +201,16 @@ export default function EnhancedStaffJobsView() {
 
   const handleJobStartConfirmed = async (job: Job) => {
     try {
-      // The JobStartConfirmation component handles the actual job start logic
-      console.log('✅ Job started successfully:', job.id);
+      // The JobStartModal handles the actual job start logic with audit integration
+      console.log('✅ Job started successfully with audit tracking:', job.id);
       
       // Refresh jobs to get updated status
       refreshJobs();
       
-      // Auto-open photo checklist for newly started jobs
-      setTimeout(() => {
-        setJobToStart(job);
-        setShowPhotoChecklistModal(true);
-      }, 500);
+      // Navigate to job execution screen for in-progress jobs
+      if (job.status === 'in_progress') {
+        console.log('🔄 Job now in progress, ready for execution phase');
+      }
       
     } catch (error) {
       console.error('Error in job start confirmation:', error);
@@ -228,17 +227,15 @@ export default function EnhancedStaffJobsView() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): string => {
     switch (status) {
-      case 'assigned': return '#6b7280';
-      case 'accepted': return '#22c55e';
-      case 'in_progress': return '#3b82f6';
-      case 'completed': return '#10b981';
-      default: return '#6b7280';
+      case 'assigned': return '#C6FF00';
+      case 'accepted': return '#60A5FA';
+      case 'in_progress': return '#F59E0B';
+      // Removed completed status color - completed jobs don't appear in mobile app
+      default: return '#8E9AAE';
     }
-  };
-
-  const formatDate = (timestamp: any) => {
+  };  const formatDate = (timestamp: any) => {
     const date = timestamp?.toDate ? timestamp.toDate() : new Date(timestamp);
     return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString([], { 
       hour: '2-digit', 
@@ -367,23 +364,20 @@ export default function EnhancedStaffJobsView() {
             </View>
           )}
 
-          {job.status === 'completed' && (
-            <View style={styles.completedButton}>
-              <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
-              <Text style={styles.completedButtonText}>{t('jobs.completed')}</Text>
-            </View>
-          )}
+          {/* Removed completed job UI - completed jobs should not appear in mobile app */}
         </View>
       </View>
     </TouchableOpacity>
   );
 
   const getFilteredJobs = () => {
+    // Filter out completed jobs entirely - they should not appear in mobile app
+    const activeJobsOnly = [...pendingJobs, ...activeJobs];
+    
     switch (selectedFilter) {
       case 'pending': return pendingJobs;
       case 'active': return activeJobs;
-      case 'completed': return completedJobs;
-      default: return [...pendingJobs, ...activeJobs, ...completedJobs];
+      default: return activeJobsOnly; // Only show pending and active jobs
     }
   };
 
@@ -395,10 +389,20 @@ export default function EnhancedStaffJobsView() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>{t('jobs.myJobs')}</Text>
-            <Text style={styles.headerSubtitle}>
-              {currentProfile?.name}
-            </Text>
+            <View style={styles.headerTitleRow}>
+              <Image 
+                source={{ uri: 'https://res.cloudinary.com/dkamf5p9a/image/upload/v1/Logo%20-%20Black-bg%20-%20Sia%20Moon' }}
+                style={styles.brandLogo}
+                resizeMode="contain"
+                onError={(error) => console.log('Logo failed to load:', error)}
+              />
+              <View style={styles.headerTextContent}>
+                <Text style={styles.headerTitle}>{t('jobs.myJobs')}</Text>
+                <Text style={styles.headerSubtitle}>
+                  {currentProfile?.name}
+                </Text>
+              </View>
+            </View>
           </View>
           
           <View style={styles.headerStats}>
@@ -413,14 +417,14 @@ export default function EnhancedStaffJobsView() {
           </View>
         </View>
 
-        {/* Filter Tabs */}
+        {/* Filter Tabs - Removed completed filter */}
         <View style={styles.filterContainer}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filterScrollView}
           >
-            {['all', 'pending', 'active', 'completed'].map((filter) => (
+            {['all', 'pending', 'active'].map((filter) => (
               <TouchableOpacity
                 key={filter}
                 style={[
@@ -500,30 +504,35 @@ export default function EnhancedStaffJobsView() {
           }}
         />
 
-        {/* Job Start Confirmation Modal */}
+        {/* Job Start Modal with Audit Integration */}
         {jobToStart && (
-          <JobStartConfirmation
+          <JobStartModal
             job={jobToStart}
             visible={showJobStartModal}
             onDismiss={() => {
               setShowJobStartModal(false);
               setJobToStart(null);
             }}
-            onJobStarted={handleJobStartConfirmed}
+            onJobStarted={(updatedJob, sessionData) => {
+              console.log('✅ Job started with audit data:', updatedJob.id, sessionData);
+              setShowJobStartModal(false);
+              setJobToStart(null);
+              handleJobStartConfirmed(updatedJob);
+            }}
           />
         )}
 
-        {/* Photo Checklist Modal */}
-        {jobToStart && (
-          <JobPhotoChecklistModal
+        {/* Job Execution Screen for In-Progress Jobs */}
+        {jobToStart && jobToStart.status === 'in_progress' && (
+          <JobExecutionScreen
             job={jobToStart}
-            visible={showPhotoChecklistModal}
-            onDismiss={() => {
-              setShowPhotoChecklistModal(false);
+            onJobCompleted={(completedJob) => {
+              console.log('✅ Job completed:', completedJob.id);
               setJobToStart(null);
+              refreshJobs();
             }}
-            onChecklistComplete={(canComplete) => {
-              console.log('Photo checklist completion status:', canComplete);
+            onGoBack={() => {
+              setJobToStart(null);
             }}
           />
         )}
@@ -561,6 +570,19 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontFamily: 'Inter_400Regular',
   },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  brandLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+  },
+  headerTextContent: {
+    flex: 1,
+  },
   headerStats: {
     flexDirection: 'row',
     gap: 12,
@@ -588,6 +610,7 @@ const styles = StyleSheet.create({
   },
   filterScrollView: {
     gap: 12,
+    justifyContent: 'center',
   },
   filterChip: {
     paddingHorizontal: 16,
@@ -772,19 +795,7 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     fontFamily: 'Inter_600SemiBold',
   },
-  completedButton: {
-    backgroundColor: '#10B981',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  completedButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    fontFamily: 'Inter_600SemiBold',
-  },
+  // Removed completedButton and completedButtonText styles - not needed since completed jobs don't appear in mobile app
   bottomSpacing: {
     height: 50,
   },

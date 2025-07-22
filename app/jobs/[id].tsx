@@ -22,6 +22,7 @@ import { Job, JobPhoto } from '@/types/job';
 import { jobService } from '@/services/jobService';
 import { useStaffAuth } from '@/hooks/useStaffAuth';
 import { usePINAuth } from '@/contexts/PINAuthContext';
+import { JobCompletionWizard } from '@/components/jobs/JobCompletionWizard';
 import {
   ArrowLeft,
   MapPin,
@@ -104,6 +105,7 @@ export default function JobDetailsScreen() {
   } | null>(null);
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [showCompletionWizard, setShowCompletionWizard] = useState(false);
 
   useEffect(() => {
     if (id && user?.id) {
@@ -292,63 +294,108 @@ export default function JobDetailsScreen() {
   const handleCompleteJob = async () => {
     if (!job || !user?.id) return;
 
-    if (photos.length === 0) {
-      Alert.alert(
-        'Photos Required',
-        'You must upload at least one photo before completing the job.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
+    // Show the completion wizard directly
+    setShowCompletionWizard(true);
+  };
 
-    Alert.alert(
-      'Complete Job',
-      'Are you sure you want to mark this job as completed?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Complete',
-          style: 'default',
-          onPress: async () => {
-            try {
-              const actualDuration = job.startedAt 
-                ? Math.round((Date.now() - new Date(job.startedAt).getTime()) / (1000 * 60))
-                : job.estimatedDuration;
-
-              const response = await jobService.completeJob({
-                jobId: job.id,
-                staffId: user.id,
-                completedAt: new Date(),
-                actualDuration,
-                completionNotes: 'Job completed successfully',
-                photos: photos.map(p => p.id),
-                requirements: job.requirements.map(req => ({
-                  id: req.id,
-                  isCompleted: true,
-                })),
-              });
-
-              if (response.success) {
-                Alert.alert(
-                  'Job Completed',
-                  'Job has been marked as completed successfully!',
-                  [
-                    {
-                      text: 'OK',
-                      onPress: () => router.back(),
-                    },
-                  ]
-                );
-              } else {
-                Alert.alert('Error', response.error || 'Failed to complete job');
-              }
-            } catch (error) {
-              Alert.alert('Error', 'Failed to complete job');
+  const handleWizardJobCompleted = async (updatedJob: Job, completionData: any) => {
+    try {
+      console.log('🏁 Handling job completion from wizard:', updatedJob.id);
+      
+      // Upload photos to Firebase Storage if any
+      const uploadedPhotoUrls: string[] = [];
+      if (completionData.uploadedPhotos && completionData.uploadedPhotos.length > 0) {
+        console.log('📸 Uploading completion photos:', completionData.uploadedPhotos.length);
+        
+        for (const [index, photo] of completionData.uploadedPhotos.entries()) {
+          try {
+            console.log(`📸 Uploading photo ${index + 1}/${completionData.uploadedPhotos.length}:`, {
+              id: photo.id,
+              uri: photo.uri,
+              type: photo.type,
+              description: photo.description
+            });
+            
+            const response = await jobService.uploadJobPhoto(
+              updatedJob.id,
+              photo.uri,
+              'completion',
+              photo.description || 'Job completion photo'
+            );
+            
+            if (response.success && response.photo?.url) {
+              uploadedPhotoUrls.push(response.photo.url);
+              console.log(`✅ Photo ${index + 1} uploaded successfully:`, response.photo.url);
+            } else {
+              console.warn(`⚠️ Photo ${index + 1} upload failed:`, response.error);
             }
-          },
-        },
-      ]
-    );
+          } catch (photoError) {
+            console.error(`❌ Error uploading photo ${index + 1}:`, photoError);
+            console.error(`❌ Photo details:`, photo);
+          }
+        }
+        
+        console.log(`📊 Photo upload summary: ${uploadedPhotoUrls.length}/${completionData.uploadedPhotos.length} successful`);
+      }
+
+      // Calculate actual duration
+      const actualDuration = job?.startedAt 
+        ? Math.round((Date.now() - new Date(job.startedAt).getTime()) / (1000 * 60))
+        : job?.estimatedDuration || 0;
+
+      // Create complete job request with all data
+      const completeJobRequest = {
+        jobId: updatedJob.id,
+        staffId: user?.id || '',
+        completedAt: completionData.endTime || new Date(),
+        actualDuration,
+        completionNotes: completionData.completionNotes || 'Job completed via wizard',
+        photos: [...uploadedPhotoUrls, ...photos.map(p => p.id)], // Include both new and existing photos
+        requirements: (completionData.requirementsSummary || []).map((req: any) => ({
+          id: req.id || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          isCompleted: req.isCompleted || false,
+          notes: req.notes || '',
+        })),
+        actualCost: completionData.actualCost || null,
+      };
+
+      console.log('📝 Submitting job completion request:', completeJobRequest);
+
+      // Call the job service to complete the job in Firestore
+      const response = await jobService.completeJob(completeJobRequest);
+
+      if (response.success) {
+        console.log('✅ Job completed successfully in Firestore');
+        setJob(updatedJob);
+        setShowCompletionWizard(false);
+        
+        Alert.alert(
+          '🎉 Job Completed!', 
+          'Job has been completed and saved to the database successfully. Management can now view the completion data in the webapp.',
+          [
+            { 
+              text: 'Great!', 
+              onPress: () => router.back(),
+              style: 'default' 
+            }
+          ]
+        );
+      } else {
+        console.error('❌ Job completion failed:', response.error);
+        Alert.alert(
+          'Error', 
+          `Failed to complete job: ${response.error}. Please try again.`,
+          [{ text: 'OK', style: 'default' }]
+        );
+      }
+    } catch (error) {
+      console.error('❌ Error completing job:', error);
+      Alert.alert(
+        'Error', 
+        'Failed to complete job. Please check your connection and try again.',
+        [{ text: 'OK', style: 'default' }]
+      );
+    }
   };
 
   if (isLoading || !job) {
@@ -448,6 +495,14 @@ export default function JobDetailsScreen() {
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
+
+      {/* Job Completion Wizard */}
+      <JobCompletionWizard
+        job={job}
+        visible={showCompletionWizard}
+        onDismiss={() => setShowCompletionWizard(false)}
+        onJobCompleted={handleWizardJobCompleted}
+      />
     </SafeAreaView>
   );
 }

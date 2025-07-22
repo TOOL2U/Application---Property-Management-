@@ -73,7 +73,7 @@ export const AppLogo = {
   }),
 
   // Original SVG (no transformations - best quality)
-  original: `https://res.cloudinary.com/doez7m1hy/image/upload/Logo%20-%20Black-bg%20-%20Sia%20Moon`,
+  original: `https://res.cloudinary.com/dkamf5p9a/image/upload/Logo%20-%20Black-bg%20-%20Sia%20Moon`,
 
   // Responsive logo function for different screen sizes
   responsive: (width: number, height: number, format: 'png' | 'webp' | 'auto' = 'auto') => {

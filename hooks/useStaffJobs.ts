@@ -64,10 +64,10 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
   const [error, setError] = useState<string | null>(null);
   const [fromCache, setFromCache] = useState(false);
 
-  // Derived state
+  // Derived state - Filter out completed jobs since they're moved to completed_jobs collection
   const activeJobs = jobs.filter(job => ['accepted', 'in_progress'].includes(job.status));
   const pendingJobs = jobs.filter(job => job.status === 'assigned'); // Jobs assigned to staff, waiting for acceptance
-  const completedJobs = jobs.filter(job => job.status === 'completed');
+  const completedJobs: Job[] = []; // Always empty - completed jobs are moved to separate collection
 
   // Load jobs function - stabilized dependencies
   const loadJobs = useCallback(async (useCache?: boolean) => {
@@ -93,11 +93,16 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
       );
 
       if (response.success) {
-        setJobs(response.jobs);
+        // Filter out completed jobs - they should be in completed_jobs collection, not shown in mobile app
+        const activeJobsOnly = response.jobs.filter(job => job.status !== 'completed');
+        setJobs(activeJobsOnly);
         setFromCache(response.fromCache || false);
         setError(null);
-        console.log(`✅ useStaffJobs: Loaded ${response.jobs.length} jobs (from cache: ${response.fromCache})`);
-        console.log('🔍 useStaffJobs: Job details:', response.jobs.map(job => ({
+        console.log(`✅ useStaffJobs: Loaded ${activeJobsOnly.length} active jobs (from cache: ${response.fromCache})`);
+        if (response.jobs.length !== activeJobsOnly.length) {
+          console.log(`🗂️ useStaffJobs: Filtered out ${response.jobs.length - activeJobsOnly.length} completed jobs`);
+        }
+        console.log('🔍 useStaffJobs: Job details:', activeJobsOnly.map(job => ({
           id: job.id,
           title: job.title,
           status: job.status,
