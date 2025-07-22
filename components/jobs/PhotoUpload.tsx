@@ -24,7 +24,6 @@ import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 
 import { PhotoRequirement, photoVerificationService } from '@/services/photoVerificationService';
-import { aiLoggingService } from '@/services/aiLoggingService';
 import { usePINAuth } from '@/contexts/PINAuthContext';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -149,15 +148,6 @@ export const PhotoUpload: React.FC<PhotoUploadProps> = ({
 
       // Here you would typically upload to Firebase Storage
       // For now, we'll just use the local URI
-      
-      // Log photo upload
-      await aiLoggingService.logAIInteraction({
-        jobId,
-        staffId: currentProfile.id,
-        question: `Photo uploaded for: ${requirement.description}`,
-        response: `Photo uploaded successfully${locationData ? ' with location data' : ''}`,
-        aiFunction: 'photos',
-      });
 
       // Call parent callback
       onPhotoUploaded(requirement.id, selectedImage, locationData || undefined);

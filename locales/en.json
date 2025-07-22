@@ -52,10 +52,7 @@
     "profile": "Profile",
     "settings": "Settings",
     "notifications": "Notifications",
-    "scan": "Scan",
-    "fieldOpsAI": "AI Assistant",
-    "aiLogs": "🧠 AI Logs",
-    "foaChat": "💬 FOA Chat"
+    "scan": "Scan"
   },
   "settings": {
     "title": "Settings",

@@ -1,7 +1,7 @@
 /**
  * Job Start Confirmation Component
- * Handles job start confirmation with photo checklist and AI assistant integration
- * Enhanced with modern dark theme to match AI Hub design
+ * Handles job start confirmation with photo checklist
+ * Enhanced with modern dark theme
  */
 
 import React, { useState, useEffect } from 'react';
@@ -25,7 +25,6 @@ import { Job } from '@/types/job';
 import { jobService } from '@/services/jobService';
 import { photoVerificationService, PhotoRequirement, JobPhotoChecklist } from '@/services/photoVerificationService';
 import { smartJobNotificationService } from '@/services/smartJobNotificationService';
-import { aiLoggingService } from '@/services/aiLoggingService';
 import { usePINAuth } from '@/contexts/PINAuthContext';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -62,18 +61,9 @@ export const JobStartConfirmation: React.FC<JobStartConfirmationProps> = ({
     try {
       setChecklistLoading(true);
       
-      // Generate AI-enhanced photo checklist
+      // Generate photo checklist
       const requirements = await photoVerificationService.generateAIPhotoChecklist(job, currentProfile.id);
       setPhotoChecklist(requirements);
-      
-      // Log checklist generation
-      await aiLoggingService.logAIInteraction({
-        jobId: job.id,
-        staffId: currentProfile.id,
-        question: `Generated photo checklist for job start`,
-        response: `${requirements.length} photo requirements generated`,
-        aiFunction: 'photos',
-      });
     } catch (error) {
       console.error('❌ Error loading photo checklist:', error);
       
@@ -113,15 +103,6 @@ export const JobStartConfirmation: React.FC<JobStartConfirmationProps> = ({
       });
 
       const updatedJob = { ...job, status: 'in_progress' as const };
-
-      // Log job start event
-      await aiLoggingService.logAIInteraction({
-        jobId: job.id,
-        staffId: currentProfile.id,
-        question: 'Job started',
-        response: `Job ${job.title} started successfully`,
-        aiFunction: 'guidance',
-      });
 
       // Call parent callback
       onJobStarted(updatedJob);
@@ -332,24 +313,6 @@ export const JobStartConfirmation: React.FC<JobStartConfirmationProps> = ({
                     )}
                   </View>
                 )}
-              </View>
-
-              {/* AI Assistant Info Card */}
-              <View style={styles.aiCard}>
-                <LinearGradient
-                  colors={['rgba(198, 255, 0, 0.1)', 'rgba(198, 255, 0, 0.05)']}
-                  style={styles.aiCardGradient}
-                >
-                  <View style={styles.aiCardContent}>
-                    <Ionicons name="hardware-chip" size={24} color="#C6FF00" />
-                    <View style={styles.aiTextContainer}>
-                      <Text style={styles.aiCardTitle}>Field Ops Assistant Ready</Text>
-                      <Text style={styles.aiCardDescription}>
-                        Your AI assistant will provide real-time guidance, photo checklists, and help throughout this job.
-                      </Text>
-                    </View>
-                  </View>
-                </LinearGradient>
               </View>
             </ScrollView>
 
