@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   brandLogo: {
     width: 40,
     height: 40,
-    borderRadius: 0,
+    borderRadius: 12, // Modern rounded
   },
   headerTextContent: {
     flex: 1,
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     backgroundColor: BrandTheme.colors.YELLOW,
-    borderRadius: 0,
+    borderRadius: 12, // Modern rounded
     borderWidth: 1,
     borderColor: BrandTheme.colors.YELLOW,
   },
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: BrandTheme.colors.SURFACE_1,
-    borderRadius: 0,
+    borderRadius: 12, // Modern rounded
     borderWidth: 1,
     borderColor: BrandTheme.colors.BORDER,
   },
@@ -681,7 +681,7 @@ const styles = StyleSheet.create({
     backgroundColor: BrandTheme.colors.YELLOW,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 0,
+    borderRadius: 12, // Modern rounded
     marginTop: 24,
   },
   refreshButtonText: {
@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
   },
   jobCard: {
     marginBottom: 16,
-    borderRadius: 0,
+    borderRadius: 12, // Modern rounded
     backgroundColor: BrandTheme.colors.SURFACE_1,
     borderWidth: 1,
     borderColor: BrandTheme.colors.BORDER,
@@ -728,7 +728,7 @@ const styles = StyleSheet.create({
   priorityBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 0,
+    borderRadius: 12, // Modern rounded
   },
   priorityText: {
     fontSize: 10,
@@ -739,7 +739,7 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 0,
+    borderRadius: 12, // Modern rounded
     alignSelf: 'flex-start',
   },
   statusText: {
@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    borderRadius: 0,
+    borderRadius: 12, // Modern rounded
     backgroundColor: BrandTheme.colors.YELLOW,
   },
   acceptButtonContainer: {

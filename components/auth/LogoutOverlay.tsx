@@ -52,7 +52,7 @@ export default function LogoutOverlay({
           style={{
             width: 80,
             height: 80,
-            borderRadius: 0,
+            borderRadius: 16, // Modern rounded modal
             backgroundColor: BrandTheme.colors.SURFACE_1,
             borderWidth: 2,
             borderColor: BrandTheme.colors.YELLOW,
@@ -110,7 +110,7 @@ export default function LogoutOverlay({
               style={{
                 width: 8,
                 height: 8,
-                borderRadius: 0,
+                borderRadius: 16, // Modern rounded modal
                 backgroundColor: BrandTheme.colors.YELLOW,
                 marginHorizontal: 4,
               }}

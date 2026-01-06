@@ -46,7 +46,7 @@ export function Card({
 const styles = StyleSheet.create({
   // Base card styles (Brand Kit)
   base: {
-    borderRadius: 0, // Brand kit: sharp corners
+    borderRadius: BrandTheme.radius.MD, // Modern rounded corners (12px)
   },
 
   // Variant styles (Brand Kit Implementation)

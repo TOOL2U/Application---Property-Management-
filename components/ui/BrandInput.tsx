@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     backgroundColor: BrandTheme.colors.SURFACE_1,
     borderWidth: 1,
     borderColor: BrandTheme.colors.BORDER,
-    borderRadius: 0, // Brand kit: sharp corners
+    borderRadius: BrandTheme.radius.SM, // Modern rounded corners (8px)
     paddingHorizontal: BrandTheme.spacing.LG,
     paddingVertical: BrandTheme.spacing.MD,
     minHeight: 44,

@@ -113,6 +113,22 @@ export const BRAND_SPACING = {
 } as const;
 
 // =============================================================================
+// BORDER RADIUS SYSTEM - Modern Mobile App Rounded Corners
+// =============================================================================
+
+export const BRAND_RADIUS = {
+  NONE: 0,      // No rounding (legacy)
+  XS: 4,        // Minimal rounding - tiny elements
+  SM: 8,        // Small rounding - buttons, inputs
+  MD: 12,       // Medium rounding - cards, modals
+  LG: 16,       // Large rounding - major containers
+  XL: 20,       // Extra large - special cards
+  XXL: 24,      // Maximum - hero elements
+  PILL: 999,    // Fully rounded - pills, badges
+  CIRCLE: 9999, // Perfect circle - avatars, icons
+} as const;
+
+// =============================================================================
 // BRAND SHADOWS - Yellow Glow Effects
 // =============================================================================
 
@@ -179,7 +195,7 @@ export const BRAND_COMPONENTS = {
       backgroundColor: BRAND_COLORS.YELLOW,
       color: BRAND_COLORS.BLACK,
       ...BRAND_SHADOWS.YELLOW_GLOW,
-      borderRadius: 0, // Sharp corners per brand
+      borderRadius: 8, // Modern rounded corners
       ...BRAND_TYPOGRAPHY.buttonText,
       fontFamily: BRAND_TYPOGRAPHY.fontFamily.primary,
     },
@@ -189,7 +205,7 @@ export const BRAND_COMPONENTS = {
       color: BRAND_COLORS.TEXT_PRIMARY,
       borderWidth: 1,
       borderColor: BRAND_COLORS.BORDER,
-      borderRadius: 0,
+      borderRadius: 8, // Modern rounded corners
       ...BRAND_SHADOWS.BLACK_SMALL,
       fontFamily: BRAND_TYPOGRAPHY.fontFamily.regular,
     },
@@ -199,14 +215,14 @@ export const BRAND_COMPONENTS = {
       color: BRAND_COLORS.YELLOW,
       borderWidth: 2,
       borderColor: BRAND_COLORS.YELLOW,
-      borderRadius: 0,
+      borderRadius: 8, // Modern rounded corners
       fontFamily: BRAND_TYPOGRAPHY.fontFamily.regular,
     },
     
     ghost: {
       backgroundColor: 'transparent',
       color: BRAND_COLORS.TEXT_SECONDARY,
-      borderRadius: 0,
+      borderRadius: 8, // Modern rounded corners
       fontFamily: BRAND_TYPOGRAPHY.fontFamily.regular,
     },
   },
@@ -217,7 +233,7 @@ export const BRAND_COMPONENTS = {
       backgroundColor: BRAND_COLORS.SURFACE_1,
       borderWidth: 1,
       borderColor: BRAND_COLORS.BORDER,
-      borderRadius: 0, // Sharp per brand
+      borderRadius: 12, // Comfortable rounded corners for cards
       padding: BRAND_SPACING.LG,
       ...BRAND_SHADOWS.BLACK_SMALL,
     },
@@ -226,7 +242,7 @@ export const BRAND_COMPONENTS = {
       backgroundColor: BRAND_COLORS.SURFACE_1,
       borderWidth: 1,
       borderColor: BRAND_COLORS.BORDER,
-      borderRadius: 0,
+      borderRadius: 12, // Comfortable rounded corners for cards
       padding: BRAND_SPACING.LG,
       ...BRAND_SHADOWS.BLACK_MEDIUM,
     },
@@ -235,7 +251,7 @@ export const BRAND_COMPONENTS = {
       backgroundColor: BRAND_COLORS.SURFACE_1,
       borderWidth: 1,
       borderColor: BRAND_COLORS.YELLOW,
-      borderRadius: 0,
+      borderRadius: 12, // Comfortable rounded corners for cards
       padding: BRAND_SPACING.LG,
       ...BRAND_SHADOWS.YELLOW_GLOW,
     },
@@ -255,7 +271,7 @@ export const BRAND_COMPONENTS = {
     backgroundColor: BRAND_COLORS.SURFACE_1,
     borderWidth: 1,
     borderColor: BRAND_COLORS.BORDER,
-    borderRadius: 0, // Sharp per brand
+    borderRadius: 8, // Smooth rounded corners for inputs
     color: BRAND_COLORS.TEXT_PRIMARY,
     placeholderTextColor: BRAND_COLORS.TEXT_SECONDARY,
     fontFamily: BRAND_TYPOGRAPHY.fontFamily.regular,
@@ -270,7 +286,7 @@ export const BRAND_COMPONENTS = {
     backgroundColor: BRAND_COLORS.SURFACE_1,
     borderWidth: 1,
     borderColor: BRAND_COLORS.BORDER,
-    borderRadius: 0,
+    borderRadius: 16, // Larger radius for modals
     ...BRAND_SHADOWS.LARGE_GLOW,
   },
 } as const;
@@ -362,6 +378,7 @@ export const BrandTheme = {
   colors: BRAND_COLORS,
   typography: BRAND_TYPOGRAPHY,
   spacing: BRAND_SPACING,
+  radius: BRAND_RADIUS,
   shadows: BRAND_SHADOWS,
   components: BRAND_COMPONENTS,
   animation: BRAND_ANIMATION,

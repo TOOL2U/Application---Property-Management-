@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   base: {
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 0, // Brand kit: sharp corners
+    borderRadius: BrandTheme.radius.SM, // Modern rounded corners (8px)
     flexDirection: 'row',
   },
 
