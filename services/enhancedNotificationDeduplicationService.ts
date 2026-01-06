@@ -17,7 +17,7 @@ import {
   limit
 } from 'firebase/firestore';
 import { getDb } from '../lib/firebase';
-import crypto from 'crypto';
+import * as Crypto from 'expo-crypto';
 
 export interface NotificationEvent {
   id: string;
@@ -92,8 +92,8 @@ class EnhancedNotificationDeduplicationService {
   }> {
     try {
       // Generate fingerprint for the notification
-      const fingerprint = this.generateFingerprint(request);
-      const contentHash = this.generateContentHash(request.content);
+      const fingerprint = await this.generateFingerprint(request);
+      const contentHash = await this.generateContentHash(request.content);
 
       // Create notification event record
       const event: NotificationEvent = {
@@ -211,7 +211,7 @@ class EnhancedNotificationDeduplicationService {
   /**
    * Generate a unique fingerprint for the notification
    */
-  private generateFingerprint(request: NotificationRequest): string {
+  private async generateFingerprint(request: NotificationRequest): Promise<string> {
     const data = {
       eventType: request.eventType,
       entityId: request.entityId,
@@ -221,22 +221,22 @@ class EnhancedNotificationDeduplicationService {
       priority: request.priority
     };
     
-    return crypto
-      .createHash('sha256')
-      .update(JSON.stringify(data))
-      .digest('hex')
-      .substring(0, 16);
+    const hash = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      JSON.stringify(data)
+    );
+    return hash.substring(0, 16);
   }
 
   /**
    * Generate content hash for duplicate content detection
    */
-  private generateContentHash(content: { title: string; body: string; data?: Record<string, any> }): string {
-    return crypto
-      .createHash('md5')
-      .update(JSON.stringify(content))
-      .digest('hex')
-      .substring(0, 12);
+  private async generateContentHash(content: { title: string; body: string; data?: Record<string, any> }): Promise<string> {
+    const hash = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.MD5,
+      JSON.stringify(content)
+    );
+    return hash.substring(0, 12);
   }
 
   /**
