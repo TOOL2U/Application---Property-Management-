@@ -139,7 +139,7 @@ export default function TabLayout() {
         }}
       >
       <Tabs.Screen
-        name="index-brand"
+        name="index"
         options={{
           title: t('navigation.home'),
           tabBarIcon: ({ color, focused }) => (
@@ -148,7 +148,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="jobs-brand"
+        name="jobs"
         options={{
           title: t('navigation.jobs'),
           tabBarIcon: ({ color, focused }) => (
@@ -157,7 +157,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile-brand"
+        name="profile"
         options={{
           title: t('navigation.profile'),
           tabBarIcon: ({ color, focused }) => (
@@ -166,7 +166,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="settings-brand"
+        name="settings"
         options={{
           title: t('navigation.settings'),
           tabBarIcon: ({ color, focused }) => (
@@ -175,7 +175,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="notifications-brand"
+        name="notifications"
         options={{
           title: t('navigation.notifications'),
           tabBarIcon: ({ color, focused }) => (
