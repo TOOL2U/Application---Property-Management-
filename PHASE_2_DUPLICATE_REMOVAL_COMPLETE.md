@@ -560,3 +560,34 @@ Phase 2 has successfully removed 18 duplicate/unused files with no functional ch
 **Branch:** phase-2-duplicate-removal  
 **Status:** ✅ COMPLETE - AWAITING TESTING & APPROVAL  
 **Backup Location:** `Desktop/BACKUP-Phase2-20260106-162658/`
+
+---
+
+## 🔧 CRITICAL FIX APPLIED
+
+**Issue Discovered During Testing:**
+- "Page not found" error on home screen after login
+- Router couldn't find `/(tabs)` default route
+
+**Root Cause:**
+- Expo Router expects standard file names (`index.tsx`, `jobs.tsx`, etc.)
+- Our brand files were named `index-brand.tsx`, `jobs-brand.tsx`, etc.
+- When router navigated to `/(tabs)`, it looked for `index.tsx` (not found)
+
+**Fix Applied (Commit 7a61ceb):**
+```
+Renamed:
+- index-brand.tsx  → index.tsx
+- jobs-brand.tsx   → jobs.tsx
+- profile-brand.tsx → profile.tsx
+- settings-brand.tsx → settings.tsx
+- notifications-brand.tsx → notifications.tsx
+```
+
+**Important:** These ARE still the brand implementations (using BrandTheme, BrandCard, BrandButton, etc.). We only changed the filenames to match Expo Router conventions.
+
+**Status:** ✅ FIXED - App should now route correctly
+
+---
+
+**Updated:** January 6, 2026 - Post-Testing Fix Applied
