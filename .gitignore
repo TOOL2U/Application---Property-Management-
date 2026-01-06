@@ -53,3 +53,15 @@ yarn-error.*
 # Temporary files
 *.tmp
 *.temp
+
+# Log files
+*.log
+
+# Editor recovery files
+*.crswap
+*.swp
+*~
+
+# Archive folders
+docs/archive/
+scripts/archive/
