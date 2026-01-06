@@ -157,7 +157,15 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 createdAt: data.createdAt?.toDate?.() || data.createdAt,
                 updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
                 lastNotificationAt: data.lastNotificationAt?.toDate?.() || data.lastNotificationAt,
-              } as JobData);
+                // Convert booking/schedule dates
+                checkInDate: data.checkInDate?.toDate?.() || data.checkInDate,
+                checkOutDate: data.checkOutDate?.toDate?.() || data.checkOutDate,
+                scheduledFor: data.scheduledFor?.toDate?.() || data.scheduledFor,
+                scheduledDate: data.scheduledDate?.toDate?.() || data.scheduledDate,
+                startedAt: data.startedAt?.toDate?.() || data.startedAt,
+                completedAt: data.completedAt?.toDate?.() || data.completedAt,
+                rejectedAt: data.rejectedAt?.toDate?.() || data.rejectedAt,
+              } as unknown as JobData);
             });
             
             console.log('🔄 JobContext: Jobs updated -', jobList.length, 'jobs for Firebase UID:', firebaseUid);

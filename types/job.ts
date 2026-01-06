@@ -29,6 +29,7 @@ export interface JobLocation {
   city: string;
   state: string;
   zipCode: string;
+  googleMapsLink?: string; // Pre-constructed Google Maps URL
   coordinates?: {
     latitude: number;
     longitude: number;
@@ -96,7 +97,17 @@ export interface Job {
   
   // Location and property
   propertyId: string;
+  propertyName?: string; // PRODUCTION: Property display name
+  propertyPhotos?: string[]; // PRODUCTION: Array of property photo URLs
   location: JobLocation;
+  
+  // PRODUCTION: Access and booking information
+  accessInstructions?: string; // CRITICAL: How to access the property
+  specialNotes?: string; // PRODUCTION: Important notes/warnings
+  bookingRef?: string; // PRODUCTION: Reference to booking
+  checkInDate?: Date | string; // PRODUCTION: Guest check-in date
+  checkOutDate?: Date | string; // PRODUCTION: Guest check-out date
+  guestCount?: number; // PRODUCTION: Number of guests
   
   // Contacts
   contacts: JobContact[];

@@ -1,8 +1,3 @@
-/**
- * Enhanced Staff Jobs View Component
- * Integrates with the new job assignment system for real-time job management
- */
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -18,8 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import { Modal, Portal } from 'react-native-paper';
-import * as Animatable from 'react-native-animatable';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useAppNotifications } from "@/contexts/AppNotificationContext";
 import { useTranslationContext } from "@/contexts/TranslationContext";
@@ -32,6 +26,7 @@ import JobAcceptanceModal from '@/components/jobs/JobAcceptanceModal';
 import { JobStartModal } from '@/components/jobs/JobStartModal';
 import { JobExecutionScreen } from '@/components/jobs/JobExecutionScreen';
 import ErrorBoundary, { JobListErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { BrandTheme } from '@/constants/BrandTheme';
 
 export default function EnhancedStaffJobsView() {
   const { currentProfile } = usePINAuth();
@@ -65,6 +60,16 @@ export default function EnhancedStaffJobsView() {
   const [jobToStart, setJobToStart] = useState<Job | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notificationCount, setNotificationCount] = useState(0);
+
+  // Auto-refresh on screen focus for better UX
+  useFocusEffect(
+    React.useCallback(() => {
+      if (currentProfile?.id) {
+        console.log('🔄 Jobs Screen: Screen focused, refreshing jobs...');
+        refreshJobs();
+      }
+    }, [currentProfile?.id, refreshJobs])
+  );
 
   useEffect(() => {
     if (currentProfile?.id) {
@@ -318,10 +323,7 @@ export default function EnhancedStaffJobsView() {
               </TouchableOpacity>
               
               {/* Pulse Animation */}
-              <Animatable.View
-                animation="pulse"
-                iterationCount="infinite"
-                duration={2000}
+              <View
                 style={{
                   position: 'absolute',
                   top: -8,
@@ -544,7 +546,7 @@ export default function EnhancedStaffJobsView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B0F1A',
+    backgroundColor: BrandTheme.colors.GREY_PRIMARY,
   },
   header: {
     flexDirection: 'row',
@@ -553,22 +555,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E2A3A',
+    borderBottomColor: BrandTheme.colors.BORDER_SUBTLE,
   },
   headerContent: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontFamily: 'Inter_700Bold',
+    fontSize: 32,
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    fontFamily: BrandTheme.typography.fontFamily.display,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#8E9AAE',
+    color: BrandTheme.colors.TEXT_SECONDARY,
     marginTop: 4,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: BrandTheme.typography.fontFamily.regular,
   },
   headerTitleRow: {
     flexDirection: 'row',
@@ -578,7 +581,7 @@ const styles = StyleSheet.create({
   brandLogo: {
     width: 40,
     height: 40,
-    borderRadius: 8,
+    borderRadius: 0,
   },
   headerTextContent: {
     flex: 1,
@@ -593,16 +596,16 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: 'rgba(198, 255, 0, 0.2)',
-    borderRadius: 12,
+    backgroundColor: BrandTheme.colors.YELLOW,
+    borderRadius: 0,
     borderWidth: 1,
-    borderColor: 'rgba(198, 255, 0, 0.3)',
+    borderColor: BrandTheme.colors.YELLOW,
   },
   statText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#C6FF00',
-    fontFamily: 'Inter_600SemiBold',
+    color: BrandTheme.colors.BLACK,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
   },
   filterContainer: {
     paddingHorizontal: 20,
@@ -615,22 +618,24 @@ const styles = StyleSheet.create({
   filterChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#1E2A3A',
-    borderRadius: 20,
+    backgroundColor: BrandTheme.colors.SURFACE_1,
+    borderRadius: 0,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: BrandTheme.colors.BORDER,
   },
   filterChipActive: {
-    backgroundColor: 'rgba(198, 255, 0, 0.2)',
-    borderColor: '#C6FF00',
+    backgroundColor: BrandTheme.colors.YELLOW,
+    borderColor: BrandTheme.colors.YELLOW,
   },
   filterChipText: {
-    fontSize: 14,
-    color: '#8E9AAE',
-    fontFamily: 'Inter_500Medium',
+    fontSize: 12,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   filterChipTextActive: {
-    color: '#C6FF00',
+    color: BrandTheme.colors.BLACK,
   },
   content: {
     flex: 1,
@@ -642,10 +647,10 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   loadingText: {
-    color: '#8E9AAE',
+    color: BrandTheme.colors.TEXT_SECONDARY,
     fontSize: 16,
     marginTop: 16,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: BrandTheme.typography.fontFamily.regular,
   },
   emptyContainer: {
     flex: 1,
@@ -657,33 +662,33 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: BrandTheme.colors.TEXT_PRIMARY,
     marginTop: 20,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
   },
   emptyMessage: {
     fontSize: 16,
-    color: '#8E9AAE',
+    color: BrandTheme.colors.TEXT_SECONDARY,
     textAlign: 'center',
     marginTop: 12,
     lineHeight: 22,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: BrandTheme.typography.fontFamily.regular,
   },
   refreshButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#C6FF00',
+    backgroundColor: BrandTheme.colors.YELLOW,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 0,
     marginTop: 24,
   },
   refreshButtonText: {
-    color: '#0B0F1A',
+    color: BrandTheme.colors.BLACK,
     fontWeight: '600',
     fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
   },
   jobsList: {
     flex: 1,
@@ -694,10 +699,10 @@ const styles = StyleSheet.create({
   },
   jobCard: {
     marginBottom: 16,
-    borderRadius: 16,
-    backgroundColor: '#1E2A3A',
+    borderRadius: 0,
+    backgroundColor: BrandTheme.colors.SURFACE_1,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: BrandTheme.colors.BORDER,
     overflow: 'hidden',
   },
   jobCardGradient: {
@@ -715,33 +720,33 @@ const styles = StyleSheet.create({
   jobTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: BrandTheme.colors.TEXT_PRIMARY,
     flex: 1,
     marginRight: 12,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
   },
   priorityBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 0,
   },
   priorityText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#ffffff',
-    fontFamily: 'Inter_700Bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
   },
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 0,
     alignSelf: 'flex-start',
   },
   statusText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#ffffff',
-    fontFamily: 'Inter_700Bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
   },
   jobDetails: {
     gap: 8,
@@ -754,9 +759,9 @@ const styles = StyleSheet.create({
   },
   jobDetailText: {
     fontSize: 14,
-    color: '#8E9AAE',
+    color: BrandTheme.colors.TEXT_SECONDARY,
     flex: 1,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: BrandTheme.typography.fontFamily.regular,
   },
   jobActions: {
     flexDirection: 'row',
@@ -766,8 +771,8 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
-    borderRadius: 8,
-    backgroundColor: '#C6FF00',
+    borderRadius: 0,
+    backgroundColor: BrandTheme.colors.YELLOW,
   },
   acceptButtonContainer: {
     position: 'relative',
@@ -775,7 +780,7 @@ const styles = StyleSheet.create({
   },
   acceptButton: {
     // Additional styling for the accept button specifically
-    shadowColor: '#C6FF00',
+    shadowColor: BrandTheme.colors.YELLOW,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -791,9 +796,9 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0B0F1A',
+    color: BrandTheme.colors.BLACK,
     marginLeft: 6,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
   },
   // Removed completedButton and completedButtonText styles - not needed since completed jobs don't appear in mobile app
   bottomSpacing: {

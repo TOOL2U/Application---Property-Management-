@@ -23,6 +23,9 @@ import ErrorBoundary, { JobListErrorBoundary } from '@/components/shared/ErrorBo
 import SharedJobCard from '@/components/shared/SharedJobCard';
 import { useTranslation } from '@/hooks/useTranslation';
 import { shouldShowNotification } from '@/utils/notificationDedup';
+import { BrandTheme } from '@/constants/BrandTheme';
+import { Card } from '@/components/ui/BrandCard';
+import { Button } from '@/components/ui/BrandButton';
 
 const filterOptions = [
   { key: 'all', label: 'jobs.all' },
@@ -143,18 +146,75 @@ export default function JobsScreen() {
     };
 
     return (
-      <View style={styles.jobCardContainer}>
-        <SharedJobCard
-          job={jobCardData}
-          onPress={handleJobPress}
-          onActionPress={handleActionPress}
-          compact={false}
-          actions={[
-            { label: t('jobs.details'), action: 'details', icon: 'eye-outline' },
-            { label: t('jobs.map'), action: 'map', icon: 'map-outline' },
-          ]}
-        />
-      </View>
+      <Card variant="standard" style={styles.jobCard}>
+        <View style={styles.jobHeader}>
+          <View style={styles.jobHeaderLeft}>
+            <Text style={styles.jobTitle} numberOfLines={1}>
+              {jobCardData.title}
+            </Text>
+            <Text style={styles.jobProperty} numberOfLines={1}>
+              {jobCardData.propertyId || 'Property ID not available'}
+            </Text>
+          </View>
+          <View style={[styles.statusBadge, {
+            backgroundColor: job.status === 'completed' ? BrandTheme.colors.SUCCESS :
+                           job.status === 'in_progress' ? BrandTheme.colors.WARNING :
+                           job.status === 'assigned' ? BrandTheme.colors.INFO :
+                           BrandTheme.colors.TEXT_SECONDARY
+          }]}>
+            <Text style={styles.statusText}>
+              {job.status?.toUpperCase().replace('_', ' ')}
+            </Text>
+          </View>
+        </View>
+
+        {job.description && (
+          <Text style={styles.jobDescription} numberOfLines={2}>
+            {job.description}
+          </Text>
+        )}
+
+        <View style={styles.jobDetails}>
+          {job.scheduledDate && (
+            <View style={styles.jobDetailItem}>
+              <Ionicons name="calendar-outline" size={16} color={BrandTheme.colors.TEXT_SECONDARY} />
+              <Text style={styles.jobDetailText}>
+                {new Date(job.scheduledDate).toLocaleDateString()}
+              </Text>
+            </View>
+          )}
+          
+          {job.estimatedDuration && (
+            <View style={styles.jobDetailItem}>
+              <Ionicons name="time-outline" size={16} color={BrandTheme.colors.TEXT_SECONDARY} />
+              <Text style={styles.jobDetailText}>
+                {job.estimatedDuration}
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.jobDetailItem}>
+            <Ionicons name="flag-outline" size={16} color={BrandTheme.colors.TEXT_SECONDARY} />
+            <Text style={[styles.jobDetailText, {
+              color: job.priority === 'high' ? BrandTheme.colors.ERROR :
+                     job.priority === 'medium' ? BrandTheme.colors.WARNING :
+                     BrandTheme.colors.SUCCESS
+            }]}>
+              {(job.priority || 'medium').toUpperCase()}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.jobActions}>
+          <TouchableOpacity 
+            style={styles.viewButton}
+            onPress={() => handleJobPress(jobCardData)}
+          >
+            <Text style={styles.viewButtonText}>VIEW DETAILS</Text>
+            <Ionicons name="arrow-forward" size={16} color={BrandTheme.colors.YELLOW} />
+          </TouchableOpacity>
+        </View>
+      </Card>
     );
   };
 
@@ -179,32 +239,33 @@ export default function JobsScreen() {
             </Text>
           </View>
           
-          <TouchableOpacity
-            style={styles.createButton}
+          <Button
+            title="CREATE JOB"
+            variant="primary"
             onPress={handleCreateJob}
-          >
-            <Ionicons name="add" size={20} color="#0B0F1A" />
-            <Text style={styles.createButtonText}>{t('jobs.createJob')}</Text>
-          </TouchableOpacity>
+            style={styles.createButton}
+          />
         </View>
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <Ionicons name="search-outline" size={20} color="#8E9AAE" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder={t('jobs.searchJobs')}
-              placeholderTextColor="#8E9AAE"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color="#8E9AAE" />
-              </TouchableOpacity>
-            )}
-          </View>
+          <Card variant="standard" style={styles.searchCard}>
+            <View style={styles.searchBar}>
+              <Ionicons name="search-outline" size={20} color={BrandTheme.colors.TEXT_SECONDARY} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder={t('jobs.searchJobs')}
+                placeholderTextColor={BrandTheme.colors.TEXT_SECONDARY}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={20} color={BrandTheme.colors.TEXT_SECONDARY} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </Card>
         </View>
 
         {/* Filter Chips */}
@@ -227,7 +288,7 @@ export default function JobsScreen() {
                   styles.filterChipText,
                   selectedFilter === filter.key && styles.filterChipTextActive
                 ]}>
-                  {t(filter.label)}
+                  {t(filter.label).toUpperCase()}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -238,21 +299,24 @@ export default function JobsScreen() {
         <View style={styles.content}>
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#C6FF00" />
+              <ActivityIndicator size="large" color={BrandTheme.colors.YELLOW} />
               <Text style={styles.loadingText}>{t('jobs.loadingJobs')}</Text>
             </View>
           ) : error ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="alert-circle-outline" size={64} color="#FF4444" />
+              <Ionicons name="alert-circle-outline" size={64} color={BrandTheme.colors.ERROR} />
               <Text style={styles.emptyTitle}>{t('jobs.errorLoadingJobs')}</Text>
               <Text style={styles.emptyMessage}>{error}</Text>
-              <TouchableOpacity style={styles.retryButton} onPress={refreshJobs}>
-                <Text style={styles.retryButtonText}>{t('jobs.tryAgain')}</Text>
-              </TouchableOpacity>
+              <Button
+                title="TRY AGAIN"
+                variant="primary"
+                onPress={refreshJobs}
+                style={styles.retryButton}
+              />
             </View>
           ) : filteredJobs.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="briefcase-outline" size={64} color="#8E9AAE" />
+              <Ionicons name="briefcase-outline" size={64} color={BrandTheme.colors.TEXT_SECONDARY} />
               <Text style={styles.emptyTitle}>{t('jobs.noJobsFound')}</Text>
               <Text style={styles.emptyMessage}>
                 {searchQuery || selectedFilter !== 'all' 
@@ -260,15 +324,15 @@ export default function JobsScreen() {
                   : t('jobs.noJobsAvailable')}
               </Text>
               {(searchQuery || selectedFilter !== 'all') && (
-                <TouchableOpacity 
-                  style={styles.clearFiltersButton} 
+                <Button
+                  title="CLEAR FILTERS"
+                  variant="outline"
                   onPress={() => {
                     setSearchQuery('');
                     setSelectedFilter('all');
                   }}
-                >
-                  <Text style={styles.clearFiltersButtonText}>{t('jobs.clearFilters')}</Text>
-                </TouchableOpacity>
+                  style={styles.clearFiltersButton}
+                />
               )}
             </View>
           ) : (
@@ -281,8 +345,8 @@ export default function JobsScreen() {
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={onRefresh}
-                  colors={['#C6FF00']}
-                  tintColor="#C6FF00"
+                  colors={[BrandTheme.colors.YELLOW]}
+                  tintColor={BrandTheme.colors.YELLOW}
                 />
               }
               keyExtractor={(item) => item.id}
@@ -297,166 +361,245 @@ export default function JobsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B0F1A',
+    backgroundColor: BrandTheme.colors.GREY_PRIMARY,
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: BrandTheme.spacing.LG,
+    paddingVertical: BrandTheme.spacing.MD,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E2A3A',
+    borderBottomColor: BrandTheme.colors.BORDER_SUBTLE,
   },
+
   headerContent: {
     flex: 1,
   },
+
   headerTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    fontFamily: 'Inter_700Bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
   },
+
   headerSubtitle: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
     fontSize: 14,
-    color: '#8E9AAE',
-    marginTop: 4,
-    fontFamily: 'Inter_400Regular',
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    marginTop: BrandTheme.spacing.XS,
   },
+
   createButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#C6FF00',
-    borderRadius: 8,
-    marginTop: 4,
+    marginTop: BrandTheme.spacing.XS,
   },
-  createButtonText: {
-    color: '#0B0F1A',
-    fontWeight: '600',
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-  },
+
   searchContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: BrandTheme.spacing.LG,
+    paddingVertical: BrandTheme.spacing.MD,
   },
+
+  searchCard: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E2A3A',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
+    paddingHorizontal: BrandTheme.spacing.MD,
+    paddingVertical: BrandTheme.spacing.SM,
+    gap: BrandTheme.spacing.SM,
   },
+
   searchInput: {
     flex: 1,
-    color: '#FFFFFF',
+    fontFamily: BrandTheme.typography.fontFamily.regular,
     fontSize: 16,
-    fontFamily: 'Inter_400Regular',
+    color: BrandTheme.colors.TEXT_PRIMARY,
   },
+
   filtersContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingHorizontal: BrandTheme.spacing.LG,
+    paddingBottom: BrandTheme.spacing.MD,
   },
+
   filtersScrollView: {
-    gap: 12,
+    gap: BrandTheme.spacing.SM,
   },
+
   filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#1E2A3A',
-    borderRadius: 20,
+    paddingHorizontal: BrandTheme.spacing.MD,
+    paddingVertical: BrandTheme.spacing.SM,
+    backgroundColor: BrandTheme.colors.SURFACE_1,
+    borderRadius: 0, // Brand kit: sharp corners
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: BrandTheme.colors.BORDER,
   },
+
   filterChipActive: {
-    backgroundColor: 'rgba(198, 255, 0, 0.2)',
-    borderColor: '#C6FF00',
+    backgroundColor: BrandTheme.colors.YELLOW,
+    borderColor: BrandTheme.colors.YELLOW,
   },
+
   filterChipText: {
-    fontSize: 14,
-    color: '#8E9AAE',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 12,
+    fontWeight: '600',
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
+
   filterChipTextActive: {
-    color: '#C6FF00',
+    color: BrandTheme.colors.BLACK,
   },
+
   content: {
     flex: 1,
   },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: BrandTheme.spacing.XXL,
   },
+
   loadingText: {
-    color: '#8E9AAE',
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    color: BrandTheme.colors.TEXT_SECONDARY,
     fontSize: 16,
-    marginTop: 16,
-    fontFamily: 'Inter_400Regular',
+    marginTop: BrandTheme.spacing.MD,
   },
+
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
+    paddingVertical: BrandTheme.spacing.XXL,
+    paddingHorizontal: BrandTheme.spacing.XXL,
   },
+
   emptyTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginTop: 20,
-    fontFamily: 'Inter_700Bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    marginTop: BrandTheme.spacing.LG,
   },
+
   emptyMessage: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
     fontSize: 16,
-    color: '#8E9AAE',
+    color: BrandTheme.colors.TEXT_SECONDARY,
     textAlign: 'center',
-    marginTop: 12,
+    marginTop: BrandTheme.spacing.SM,
     lineHeight: 22,
-    fontFamily: 'Inter_400Regular',
   },
+
   retryButton: {
-    backgroundColor: '#C6FF00',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 24,
+    marginTop: BrandTheme.spacing.XL,
   },
-  retryButtonText: {
-    color: '#0B0F1A',
-    fontWeight: '600',
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-  },
+
   clearFiltersButton: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#C6FF00',
-    marginTop: 24,
+    marginTop: BrandTheme.spacing.XL,
   },
-  clearFiltersButtonText: {
-    color: '#C6FF00',
-    fontWeight: '600',
-    fontSize: 14,
-    fontFamily: 'Inter_600SemiBold',
-  },
+
   jobsList: {
-    paddingHorizontal: 20,
+    paddingHorizontal: BrandTheme.spacing.LG,
     paddingBottom: 100,
   },
-  jobCardContainer: {
-    marginBottom: 16,
+
+  jobCard: {
+    marginBottom: BrandTheme.spacing.MD,
+  },
+
+  jobHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: BrandTheme.spacing.SM,
+  },
+
+  jobHeaderLeft: {
+    flex: 1,
+    marginRight: BrandTheme.spacing.SM,
+  },
+
+  jobTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    marginBottom: BrandTheme.spacing.XS,
+  },
+
+  jobProperty: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 12,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+  },
+
+  statusBadge: {
+    paddingHorizontal: BrandTheme.spacing.SM,
+    paddingVertical: BrandTheme.spacing.XS,
+    borderRadius: 0, // Brand kit: sharp corners
+  },
+
+  statusText: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+  },
+
+  jobDescription: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    lineHeight: 20,
+    marginBottom: BrandTheme.spacing.MD,
+  },
+
+  jobDetails: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: BrandTheme.spacing.MD,
+    marginBottom: BrandTheme.spacing.MD,
+  },
+
+  jobDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.XS,
+  },
+
+  jobDetailText: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 12,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+  },
+
+  jobActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+
+  viewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.XS,
+  },
+
+  viewButtonText: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 12,
+    fontWeight: '600',
+    color: BrandTheme.colors.YELLOW,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 });
-
-

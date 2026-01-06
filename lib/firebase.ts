@@ -23,6 +23,21 @@ if (typeof global !== 'undefined') {
   global.AsyncStorage = ReactNativeAsyncStorage;
 }
 
+// Ensure AsyncStorage is available for Firebase Auth
+const checkAsyncStorage = () => {
+  try {
+    if (typeof window === 'undefined' && ReactNativeAsyncStorage) {
+      // React Native environment - ensure AsyncStorage is properly configured
+      global.AsyncStorage = ReactNativeAsyncStorage;
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.warn('⚠️ AsyncStorage configuration failed:', error);
+    return false;
+  }
+};
+
 // Initialize Firebase with environment variables
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -167,41 +182,36 @@ const getFirebaseAuth = () => {
   if (_auth) return _auth;
 
   const firebaseApp = getFirebaseApp();
-
+  
   try {
-    // First try to get existing auth instance
-    try {
-      _auth = getAuth(firebaseApp);
-      console.log('✅ Firebase Auth initialized with getAuth');
-      return _auth;
-    } catch (getAuthError) {
-      // If getAuth fails, try initializeAuth with React Native AsyncStorage persistence
-      console.log('🔄 Initializing Auth for React Native with AsyncStorage...');
+    // Check if we're in React Native environment and use proper persistence
+    if (typeof window === 'undefined') {
+      // React Native environment - use initializeAuth with AsyncStorage persistence
+      const { getReactNativePersistence } = require('firebase/auth');
       
       try {
-        // For React Native - AsyncStorage is automatically used in Firebase v10+
-        // when @react-native-async-storage/async-storage is installed
         _auth = initializeAuth(firebaseApp, {
-          // Firebase v10+ automatically detects AsyncStorage in React Native environment
+          persistence: getReactNativePersistence(ReactNativeAsyncStorage)
         });
-        console.log('✅ Firebase Auth initialized for React Native with AsyncStorage');
-        return _auth;
-        
-      } catch (persistenceError: any) {
-        console.log('⚠️ initializeAuth failed, trying default:', persistenceError.message);
-        // Fallback without explicit persistence
-        try {
-          _auth = initializeAuth(firebaseApp);
-          console.log('✅ Firebase Auth initialized with default settings');
-        } catch (fallbackError) {
+        console.log('✅ Firebase Auth initialized with AsyncStorage persistence');
+      } catch (authError: any) {
+        if (authError.code === 'auth/already-initialized') {
           _auth = getAuth(firebaseApp);
-          console.log('✅ Firebase Auth initialized with getAuth fallback');
+          console.log('✅ Firebase Auth already initialized, using existing instance');
+        } else {
+          throw authError;
         }
-        return _auth;
       }
+    } else {
+      // Web environment - use standard getAuth
+      _auth = getAuth(firebaseApp);
+      console.log('✅ Firebase Auth initialized for web');
     }
+    
+    return _auth;
+    
   } catch (error: any) {
-    if (error.message?.includes('already exists')) {
+    if (error.message?.includes('already exists') || error.code === 'auth/already-initialized') {
       // If auth already exists, get it
       _auth = getAuth(firebaseApp);
       console.log('✅ Firebase Auth retrieved (already exists)');

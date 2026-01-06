@@ -13,7 +13,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
-import * as Animatable from 'react-native-animatable';
 import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -155,9 +154,7 @@ export default function StaffLoginScreen() {
               showsVerticalScrollIndicator={false}
             >
               {/* Header */}
-              <Animatable.View
-                animation="fadeInDown"
-                duration={1000}
+              <View
                 className="items-center mb-12"
               >
                 <View className="w-24 h-24 rounded-3xl items-center justify-center mb-8"
@@ -183,13 +180,10 @@ export default function StaffLoginScreen() {
                 <Text className="text-base text-text-secondary text-center">
                   AI-Powered Staff Management
                 </Text>
-              </Animatable.View>
+              </View>
 
               {/* Login Form */}
-              <Animatable.View
-                animation="fadeInUp"
-                duration={800}
-                delay={300}
+              <View
               >
                 <SiaMoonCard variant="glass" className="mb-6"
                   style={{
@@ -301,7 +295,7 @@ export default function StaffLoginScreen() {
                     </SiaMoonText>
                   </TouchableOpacity>
                 </View>
-              </Animatable.View>
+              </View>
             </ScrollView>
           </KeyboardAvoidingView>
         </SafeAreaView>

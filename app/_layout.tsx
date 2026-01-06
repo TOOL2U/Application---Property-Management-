@@ -25,6 +25,7 @@ import { TranslationProvider } from '@/contexts/TranslationContext';
 import { SiaMoonPaperTheme } from '@/constants/PaperTheme';
 import { initializeFirebase } from '@/lib/firebase';
 import { AppAuditIntegration } from '@/components/audit/AppAuditIntegration';
+import { loadBrandFonts } from '@/utils/BrandFonts';
 
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -36,7 +37,12 @@ export default function RootLayout() {
   const [firebaseReady, setFirebaseReady] = useState(false);
 
   const [loaded, error] = useFonts({
-    // Add your custom fonts here if needed
+    // Brand Kit Fonts - Loaded via BrandFonts utility
+    'Aileron-Bold': require('../assets/fonts/Aileron-Bold.otf'),
+    'Aileron-Regular': require('../assets/fonts/Aileron-Regular.otf'),
+    'Aileron-Light': require('../assets/fonts/Aileron-Light.otf'),
+    'BebasNeue-Regular': require('../assets/fonts/BebasNeue-Regular.ttf'),
+    'MadeMirage-Regular': require('../assets/fonts/MadeMirage-Regular.otf'),
   });
 
   useEffect(() => {
@@ -48,6 +54,11 @@ export default function RootLayout() {
         await initializeFirebase();
         setFirebaseReady(true);
         console.log('✅ Firebase initialization complete');
+        
+        // Load Brand Kit fonts
+        console.log('🎨 Loading Brand Kit fonts...');
+        await loadBrandFonts();
+        console.log('✅ Brand fonts loaded');
         
         // Pre-load fonts, make any API calls you need to do here
         // Artificially delay for demo purposes
@@ -99,7 +110,6 @@ export default function RootLayout() {
                                     contentStyle: { backgroundColor: '#000000' },
                                   }}
                                 >
-                                  <Stack.Screen name="debug-touch" options={{ headerShown: false }} />
                                   <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                                   <Stack.Screen name="+not-found" />

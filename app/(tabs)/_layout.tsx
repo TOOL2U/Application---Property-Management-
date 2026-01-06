@@ -6,97 +6,66 @@ import { useAppNotifications } from "@/contexts/AppNotificationContext";
 import ScreenWrapper from '@/components/ScreenWrapper';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, Platform, ActivityIndicator } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import * as Animatable from 'react-native-animatable';
 import { useTranslation } from '@/hooks/useTranslation';
+import { BrandTheme } from '@/constants/BrandTheme';
 
-// AIS-inspired tab icon component with neon green theme
-const AISTabIcon = ({
+// Brand Kit Tab Icon Component
+const BrandTabIcon = ({
   name,
   focused,
   color,
   size = 24,
-  isCenter = false,
 }: {
   name: keyof typeof Ionicons.glyphMap;
   focused: boolean;
   color: string;
   size?: number;
-  isCenter?: boolean;
 }) => {
-  const iconSize = isCenter ? 28 : size;
-
   return (
-    <View className="items-center justify-center">
-      {/* Center scan button special styling */}
-      {isCenter ? (
-        <View
-          className="items-center justify-center rounded-2xl p-3"
-          style={{
-            backgroundColor: focused ? 'rgba(198, 255, 0, 0.15)' : 'rgba(198, 255, 0, 0.1)',
-            borderWidth: focused ? 1.5 : 1,
-            borderColor: focused ? '#C6FF00' : 'rgba(198, 255, 0, 0.3)',
-            shadowColor: focused ? '#C6FF00' : 'transparent',
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: focused ? 0.6 : 0,
-            shadowRadius: focused ? 8 : 0,
-            elevation: focused ? 8 : 4,
-          }}
-        >
-          <Ionicons
-            name={name}
-            size={iconSize}
-            color={color}
-          />
-        </View>
-      ) : (
-        /* Regular tab icon */
-        <View className="items-center justify-center">
-          <Ionicons
-            name={focused ? name : (name.includes('-outline') ? name : `${name}-outline` as keyof typeof Ionicons.glyphMap)}
-            size={iconSize}
-            color={color}
-            style={{
-              shadowColor: focused ? '#C6FF00' : 'transparent',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: focused ? 0.5 : 0,
-              shadowRadius: focused ? 6 : 0,
-            }}
-          />
-        </View>
-      )}
+    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <Ionicons
+        name={focused ? name : (name.includes('-outline') ? name : `${name}-outline` as keyof typeof Ionicons.glyphMap)}
+        size={size}
+        color={color}
+        style={{
+          shadowColor: focused ? BrandTheme.colors.YELLOW : 'transparent',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: focused ? 0.5 : 0,
+          shadowRadius: focused ? 6 : 0,
+        }}
+      />
     </View>
   );
 };
 
-// Notification icon with badge
-const NotificationIcon = ({ focused, color, unreadCount }: { focused: boolean; color: string; unreadCount: number }) => {
+// Brand Kit Notification Icon with Badge
+const BrandNotificationIcon = ({ focused, color, unreadCount }: { focused: boolean; color: string; unreadCount: number }) => {
   return (
-    <View className="items-center justify-center relative">
-      <AISTabIcon name="notifications" focused={focused} color={color} />
+    <View style={{ alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+      <BrandTabIcon name="notifications" focused={focused} color={color} />
       {unreadCount > 0 && (
         <View 
           style={{
             position: 'absolute',
             top: -2,
             right: -6,
-            backgroundColor: '#FF4444',
+            backgroundColor: BrandTheme.colors.ERROR, // Brand red
             borderRadius: 10,
             minWidth: 20,
             height: 20,
             justifyContent: 'center',
             alignItems: 'center',
             borderWidth: 2,
-            borderColor: '#0B0F1A'
+            borderColor: BrandTheme.colors.BLACK // Brand black border
           }}
         >
           <Text 
             style={{
-              color: 'white',
+              color: BrandTheme.colors.TEXT_PRIMARY,
               fontSize: 12,
               fontWeight: 'bold',
-              textAlign: 'center'
+              textAlign: 'center',
+              fontFamily: BrandTheme.typography.fontFamily.primary,
             }}
           >
             {unreadCount > 99 ? '99+' : unreadCount.toString()}
@@ -132,9 +101,9 @@ export default function TabLayout() {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#000000'
+        backgroundColor: BrandTheme.colors.GREY_PRIMARY // Brand background
       }}>
-        <ActivityIndicator size="large" color="#C6FF00" />
+        <ActivityIndicator size="large" color={BrandTheme.colors.YELLOW} />
       </View>
     );
   }
@@ -142,7 +111,8 @@ export default function TabLayout() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace('/(auth)/select-staff-profile');
+      console.log('🏠 TabLayout: Not authenticated, redirecting to select-profile');
+      router.replace('/(auth)/select-profile');
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -155,13 +125,13 @@ export default function TabLayout() {
     <ScreenWrapper>
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: '#C6FF00',
-          tabBarInactiveTintColor: '#666666',
+          tabBarActiveTintColor: BrandTheme.colors.YELLOW,
+          tabBarInactiveTintColor: BrandTheme.colors.GREY_SECONDARY,
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: '#0B0F1A',
+            backgroundColor: BrandTheme.colors.BLACK,
             borderTopWidth: 1,
-            borderTopColor: '#1E2A3A',
+            borderTopColor: BrandTheme.colors.BORDER_SUBTLE,
             paddingBottom: Platform.OS === 'ios' ? 20 : 5,
             paddingTop: 5,
             height: Platform.OS === 'ios' ? 85 : 60,
@@ -169,48 +139,80 @@ export default function TabLayout() {
         }}
       >
       <Tabs.Screen
-        name="index"
+        name="index-brand"
         options={{
           title: t('navigation.home'),
           tabBarIcon: ({ color, focused }) => (
-            <AISTabIcon name="home" focused={focused} color={color} />
+            <BrandTabIcon name="home" focused={focused} color={color} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="jobs-brand"
+        options={{
+          title: t('navigation.jobs'),
+          tabBarIcon: ({ color, focused }) => (
+            <BrandTabIcon name="briefcase" focused={focused} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile-brand"
+        options={{
+          title: t('navigation.profile'),
+          tabBarIcon: ({ color, focused }) => (
+            <BrandTabIcon name="person" focused={focused} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings-brand"
+        options={{
+          title: t('navigation.settings'),
+          tabBarIcon: ({ color, focused }) => (
+            <BrandTabIcon name="settings" focused={focused} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="notifications-brand"
+        options={{
+          title: t('navigation.notifications'),
+          tabBarIcon: ({ color, focused }) => (
+            <BrandNotificationIcon focused={focused} color={color} unreadCount={unreadCount} />
+          ),
+        }}
+      />
+
+      {/* Hide non-brand screens from navigation */}
+      <Tabs.Screen
+        name="index"
+        options={{
+          href: null,
         }}
       />
       <Tabs.Screen
         name="jobs"
         options={{
-          title: t('navigation.jobs'),
-          tabBarIcon: ({ color, focused }) => (
-            <AISTabIcon name="briefcase" focused={focused} color={color} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: t('navigation.profile'),
-          tabBarIcon: ({ color, focused }) => (
-            <AISTabIcon name="person" focused={focused} color={color} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: t('navigation.settings'),
-          tabBarIcon: ({ color, focused }) => (
-            <AISTabIcon name="settings" focused={focused} color={color} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen
         name="notifications"
         options={{
-          title: t('navigation.notifications'),
-          tabBarIcon: ({ color, focused }) => (
-            <NotificationIcon focused={focused} color={color} unreadCount={unreadCount} />
-          ),
+          href: null,
         }}
       />
 

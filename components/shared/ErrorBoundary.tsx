@@ -12,7 +12,6 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Animatable from 'react-native-animatable';
 import { JOB_COLORS, COMMON_STYLES } from '@/utils/jobUtils';
 
 interface Props {
@@ -82,19 +81,19 @@ class JobErrorBoundary extends Component<Props, State> {
 
       // Default error UI
       return (
-        <Animatable.View animation="fadeIn" style={styles.container}>
+        <View style={styles.container}>
           <View style={styles.errorContent}>
-            <Ionicons 
-              name="warning-outline" 
-              size={64} 
+            <Ionicons
+              name="warning-outline"
+              size={64}
               color={JOB_COLORS.danger}
               style={styles.errorIcon}
             />
-            
+
             <Text style={styles.errorTitle}>
               Something went wrong
             </Text>
-            
+
             <Text style={styles.errorMessage}>
               An unexpected error occurred. The app may not work correctly until you refresh.
             </Text>
@@ -124,9 +123,9 @@ class JobErrorBoundary extends Component<Props, State> {
                 accessibilityLabel="Try again"
                 accessibilityRole="button"
               >
-                <Ionicons 
-                  name="refresh" 
-                  size={16} 
+                <Ionicons
+                  name="refresh"
+                  size={16}
                   color={JOB_COLORS.background}
                   style={styles.buttonIcon}
                 />
@@ -134,7 +133,7 @@ class JobErrorBoundary extends Component<Props, State> {
               </TouchableOpacity>
             </View>
           </View>
-        </Animatable.View>
+        </View>
       );
     }
 

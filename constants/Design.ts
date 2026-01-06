@@ -1,11 +1,12 @@
 /**
- * Villa Property Management - Mobile Design System
- * Dark Theme Compatible Design Tokens
- * Optimized for iPhone 15 (1179 x 2556 px) with webapp style consistency
+ * Sia Moon Property Management - Brand Kit Design System
+ * Based on BookMate Mobile Application Brand Kit
+ * Dark Theme with Yellow Accent Implementation
+ * Date: January 4, 2026
  */
 
 import { Dimensions } from 'react-native';
-import { useThemeContext } from '@/contexts/ThemeContext';
+import { BrandTheme } from './BrandTheme';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -26,67 +27,112 @@ export const Device = {
 } as const;
 
 // =============================================================================
-// TYPOGRAPHY - Inter Font System (theme-independent)
+// TYPOGRAPHY - Brand Kit Font System (Aileron + BebasNeue + MadeMirage)
 // =============================================================================
 
 export const Typography = {
-  // Font Family
+  // Brand Kit Font Family
   fontFamily: {
-    primary: 'Inter',
+    primary: 'Aileron-Bold',      // Headers, buttons, emphasis (700)
+    regular: 'Aileron-Regular',   // Body text, general content (400)
+    light: 'Aileron-Light',       // Subtle text, secondary info (300)
+    display: 'BebasNeue-Regular', // Large numbers, statistics
+    accent: 'MadeMirage-Regular', // Special headings, branding
     system: '-apple-system, BlinkMacSystemFont, SF Pro Display',
   },
 
-  // Enhanced Mobile-Optimized Typography Scale
+  // Brand Kit Typography Scale
   sizes: {
     xs: { fontSize: 11, lineHeight: 16 },
-    sm: { fontSize: 13, lineHeight: 18 },
-    base: { fontSize: 15, lineHeight: 22 },
-    lg: { fontSize: 17, lineHeight: 26 },
-    xl: { fontSize: 19, lineHeight: 28 },
-    '2xl': { fontSize: 22, lineHeight: 30 },
-    '3xl': { fontSize: 26, lineHeight: 34 },
-    '4xl': { fontSize: 30, lineHeight: 38 },
+    sm: { fontSize: 12, lineHeight: 16 },      // Small (brand kit)
+    caption: { fontSize: 14, lineHeight: 20 }, // Caption (brand kit)
+    base: { fontSize: 16, lineHeight: 24 },    // Body (brand kit)
+    lg: { fontSize: 18, lineHeight: 22 },      // Large Title (brand kit)
+    xl: { fontSize: 20, lineHeight: 26 },
+    '2xl': { fontSize: 24, lineHeight: 30 },
+    '3xl': { fontSize: 28, lineHeight: 34 },
+    '4xl': { fontSize: 32, lineHeight: 38 },
     '5xl': { fontSize: 36, lineHeight: 44 },
   },
 
-  // Enhanced Font Weights
+  // Brand Kit Font Weights
   weights: {
-    light: '300',
-    normal: '400',
+    light: '300',     // Aileron-Light
+    normal: '400',    // Aileron-Regular  
     medium: '500',
-    semibold: '600',
-    bold: '700',
+    semibold: '600',  // Button text weight (brand kit)
+    bold: '700',      // Aileron-Bold
     extrabold: '800',
   },
 
-  // Enhanced Letter Spacing (Linear-inspired)
+  // Brand Kit Letter Spacing
   letterSpacing: {
     tighter: -0.05,
     tight: -0.025,
     normal: 0,
-    wide: 0.025,
+    wide: 0.5,        // Button text spacing (brand kit)
     wider: 0.05,
   },
 
-  // Text Styles for Common Use Cases
+  // Brand Kit Text Styles
   styles: {
+    // Button Text (Brand Kit Spec)
+    button: {
+      fontFamily: 'Aileron-Bold',
+      fontWeight: '600',
+      textTransform: 'uppercase' as const,
+      letterSpacing: 0.5,
+    },
+    
+    // Headers (Brand Kit Spec)
     heading: {
+      fontFamily: 'Aileron-Bold',
       fontWeight: '700',
+      color: '#FFFFFF', // TEXT_PRIMARY
       letterSpacing: -0.025,
     },
-    subheading: {
-      fontWeight: '600',
-      letterSpacing: -0.015,
-    },
+    
+    // Body Text (Brand Kit Spec)
     body: {
+      fontFamily: 'Aileron-Regular',
+      fontWeight: '400',
+      color: '#B3B3B3', // TEXT_SECONDARY
+      lineHeight: 1.5,
+      letterSpacing: 0,
+    },
+    
+    // Display Text (Large Numbers)
+    display: {
+      fontFamily: 'BebasNeue-Regular',
       fontWeight: '400',
       letterSpacing: 0,
     },
+    
+    // Accent Text (Branding)
+    accent: {
+      fontFamily: 'MadeMirage-Regular',
+      fontWeight: '400',
+      letterSpacing: 0,
+    },
+    
+    // Captions and Labels
     caption: {
-      fontWeight: '500',
+      fontFamily: 'Aileron-Light',
+      fontWeight: '300',
+      color: '#4D4D4D', // TEXT_MUTED
       letterSpacing: 0.025,
     },
+    
+    // Subtitles
+    subheading: {
+      fontFamily: 'Aileron-Regular',
+      fontWeight: '600',
+      letterSpacing: -0.015,
+    },
+    
+    // Labels
     label: {
+      fontFamily: 'Aileron-Regular',
       fontWeight: '600',
       letterSpacing: 0.015,
     },
@@ -94,86 +140,84 @@ export const Typography = {
 } as const;
 
 // =============================================================================
-// COLORS - Linear-inspired Dark-first Design System
+// COLORS - Brand Kit Implementation (Dark Theme with Yellow Accent)
 // =============================================================================
 
 export const Colors = {
-  // Primary Neon Green (Property Management Theme)
-  primary: '#C6FF00',
-  primaryHover: '#A3E635',
-  primaryDark: '#84CC16',
-  primaryLight: '#D4FF3A',
+  // Brand Primary Colors (Direct from Brand Kit)
+  primary: '#FFF02B',           // Brand Yellow - Primary accent
+  primaryHover: '#E6D625',      // Darker yellow for hover
+  primaryDark: '#CCC123',       // Dark yellow variant
+  primaryLight: '#FFFF5C',      // Light yellow variant
 
-  // Grayscale (Dark-first) - Updated backgrounds
-  black: '#000000',
-  background: '#0B0F1A',        // Primary background (deep navy-black)
-  backgroundSecondary: '#1C1F2A', // Surface/card background (elevated surfaces)
-  backgroundTertiary: '#1F2937',  // Secondary surfaces
-  cardBackground: '#1C1F2A',      // Card background
+  // Brand Structural Colors
+  black: '#000000',             // Pure black for structural elements
+  background: '#121212',        // Main background (grey primary)
+  backgroundSecondary: '#1A1A1A', // Surface 1 - cards/elevated
+  backgroundTertiary: '#2A2A2A',  // Surface 2 - higher elevation
+  cardBackground: '#1A1A1A',    // Card background
 
-  // Neutral Scale - Updated for new dark theme
-  neutral950: '#0B0F1A',  // Primary background
-  neutral900: '#111827',  // Secondary surface
-  neutral850: '#1C1F2A',  // Elevated surface
-  neutral800: '#1F2937',  // Tertiary surface
-  neutral700: '#374151',  // Border color
-  neutral600: '#4B5563',  // Disabled text
-  neutral500: '#6B7280',  // Muted text
-  neutral400: '#71717A',  // Tertiary text
-  neutral300: '#A1A1AA',  // Secondary text
-  neutral200: '#D1D5DB',  // Light gray
-  neutral100: '#E5E7EB',  // Very light gray
-  neutral50: '#F1F1F1',   // Primary text (soft white)
-  white: '#ffffff',
+  // Brand Text Hierarchy
+  white: '#FFFFFF',             // Brand white
+  neutral950: '#121212',        // Primary background
+  neutral900: '#1A1A1A',        // Surface 1
+  neutral850: '#2A2A2A',        // Surface 2
+  neutral800: '#333333',        // Elevated surface
+  neutral700: '#4D4D4D',        // Secondary grey (content blocks)
+  neutral600: '#666666',        // Border variations
+  neutral500: '#808080',        // Mid-tone
+  neutral400: '#999999',        // Light borders
+  neutral300: '#B3B3B3',        // Secondary text
+  neutral200: '#CCCCCC',        // Light text
+  neutral100: '#E5E5E5',        // Very light
+  neutral50: '#FFFFFF',         // Primary text (white)
 
-  // Semantic Colors
-  success: '#22c55e',
-  warning: '#f59e0b',
-  error: '#ef4444',
+  // Brand Status Colors
+  success: '#00FF88',           // Bright green (brand kit)
+  warning: '#FFA500',           // Orange (brand kit)
+  error: '#FF3366',            // Vibrant red (brand kit)
 
-  // Borders
-  borderDefault: '#262626',
-  borderLight: '#333333',
-  borderStrong: '#404040',
+  // Brand Border System
+  borderDefault: '#4D4D4D',     // Primary borders
+  borderLight: '#2A2A2A',       // Subtle dividers
+  borderStrong: '#666666',      // Strong borders
 
-  // Enhanced Gradients (for use in LinearGradient components) - Updated for neon green theme
+  // Enhanced Gradients (Brand Kit Colors)
   gradients: {
-    primary: ['#C6FF00', '#A3E635', '#84CC16'],
-    primarySubtle: ['rgba(198, 255, 0, 0.2)', 'rgba(163, 230, 53, 0.1)', 'rgba(132, 204, 22, 0.05)'],
-    background: ['#0B0F1A', '#111827', '#1C1F2A'],
+    primary: ['#FFF02B', '#E6D625', '#CCC123'],
+    primarySubtle: ['rgba(255, 240, 43, 0.2)', 'rgba(230, 214, 37, 0.1)', 'rgba(204, 193, 35, 0.05)'],
+    background: ['#121212', '#1A1A1A', '#2A2A2A'],
     card: ['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.04)', 'rgba(255, 255, 255, 0.02)'],
     cardElevated: ['rgba(255, 255, 255, 0.12)', 'rgba(255, 255, 255, 0.06)', 'rgba(255, 255, 255, 0.03)'],
-    text: ['#F1F1F1', '#A1A1AA', '#71717A'],
-    success: ['#22c55e', '#16a34a', '#15803d'],
-    warning: ['#f59e0b', '#d97706', '#b45309'],
-    error: ['#ef4444', '#dc2626', '#b91c1c'],
-    neonGreen: ['rgba(198, 255, 0, 0.4)', 'rgba(163, 230, 53, 0.2)', 'rgba(132, 204, 22, 0.1)'],
-    neonGreen: ['rgba(34, 197, 94, 0.4)', 'rgba(16, 185, 129, 0.2)', 'rgba(5, 150, 105, 0.1)'],
-    neonBlue: ['rgba(59, 130, 246, 0.4)', 'rgba(37, 99, 235, 0.2)', 'rgba(29, 78, 216, 0.1)'],
+    text: ['#FFFFFF', '#B3B3B3', '#4D4D4D'],
+    success: ['#00FF88', '#00E67A', '#00CC6B'],
+    warning: ['#FFA500', '#E69500', '#CC8500'],
+    error: ['#FF3366', '#E62E5C', '#CC2952'],
+    brandYellow: ['rgba(255, 240, 43, 0.4)', 'rgba(230, 214, 37, 0.2)', 'rgba(204, 193, 35, 0.1)'],
     glassmorphism: ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.02)'],
   },
 
-  // Neon Effects - Updated to use neon green as primary
+  // Brand Glow Effects
   neon: {
-    green: {
-      color: '#C6FF00',
-      glow: 'rgba(198, 255, 0, 0.6)',
-      shadow: '0 0 20px rgba(198, 255, 0, 0.4)',
+    yellow: {
+      color: '#FFF02B',
+      glow: 'rgba(255, 240, 43, 0.6)',
+      shadow: '0 0 20px rgba(255, 240, 43, 0.4)',
     },
     success: {
-      color: '#22c55e',
-      glow: 'rgba(34, 197, 94, 0.6)',
-      shadow: '0 0 20px rgba(34, 197, 94, 0.4)',
+      color: '#00FF88',
+      glow: 'rgba(0, 255, 136, 0.6)',
+      shadow: '0 0 20px rgba(0, 255, 136, 0.4)',
     },
-    blue: {
-      color: '#3b82f6',
-      glow: 'rgba(59, 130, 246, 0.6)',
-      shadow: '0 0 20px rgba(59, 130, 246, 0.4)',
+    error: {
+      color: '#FF3366',
+      glow: 'rgba(255, 51, 102, 0.6)',
+      shadow: '0 0 20px rgba(255, 51, 102, 0.4)',
     },
-    orange: {
-      color: '#f59e0b',
-      glow: 'rgba(245, 158, 11, 0.6)',
-      shadow: '0 0 20px rgba(245, 158, 11, 0.4)',
+    warning: {
+      color: '#FFA500',
+      glow: 'rgba(255, 165, 0, 0.6)',
+      shadow: '0 0 20px rgba(255, 165, 0, 0.4)',
     },
   },
 } as const;
@@ -222,7 +266,7 @@ export const BorderRadius = {
 } as const;
 
 // =============================================================================
-// SHADOWS - Static shadows for components (dark-optimized)
+// SHADOWS - Brand Kit Yellow Glow Effects + Traditional Shadows
 // =============================================================================
 
 export const Shadows = {
@@ -233,103 +277,159 @@ export const Shadows = {
     shadowRadius: 0,
     elevation: 0,
   },
+  
+  // Brand Kit Yellow Glow Effects
+  smallGlow: {
+    shadowColor: '#FFF02B', // Brand Yellow
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  
+  mediumGlow: {
+    shadowColor: '#FFF02B', // Brand Yellow
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  
+  largeGlow: {
+    shadowColor: '#FFF02B', // Brand Yellow
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  
+  yellowGlow: {
+    shadowColor: '#FFF02B', // Brand Yellow
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+
+  // Traditional Black Shadows (Brand Kit Spec)
+  blackSmall: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  
+  blackMedium: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  // Legacy shadow names (mapped to brand kit)
   xs: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 1,
   },
   sm: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
   default: {
-    shadowColor: '#000000',
+    shadowColor: '#FFF02B', // Use yellow for default
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
   },
   md: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.7,
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 6,
   },
   lg: {
-    shadowColor: '#000000',
+    shadowColor: '#FFF02B', // Use yellow for large
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.8,
+    shadowOpacity: 0.2,
     shadowRadius: 16,
     elevation: 8,
   },
   xl: {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.9,
+    shadowOpacity: 0.25,
     shadowRadius: 24,
     elevation: 12,
   },
   '2xl': {
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 1.0,
+    shadowOpacity: 0.3,
     shadowRadius: 32,
     elevation: 16,
   },
+
+  // Component-specific shadows (Brand Kit)
   button: {
-    shadowColor: '#8b5cf6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowColor: '#FFF02B', // Yellow glow for buttons
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
   },
   card: {
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.6,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cardElevated: {
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.8,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   focus: {
-    shadowColor: '#8b5cf6',
+    shadowColor: '#FFF02B', // Yellow focus glow
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
+    shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 8,
   },
-  neonPurple: {
-    shadowColor: '#8b5cf6',
+
+  // Brand status glows
+  successGlow: {
+    shadowColor: '#00FF88', // Brand success green
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
+    shadowOpacity: 0.3,
     shadowRadius: 16,
-    elevation: 10,
+    elevation: 8,
   },
-  neonGreen: {
-    shadowColor: '#22c55e',
+  errorGlow: {
+    shadowColor: '#FF3366', // Brand error red
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
+    shadowOpacity: 0.3,
     shadowRadius: 16,
-    elevation: 10,
+    elevation: 8,
   },
-  neonBlue: {
-    shadowColor: '#3b82f6',
+  warningGlow: {
+    shadowColor: '#FFA500', // Brand warning orange
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
+    shadowOpacity: 0.3,
     shadowRadius: 16,
-    elevation: 10,
+    elevation: 8,
   },
 } as const;
 
@@ -449,23 +549,30 @@ export const ComponentDimensions = {
 } as const;
 
 // =============================================================================
-// ANIMATION - Smooth iOS-like Transitions (theme-independent)
+// ANIMATION - Brand Kit Timing & Easing
 // =============================================================================
 
 export const Animation = {
-  // Enhanced Timing (Linear-inspired)
+  // Brand Kit Duration (Linear-inspired)
   duration: {
     instant: 100,
+    micro: 150,    // Button press (brand kit)
     fast: 150,
+    short: 250,    // Transitions (brand kit) 
     normal: 250,
+    medium: 350,   // Screen transitions (brand kit)
     slow: 350,
+    long: 500,     // Complex animations (brand kit)
     slower: 500,
     slowest: 750,
   },
 
-  // Enhanced Easing (Linear + iOS-inspired)
+  // Brand Kit Easing (Standard easing)
   easing: {
     linear: [0, 0, 1, 1],
+    standard: [0.4, 0.0, 0.2, 1] as const,   // Brand kit standard
+    decelerate: [0.0, 0.0, 0.2, 1] as const, // Brand kit decelerate
+    accelerate: [0.4, 0.0, 1, 1] as const,   // Brand kit accelerate
     default: [0.25, 0.46, 0.45, 0.94],
     easeOut: [0.0, 0.0, 0.2, 1],
     easeIn: [0.4, 0.0, 1, 1],
@@ -477,13 +584,25 @@ export const Animation = {
     emphasized: [0.2, 0, 0, 1],
   },
 
-  // Enhanced Scale transforms
+  // Brand Kit Interactive States
   scale: {
-    press: 0.96,
+    press: 0.96,   // Brand kit button press scale
     hover: 1.02,
     focus: 1.04,
     active: 0.98,
     disabled: 0.95,
+  },
+
+  // Button interactions (Brand Kit)
+  button: {
+    activeOpacity: 0.8, // Brand kit spec
+    pressScale: 0.96,
+  },
+
+  // Tab animations (Brand Kit)
+  tab: {
+    iconScale: 1.1,
+    colorTransition: 250, // Short duration
   },
 
   // Enhanced transforms
@@ -570,90 +689,96 @@ export const Icons = {
 } as const;
 
 // =============================================================================
-// THEME-AWARE STATUS CONFIGURATIONS
+// THEME-AWARE STATUS CONFIGURATIONS - Brand Kit Colors
 // =============================================================================
 
-export const getStatusConfig = (colors: any) => ({
-  job: {
-    pending: {
-      color: colors.status.pending,
-      backgroundColor: colors.warningLight,
-      label: 'Pending',
-      icon: 'Clock',
-    },
-    assigned: {
-      color: colors.status.inProgress,
-      backgroundColor: colors.infoLight,
-      label: 'Assigned',
-      icon: 'User',
-    },
-    in_progress: {
-      color: colors.status.inProgress,
-      backgroundColor: colors.infoLight,
-      label: 'In Progress',
-      icon: 'Play',
-    },
-    completed: {
-      color: colors.status.completed,
-      backgroundColor: colors.successLight,
-      label: 'Completed',
-      icon: 'CheckCircle',
-    },
-    cancelled: {
-      color: colors.status.cancelled,
-      backgroundColor: colors.errorLight,
-      label: 'Cancelled',
-      icon: 'XCircle',
-    },
+export const getJobStatusConfig = (colors = Colors) => ({
+  pending: {
+    color: colors.warning || '#FFA500',
+    backgroundColor: 'rgba(255, 165, 0, 0.1)',
+    label: 'Pending',
+    icon: 'Clock',
   },
+  assigned: {
+    color: colors.primary || '#FFF02B',
+    backgroundColor: 'rgba(255, 240, 43, 0.1)',
+    label: 'Assigned', 
+    icon: 'User',
+  },
+  in_progress: {
+    color: colors.primary || '#FFF02B',
+    backgroundColor: 'rgba(255, 240, 43, 0.1)',
+    label: 'In Progress',
+    icon: 'Play',
+  },
+  completed: {
+    color: colors.success || '#00FF88',
+    backgroundColor: 'rgba(0, 255, 136, 0.1)',
+    label: 'Completed',
+    icon: 'CheckCircle',
+  },
+  cancelled: {
+    color: colors.error || '#FF3366',
+    backgroundColor: 'rgba(255, 51, 102, 0.1)',
+    label: 'Cancelled',
+    icon: 'XCircle',
+  },
+});
 
-  priority: {
-    low: {
-      color: colors.priority.low,
-      label: 'Low',
-      icon: 'ArrowDown',
-    },
-    medium: {
-      color: colors.priority.medium,
-      label: 'Medium',
-      icon: 'Minus',
-    },
-    high: {
-      color: colors.priority.high,
-      label: 'High',
-      icon: 'ArrowUp',
-    },
-    urgent: {
-      color: colors.priority.urgent,
-      label: 'Urgent',
-      icon: 'AlertTriangle',
-    },
+export const getPriorityConfig = (colors = Colors) => ({
+  low: {
+    color: colors.success || '#00FF88',
+    label: 'Low',
+    icon: 'ArrowDown',
+  },
+  medium: {
+    color: colors.warning || '#FFA500',
+    label: 'Medium',
+    icon: 'Minus',
+  },
+  high: {
+    color: colors.primary || '#FFF02B',
+    label: 'High',
+    icon: 'ArrowUp',
+  },
+  urgent: {
+    color: colors.error || '#FF3366',
+    label: 'Urgent',
+    icon: 'AlertTriangle',
   },
 });
 
 // =============================================================================
-// HOOK FOR THEME-AWARE DESIGN TOKENS
+// BRAND KIT INTEGRATION - FINAL EXPORTS
 // =============================================================================
 
-export const useDesignTokens = () => {
-  const { theme, colors } = useThemeContext();
-  const isDark = theme === 'dark';
+// Import brand theme for consistency
+export { BrandTheme } from './BrandTheme';
 
+// Status configurations using brand colors
+export const StatusConfig = {
+  job: getJobStatusConfig(),
+  priority: getPriorityConfig(),
+};
+
+// Brand-aware design tokens
+export const useDesignTokens = () => {
   return {
     Device,
     Typography,
     Spacing,
     BorderRadius,
     Colors,
-    Shadows: getShadows(isDark),
+    Shadows,
     ComponentDimensions,
     Animation,
     Layout,
     Icons,
-    StatusConfig: getStatusConfig(colors),
-    colors,
-    theme,
-    isDark,
+    StatusConfig,
+    colors: Colors,
+    theme: 'dark', // Brand kit is dark theme
+    isDark: true,
+    BrandTheme, // Include brand theme
   };
 };
 
@@ -666,4 +791,7 @@ export default {
   Animation,
   Layout,
   Icons,
+  Colors,
+  Shadows,
+  BrandTheme,
 };

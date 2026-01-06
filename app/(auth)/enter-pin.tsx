@@ -1,6 +1,6 @@
 /**
- * PIN Entry Screen - AIS Telecom Style
- * Beautiful secure PIN input with neon green accents and dark theme matching profile selection
+ * PIN Entry Screen - Brand Kit Style
+ * Secure PIN input with yellow accents and grey theme matching brand identity
  */
 
 import React, { useState, useEffect } from 'react';
@@ -15,11 +15,10 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import * as Animatable from 'react-native-animatable';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { usePINAuth } from "@/contexts/PINAuthContext";
+import { BrandTheme } from '@/constants/BrandTheme';
 
 export default function EnterPINScreen() {
   const router = useRouter();
@@ -113,19 +112,17 @@ export default function EnterPINScreen() {
         paddingHorizontal: 20
       }}>
         {[0, 1, 2, 3].map((index) => (
-          <Animatable.View
+          <View
             key={index}
-            animation={pin.length > index ? 'bounceIn' : undefined}
-            duration={300}
             style={{ marginHorizontal: 12 }}
           >
             {pin.length > index ? (
-              <LinearGradient
-                colors={['#C6FF00', '#A3E635']}
+              <View
                 style={{
                   width: 20,
                   height: 20,
                   borderRadius: 10,
+                  backgroundColor: BrandTheme.colors.YELLOW,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
@@ -134,20 +131,20 @@ export default function EnterPINScreen() {
                   width: 16,
                   height: 16,
                   borderRadius: 8,
-                  backgroundColor: '#C6FF00',
+                  backgroundColor: BrandTheme.colors.YELLOW,
                 }} />
-              </LinearGradient>
+              </View>
             ) : (
               <View style={{
                 width: 20,
                 height: 20,
                 borderRadius: 10,
                 borderWidth: 2,
-                borderColor: '#374151',
+                borderColor: BrandTheme.colors.BORDER,
                 backgroundColor: 'transparent',
               }} />
             )}
-          </Animatable.View>
+          </View>
         ))}
       </View>
     );
@@ -185,23 +182,18 @@ export default function EnterPINScreen() {
                     style={{
                       width: 72,
                       height: 72,
-                      borderRadius: 36,
-                      backgroundColor: '#1C1F2A',
+                      borderRadius: 0,
+                      backgroundColor: BrandTheme.colors.SURFACE_1,
                       alignItems: 'center',
                       justifyContent: 'center',
                       borderWidth: 1,
-                      borderColor: pin.length === 0 ? '#374151' : '#C6FF00',
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 4,
-                      elevation: 4,
+                      borderColor: pin.length === 0 ? BrandTheme.colors.BORDER : BrandTheme.colors.YELLOW,
                     }}
                   >
                     <Ionicons
                       name="backspace-outline"
                       size={28}
-                      color={pin.length === 0 ? '#71717A' : '#C6FF00'}
+                      color={pin.length === 0 ? BrandTheme.colors.TEXT_SECONDARY : BrandTheme.colors.YELLOW}
                     />
                   </TouchableOpacity>
                 );
@@ -216,24 +208,19 @@ export default function EnterPINScreen() {
                   style={{
                     width: 72,
                     height: 72,
-                    borderRadius: 36,
-                    backgroundColor: '#1C1F2A',
+                    borderRadius: 0,
+                    backgroundColor: BrandTheme.colors.SURFACE_1,
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: 1,
-                    borderColor: '#374151',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 4,
-                    elevation: 4,
+                    borderColor: BrandTheme.colors.BORDER,
                   }}
                 >
                   <Text style={{
-                    color: 'white',
+                    color: BrandTheme.colors.TEXT_PRIMARY,
                     fontSize: 24,
                     fontWeight: '600',
-                    fontFamily: 'Urbanist'
+                    fontFamily: BrandTheme.typography.fontFamily.primary
                   }}>
                     {item}
                   </Text>
@@ -248,22 +235,34 @@ export default function EnterPINScreen() {
 
   if (!profile) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0B0F1A' }}>
-        <StatusBar barStyle="light-content" backgroundColor="#0B0F1A" />
+      <View style={{ flex: 1, backgroundColor: BrandTheme.colors.GREY_PRIMARY }}>
+        <StatusBar barStyle="light-content" backgroundColor={BrandTheme.colors.BLACK} />
         <SafeAreaView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 32 }}>
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ color: 'white', fontSize: 18, fontFamily: 'Inter' }}>Profile not found</Text>
+            <Text style={{ 
+              color: BrandTheme.colors.TEXT_PRIMARY, 
+              fontSize: 18, 
+              fontFamily: BrandTheme.typography.fontFamily.regular
+            }}>
+              Profile not found
+            </Text>
             <TouchableOpacity
               style={{
                 marginTop: 16,
-                backgroundColor: '#C6FF00',
+                backgroundColor: BrandTheme.colors.YELLOW,
                 paddingHorizontal: 24,
                 paddingVertical: 12,
-                borderRadius: 12,
+                borderRadius: 0,
               }}
               onPress={() => router.replace('/(auth)/select-profile')}
             >
-              <Text style={{ color: '#0B0F1A', fontWeight: '600', fontFamily: 'Inter' }}>Back to Profiles</Text>
+              <Text style={{ 
+                color: BrandTheme.colors.BLACK, 
+                fontWeight: '600', 
+                fontFamily: BrandTheme.typography.fontFamily.primary
+              }}>
+                Back to Profiles
+              </Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -281,8 +280,8 @@ export default function EnterPINScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0B0F1A' }}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B0F1A" />
+    <View style={{ flex: 1, backgroundColor: BrandTheme.colors.GREY_PRIMARY }}>
+      <StatusBar barStyle="light-content" backgroundColor={BrandTheme.colors.BLACK} />
       <SafeAreaView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 32 }}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32 }}>
@@ -290,21 +289,22 @@ export default function EnterPINScreen() {
             style={{ marginRight: 16, padding: 8 }}
             onPress={handleBackToProfiles}
           >
-            <Ionicons name="chevron-back" size={24} color="#C6FF00" />
+            <Ionicons name="chevron-back" size={24} color={BrandTheme.colors.YELLOW} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={{
-              color: 'white',
-              fontSize: 24,
-              fontWeight: 'bold',
-              fontFamily: 'Urbanist'
+              color: BrandTheme.colors.TEXT_PRIMARY,
+              fontSize: 28,
+              fontFamily: BrandTheme.typography.fontFamily.display,
+              textTransform: 'uppercase',
+              letterSpacing: 1,
             }}>
               Enter PIN
             </Text>
             <Text style={{
-              color: '#9CA3AF',
+              color: BrandTheme.colors.TEXT_SECONDARY,
               fontSize: 14,
-              fontFamily: 'Inter'
+              fontFamily: BrandTheme.typography.fontFamily.regular
             }}>
               Welcome back, {profile.name}
             </Text>
@@ -312,17 +312,15 @@ export default function EnterPINScreen() {
         </View>
 
         {/* Profile Info */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
+        <View
           style={{ alignItems: 'center', marginBottom: 32 }}
         >
-          <LinearGradient
-            colors={['#C6FF00', '#A3E635']}
+          <View
             style={{
               width: 88,
               height: 88,
-              borderRadius: 44,
+              borderRadius: 0,
+              backgroundColor: BrandTheme.colors.YELLOW,
               padding: 3,
               alignItems: 'center',
               justifyContent: 'center',
@@ -332,59 +330,56 @@ export default function EnterPINScreen() {
             <View style={{
               width: 82,
               height: 82,
-              borderRadius: 41,
-              backgroundColor: '#374151',
+              borderRadius: 0,
+              backgroundColor: BrandTheme.colors.SURFACE_1,
               alignItems: 'center',
               justifyContent: 'center',
             }}>
               {profile.avatar ? (
                 <Image
                   source={{ uri: profile.avatar }}
-                  style={{ width: 82, height: 82, borderRadius: 41 }}
+                  style={{ width: 82, height: 82, borderRadius: 0 }}
                 />
               ) : (
                 <Text style={{
-                  color: '#C6FF00',
+                  color: BrandTheme.colors.YELLOW,
                   fontSize: 24,
                   fontWeight: 'bold',
-                  fontFamily: 'Urbanist'
+                  fontFamily: BrandTheme.typography.fontFamily.primary
                 }}>
                   {getInitials(profile.name)}
                 </Text>
               )}
             </View>
-          </LinearGradient>
+          </View>
           <Text style={{
-            color: 'white',
+            color: BrandTheme.colors.TEXT_PRIMARY,
             fontSize: 20,
             fontWeight: '600',
             marginBottom: 4,
-            fontFamily: 'Urbanist'
+            fontFamily: BrandTheme.typography.fontFamily.primary
           }}>
             {profile.name}
           </Text>
           <Text style={{
-            color: '#9CA3AF',
+            color: BrandTheme.colors.TEXT_SECONDARY,
             fontSize: 14,
             textTransform: 'capitalize',
-            fontFamily: 'Inter'
+            fontFamily: BrandTheme.typography.fontFamily.regular
           }}>
             {profile.role}
           </Text>
-        </Animatable.View>
+        </View>
 
         {/* PIN Input Section */}
-        <Animatable.View
-          animation={isShaking ? 'shake' : 'fadeInUp'}
-          duration={600}
-          delay={200}
+        <View
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
         >
           <Text style={{
-            color: 'white',
+            color: BrandTheme.colors.TEXT_PRIMARY,
             fontSize: 18,
             marginBottom: 32,
-            fontFamily: 'Inter'
+            fontFamily: BrandTheme.typography.fontFamily.regular
           }}>
             Enter your 4-digit PIN
           </Text>
@@ -392,47 +387,43 @@ export default function EnterPINScreen() {
           {renderPinDots()}
 
           {error && (
-            <Animatable.View animation="fadeInDown" duration={300}>
-              <Text style={{
-                color: '#EF4444',
-                fontSize: 14,
-                marginBottom: 16,
-                textAlign: 'center',
-                fontFamily: 'Inter'
-              }}>
-                {error}
-              </Text>
-            </Animatable.View>
+            <Text style={{
+              color: BrandTheme.colors.ERROR,
+              fontSize: 14,
+              marginBottom: 16,
+              textAlign: 'center',
+              fontFamily: BrandTheme.typography.fontFamily.regular
+            }}>
+              {error}
+            </Text>
           )}
 
           {isLoading ? (
             <View style={{ marginTop: 32 }}>
-              <ActivityIndicator size="large" color="#C6FF00" />
+              <ActivityIndicator size="large" color={BrandTheme.colors.YELLOW} />
             </View>
           ) : (
             renderNumberPad()
           )}
 
           {attempts > 0 && (
-            <Animatable.View animation="fadeInUp" duration={300}>
-              <Text style={{
-                color: '#F59E0B',
-                fontSize: 14,
-                marginTop: 16,
-                fontFamily: 'Inter'
-              }}>
-                Attempts remaining: {3 - attempts}
-              </Text>
-            </Animatable.View>
+            <Text style={{
+              color: BrandTheme.colors.WARNING,
+              fontSize: 14,
+              marginTop: 16,
+              fontFamily: BrandTheme.typography.fontFamily.regular
+            }}>
+              Attempts remaining: {3 - attempts}
+            </Text>
           )}
-        </Animatable.View>
+        </View>
 
         {/* Footer */}
         <View style={{ alignItems: 'center', marginBottom: 32 }}>
           <Text style={{
-            color: '#6B7280',
+            color: BrandTheme.colors.TEXT_SECONDARY,
             fontSize: 12,
-            fontFamily: 'Inter'
+            fontFamily: BrandTheme.typography.fontFamily.regular
           }}>
             Secure PIN Authentication
           </Text>

@@ -17,7 +17,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import * as Animatable from 'react-native-animatable';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { usePINAuth } from "@/contexts/PINAuthContext";
 
@@ -156,10 +155,8 @@ export default function CreatePINScreen() {
         paddingHorizontal: 20
       }}>
         {[0, 1, 2, 3].map((index) => (
-          <Animatable.View
+          <View
             key={index}
-            animation={currentPin.length > index ? 'bounceIn' : undefined}
-            duration={300}
             style={{ marginHorizontal: 12 }}
           >
             {currentPin.length > index ? (
@@ -190,7 +187,7 @@ export default function CreatePINScreen() {
                 backgroundColor: 'transparent',
               }} />
             )}
-          </Animatable.View>
+          </View>
         ))}
       </View>
     );
@@ -359,9 +356,7 @@ export default function CreatePINScreen() {
         </View>
 
         {/* Profile Info */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
+        <View
           style={{ alignItems: 'center', marginBottom: 32 }}
         >
           <LinearGradient
@@ -418,13 +413,10 @@ export default function CreatePINScreen() {
           }}>
             {profile.role}
           </Text>
-        </Animatable.View>
+        </View>
 
         {/* PIN Input Section */}
-        <Animatable.View
-          animation={isShaking ? 'shake' : 'fadeInUp'}
-          duration={600}
-          delay={200}
+        <View
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
         >
           <Text style={{
@@ -441,17 +433,15 @@ export default function CreatePINScreen() {
           {renderPinDots()}
 
           {error && (
-            <Animatable.View animation="fadeInDown" duration={300}>
-              <Text style={{
-                color: '#EF4444',
-                fontSize: 14,
-                marginBottom: 16,
-                textAlign: 'center',
-                fontFamily: 'Inter'
-              }}>
-                {error}
-              </Text>
-            </Animatable.View>
+            <Text style={{
+              color: '#EF4444',
+              fontSize: 14,
+              marginBottom: 16,
+              textAlign: 'center',
+              fontFamily: 'Inter'
+            }}>
+              {error}
+            </Text>
           )}
 
           {isLoading ? (
@@ -461,7 +451,7 @@ export default function CreatePINScreen() {
           ) : (
             renderNumberPad()
           )}
-        </Animatable.View>
+        </View>
 
         {/* Footer */}
         <View style={{ alignItems: 'center', marginBottom: 32 }}>

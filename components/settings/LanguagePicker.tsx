@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as Animatable from 'react-native-animatable';
 import { useTranslation } from '@/hooks/useTranslation';
 import { SupportedLanguage } from '@/services/i18nService';
 
@@ -34,10 +33,8 @@ export const LanguagePicker: React.FC<LanguagePickerProps> = ({ visible, onClose
   };
 
   const renderLanguageOption = (language: SupportedLanguage, index: number) => (
-    <Animatable.View
+    <View
       key={language.code}
-      animation="fadeInUp"
-      delay={index * 100}
     >
       <TouchableOpacity
         onPress={() => handleLanguageSelect(language.code)}
@@ -82,7 +79,7 @@ export const LanguagePicker: React.FC<LanguagePickerProps> = ({ visible, onClose
           <Ionicons name="checkmark-circle" size={24} color="#C6FF00" />
         ) : null}
       </TouchableOpacity>
-    </Animatable.View>
+    </View>
   );
 
   return (
@@ -142,9 +139,7 @@ export const LanguagePicker: React.FC<LanguagePickerProps> = ({ visible, onClose
             contentContainerStyle={{ padding: 20 }}
             showsVerticalScrollIndicator={false}
           >
-            <Animatable.View
-              animation="fadeInUp"
-              duration={600}
+            <View
             >
               <Text style={{
                 color: 'white',
@@ -154,16 +149,14 @@ export const LanguagePicker: React.FC<LanguagePickerProps> = ({ visible, onClose
               }}>
                 {t('common.availableLanguages') || 'Available Languages'}
               </Text>
-            </Animatable.View>
+            </View>
 
             {supportedLanguages.map((language, index) => 
               renderLanguageOption(language, index)
             )}
 
             {/* Device Language Info */}
-            <Animatable.View
-              animation="fadeInUp"
-              delay={supportedLanguages.length * 100}
+            <View
               style={{
                 backgroundColor: 'rgba(198, 255, 0, 0.1)',
                 borderRadius: 12,
@@ -190,7 +183,7 @@ export const LanguagePicker: React.FC<LanguagePickerProps> = ({ visible, onClose
               }}>
                 {t('common.deviceLanguageInfo') || 'The app will automatically detect your device language on first launch. You can change it anytime from here.'}
               </Text>
-            </Animatable.View>
+            </View>
           </ScrollView>
         </SafeAreaView>
       </View>

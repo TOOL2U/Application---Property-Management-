@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import * as Animatable from 'react-native-animatable';
 import { Ionicons } from '@expo/vector-icons';
 import { User, Lock, Shield, AlertCircle, CheckCircle } from 'lucide-react-native';
 
@@ -183,10 +182,8 @@ export const PINEntryModal: React.FC<PINEntryModalProps> = ({
       statusBarTranslucent
     >
       <View className="flex-1 justify-center items-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}>
-        <Animatable.View
+        <View
           ref={animationRef}
-          animation="slideInUp"
-          duration={400}
           className="w-11/12 max-w-sm mx-4"
         >
           <View className="overflow-hidden rounded-3xl border border-white/10">
@@ -268,8 +265,7 @@ export const PINEntryModal: React.FC<PINEntryModalProps> = ({
                   />
 
                   {error && (
-                    <Animatable.View
-                      animation="fadeIn"
+                    <View
                       className="bg-red-500/20 border border-red-500/30 rounded-xl p-3 mb-6"
                     >
                       <View className="flex-row items-center justify-center">
@@ -281,7 +277,7 @@ export const PINEntryModal: React.FC<PINEntryModalProps> = ({
                           {attemptsLeft} attempt{attemptsLeft !== 1 ? 's' : ''} remaining
                         </Text>
                       )}
-                    </Animatable.View>
+                    </View>
                   )}
 
                   <TouchableOpacity
@@ -317,9 +313,7 @@ export const PINEntryModal: React.FC<PINEntryModalProps> = ({
                   >
                     <View className="flex-row items-center justify-center">
                       {loading ? (
-                        <Animatable.View animation="rotate" iterationCount="infinite">
-                          <Ionicons name="refresh" size={16} color="white" />
-                        </Animatable.View>
+                        <Ionicons name="refresh" size={16} color="white" />
                       ) : (
                         <Shield size={16} color="white" />
                       )}
@@ -338,7 +332,7 @@ export const PINEntryModal: React.FC<PINEntryModalProps> = ({
               </View>
             </LinearGradient>
           </View>
-        </Animatable.View>
+        </View>
       </View>
     </Modal>
   );

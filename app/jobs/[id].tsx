@@ -10,10 +10,11 @@ import {
   Dimensions,
   Image,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { doc, getDoc } from 'firebase/firestore';
@@ -23,6 +24,7 @@ import { jobService } from '@/services/jobService';
 import { useStaffAuth } from '@/hooks/useStaffAuth';
 import { usePINAuth } from '@/contexts/PINAuthContext';
 import { JobCompletionWizard } from '@/components/jobs/JobCompletionWizard';
+import { BrandTheme } from '@/constants/BrandTheme';
 import {
   ArrowLeft,
   MapPin,
@@ -50,26 +52,27 @@ const MapComponent = ({ job, userLocation }: { job: Job; userLocation: any }) =>
   return (
     <View style={styles.webMapContainer}>
       <View style={styles.webMapContent}>
-        <MapPin size={32} color="#C6FF00" />
-        <Text style={styles.webMapAddress}>{job.location.address}</Text>
+        <MapPin size={32} color={BrandTheme.colors.YELLOW} />
+        <Text style={styles.webMapAddress}>{job.location?.address || 'Address not available'}</Text>
         <Text style={styles.webMapCity}>
-          {job.location.city}, {job.location.state} {job.location.zipCode}
+          {job.location?.city || ''}{job.location?.city && job.location?.state ? ', ' : ''}{job.location?.state || ''} {job.location?.zipCode || ''}
         </Text>
         <TouchableOpacity
           style={styles.webMapButton}
           onPress={() => {
-            const address = encodeURIComponent(`${job.location.address}, ${job.location.city}, ${job.location.state}`);
-            const url = `https://www.google.com/maps/search/?api=1&query=${address}`;
+            const address = job.location?.address || '';
+            const city = job.location?.city || '';
+            const state = job.location?.state || '';
+            const fullAddress = `${address}, ${city}, ${state}`.replace(/^,\s*|,\s*$/g, '');
+            const encodedAddress = encodeURIComponent(fullAddress);
+            const url = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
             Linking.openURL(url);
           }}
         >
-          <LinearGradient
-            colors={['#C6FF00', '#A3E635']}
-            style={styles.webMapButtonGradient}
-          >
-            <Navigation size={16} color="#0B0F1A" />
+          <View style={styles.webMapButtonGradient}>
+            <Navigation size={16} color={BrandTheme.colors.BLACK} />
             <Text style={styles.webMapButtonText}>Open in Google Maps</Text>
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
       </View>
     </View>
@@ -106,6 +109,26 @@ export default function JobDetailsScreen() {
   const [photos, setPhotos] = useState<JobPhoto[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showCompletionWizard, setShowCompletionWizard] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Auto-refresh when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🔄 [JobDetails]: Screen focused, refreshing job data...');
+      if (id && user?.id) {
+        loadJobDetails();
+      }
+    }, [id, user?.id])
+  );
+
+  // Pull-to-refresh handler
+  const onRefresh = React.useCallback(async () => {
+    console.log('🔄 [JobDetails]: Manual refresh triggered');
+    setRefreshing(true);
+    await loadJobDetails();
+    console.log('✅ [JobDetails]: Refresh complete');
+    setRefreshing(false);
+  }, [id, user?.id]);
 
   useEffect(() => {
     if (id && user?.id) {
@@ -162,7 +185,27 @@ export default function JobDetailsScreen() {
           jobData.assignedStaffDocId === (currentProfile as any)?.userId; // Firebase UID in assignedStaffDocId
         
         if (isAssignedToUser) {
-          setJob({ id: jobDoc.id, ...jobData } as Job);
+          // Convert Firestore Timestamps to JavaScript Dates
+          const processedJobData = {
+            ...jobData,
+            checkInDate: jobData.checkInDate?.toDate ? jobData.checkInDate.toDate() : jobData.checkInDate,
+            checkOutDate: jobData.checkOutDate?.toDate ? jobData.checkOutDate.toDate() : jobData.checkOutDate,
+            createdAt: jobData.createdAt?.toDate ? jobData.createdAt.toDate() : jobData.createdAt,
+            updatedAt: jobData.updatedAt?.toDate ? jobData.updatedAt.toDate() : jobData.updatedAt,
+            scheduledFor: jobData.scheduledFor?.toDate ? jobData.scheduledFor.toDate() : jobData.scheduledFor,
+            startedAt: jobData.startedAt?.toDate ? jobData.startedAt.toDate() : jobData.startedAt,
+            completedAt: jobData.completedAt?.toDate ? jobData.completedAt.toDate() : jobData.completedAt,
+            rejectedAt: jobData.rejectedAt?.toDate ? jobData.rejectedAt.toDate() : jobData.rejectedAt,
+          };
+          
+          console.log('✅ Processed dates:', {
+            checkInDate: processedJobData.checkInDate,
+            checkOutDate: processedJobData.checkOutDate,
+            checkInType: typeof processedJobData.checkInDate,
+            checkOutType: typeof processedJobData.checkOutDate
+          });
+          
+          setJob({ id: jobDoc.id, ...processedJobData } as unknown as Job);
           setPhotos(jobData.photos || []);
         } else {
           console.warn('❌ Access denied - job assignment mismatch:', {
@@ -375,7 +418,10 @@ export default function JobDetailsScreen() {
           [
             { 
               text: 'Great!', 
-              onPress: () => router.back(),
+              onPress: () => {
+                // Navigate to jobs list instead of going back
+                router.replace('/(tabs)/jobs-brand');
+              },
               style: 'default' 
             }
           ]
@@ -413,36 +459,194 @@ export default function JobDetailsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft size={24} color="#ffffff" />
+          <ArrowLeft size={24} color={BrandTheme.colors.TEXT_PRIMARY} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Job Details</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={BrandTheme.colors.YELLOW}
+            colors={[BrandTheme.colors.YELLOW]}
+            progressBackgroundColor={BrandTheme.colors.SURFACE_1}
+          />
+        }
+      >
+        {/* Property Name Section */}
+        {job.propertyName && (
+          <View style={styles.card}>
+            <View style={styles.cardGradient}>
+              <View style={styles.propertyNameSection}>
+                <Text style={styles.propertyNameLabel}>PROPERTY</Text>
+                <Text style={styles.propertyName}>{job.propertyName}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Property Photos Gallery */}
+        {job.propertyPhotos && job.propertyPhotos.length > 0 ? (
+          <View style={styles.card}>
+            <View style={styles.cardGradient}>
+              <View style={styles.sectionHeader}>
+                <Camera size={20} color={BrandTheme.colors.YELLOW} />
+                <Text style={styles.sectionTitle}>Property Photos</Text>
+              </View>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                style={styles.photosScrollView}
+              >
+                {job.propertyPhotos.map((photoUrl, index) => (
+                  <Image
+                    key={index}
+                    source={{ uri: photoUrl }}
+                    style={styles.propertyPhoto}
+                    onError={(e) => {
+                      console.log('Failed to load property photo:', photoUrl, e.nativeEvent.error);
+                    }}
+                    resizeMode="cover"
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.card}>
+            <View style={styles.cardGradient}>
+              <View style={styles.noPhotosSection}>
+                <Camera size={32} color={BrandTheme.colors.GREY_SECONDARY} />
+                <Text style={styles.noPhotosText}>No property photos available</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Access Instructions - CRITICAL */}
+        {job.accessInstructions && (
+          <View style={styles.card}>
+            <View style={styles.cardGradient}>
+              <View style={styles.accessSection}>
+                <View style={styles.sectionHeader}>
+                  <AlertTriangle size={20} color={BrandTheme.colors.YELLOW} />
+                  <Text style={styles.sectionTitle}>Access Instructions</Text>
+                </View>
+                <Text style={styles.accessText}>{job.accessInstructions}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Google Maps Navigation Button */}
+        {job.location?.googleMapsLink && (
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.mapsButton}
+              onPress={() => {
+                const mapsLink = job.location?.googleMapsLink;
+                if (mapsLink && typeof mapsLink === 'string') {
+                  Linking.openURL(mapsLink).catch(err => {
+                    console.error('Failed to open maps:', err);
+                    Alert.alert('Error', 'Could not open Google Maps');
+                  });
+                }
+              }}
+            >
+              <View style={styles.mapsButtonGradient}>
+                <MapPin size={20} color={BrandTheme.colors.BLACK} />
+                <Text style={styles.mapsButtonText}>Open in Google Maps</Text>
+                <Navigation size={16} color={BrandTheme.colors.BLACK} />
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Booking Details */}
+        {(job.bookingRef || job.checkInDate || job.checkOutDate || job.guestCount) && (
+          <View style={styles.card}>
+            <View style={styles.cardGradient}>
+              <View style={styles.bookingSection}>
+                <Text style={styles.cardTitle}>Booking Information</Text>
+                
+                {job.bookingRef && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Booking Reference:</Text>
+                    <Text style={styles.detailValue}>{job.bookingRef}</Text>
+                  </View>
+                )}
+                
+                {job.checkInDate && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Check-in Date:</Text>
+                    <Text style={styles.detailValue}>
+                      {new Date(job.checkInDate).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </Text>
+                  </View>
+                )}
+                
+                {job.checkOutDate && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Check-out Date:</Text>
+                    <Text style={styles.detailValue}>
+                      {new Date(job.checkOutDate).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </Text>
+                  </View>
+                )}
+                
+                {job.guestCount && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Number of Guests:</Text>
+                    <Text style={styles.detailValue}>{job.guestCount}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Job Info Card */}
         <View style={styles.card}>
           <View style={styles.cardGradient}>
             <Text style={styles.jobTitle}>{job.title}</Text>
-            <Text style={styles.jobType}>{job.type ? job.type.replace('_', ' ').toUpperCase() : 'JOB'}</Text>
+            <Text style={styles.jobType}>
+              {job.type && typeof job.type === 'string' 
+                ? job.type.replace('_', ' ').toUpperCase() 
+                : 'JOB'}
+            </Text>
             
             <View style={styles.jobMeta}>
               <View style={styles.metaItem}>
-                <Clock size={16} color="#C6FF00" />
+                <Clock size={16} color={BrandTheme.colors.YELLOW} />
                 <Text style={styles.metaText}>
-                  {job.estimatedDuration || 0} min • {job.priority ? job.priority.toUpperCase() : 'NORMAL'}
+                  {job.estimatedDuration || 0} min • {job.priority && typeof job.priority === 'string' ? job.priority.toUpperCase() : 'NORMAL'}
                 </Text>
               </View>
               
               <View style={styles.metaItem}>
-                <Building size={16} color="#C6FF00" />
+                <Building size={16} color={BrandTheme.colors.YELLOW} />
                 <Text style={styles.metaText}>{job.location?.address || 'Location not available'}</Text>
               </View>
             </View>
 
             {job.description && (
               <View style={styles.descriptionContainer}>
-                <FileText size={16} color="#C6FF00" />
+                <FileText size={16} color={BrandTheme.colors.YELLOW} />
                 <Text style={styles.description}>{job.description}</Text>
               </View>
             )}
@@ -456,7 +660,7 @@ export default function JobDetailsScreen() {
               <View style={styles.mapHeader}>
                 <Text style={styles.cardTitle}>Location & Navigation</Text>
                 <TouchableOpacity style={styles.directionsButton} onPress={handleGetDirections}>
-                  <Navigation size={16} color="#0B0F1A" />
+                  <Navigation size={16} color={BrandTheme.colors.BLACK} />
                   <Text style={styles.directionsText}>Directions</Text>
                 </TouchableOpacity>
               </View>
@@ -466,29 +670,42 @@ export default function JobDetailsScreen() {
           </View>
         )}
 
+        {/* Special Notes - Important warnings/instructions */}
+        {job.specialNotes && (
+          <View style={styles.card}>
+            <View style={styles.cardGradient}>
+              <View style={styles.notesSection}>
+                <View style={styles.sectionHeader}>
+                  <FileText size={20} color={BrandTheme.colors.WARNING} />
+                  <Text style={styles.sectionTitle}>Special Notes</Text>
+                </View>
+                <Text style={styles.notesText}>{job.specialNotes}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Action Buttons */}
         <View style={styles.actionsContainer}>
           {job.status === 'accepted' && (
             <TouchableOpacity style={styles.actionButton} onPress={handleStartJob}>
-              <LinearGradient
-                colors={['#22c55e', '#16a34a']}
-                style={styles.actionButtonGradient}
+              <View
+                style={[styles.actionButtonGradient, { backgroundColor: BrandTheme.colors.SUCCESS }]}
               >
-                <Play size={20} color="#ffffff" />
-                <Text style={styles.actionButtonText}>Start Job</Text>
-              </LinearGradient>
+                <Play size={20} color={BrandTheme.colors.BLACK} />
+                <Text style={[styles.actionButtonText, { color: BrandTheme.colors.BLACK }]}>Start Job</Text>
+              </View>
             </TouchableOpacity>
           )}
 
           {job.status === 'in_progress' && (
             <TouchableOpacity style={styles.actionButton} onPress={handleCompleteJob}>
-              <LinearGradient
-                colors={['#C6FF00', '#A3E635']}
-                style={styles.actionButtonGradient}
+              <View
+                style={[styles.actionButtonGradient, { backgroundColor: BrandTheme.colors.YELLOW }]}
               >
-                <CheckCircle size={20} color="#0B0F1A" />
-                <Text style={[styles.actionButtonText, { color: '#0B0F1A' }]}>Complete Job</Text>
-              </LinearGradient>
+                <CheckCircle size={20} color={BrandTheme.colors.BLACK} />
+                <Text style={[styles.actionButtonText, { color: BrandTheme.colors.BLACK }]}>Complete Job</Text>
+              </View>
             </TouchableOpacity>
           )}
         </View>
@@ -510,7 +727,7 @@ export default function JobDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B0F1A',
+    backgroundColor: BrandTheme.colors.GREY_PRIMARY,
   },
   loadingContainer: {
     flex: 1,
@@ -519,32 +736,36 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#8E9AAE',
-    fontFamily: 'Inter_400Regular',
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: BrandTheme.spacing.LG,
+    paddingVertical: BrandTheme.spacing.LG,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E2A3A',
+    borderBottomColor: BrandTheme.colors.BORDER_SUBTLE,
+    backgroundColor: BrandTheme.colors.BLACK,
   },
   backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#1E2A3A',
+    backgroundColor: BrandTheme.colors.SURFACE_2,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.BORDER,
   },
   headerTitle: {
     flex: 1,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: BrandTheme.colors.TEXT_PRIMARY,
     textAlign: 'center',
-    fontFamily: 'Inter_700Bold',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   headerSpacer: {
     width: 40,
@@ -553,87 +774,94 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   card: {
-    marginHorizontal: 20,
-    marginVertical: 8,
-    borderRadius: 16,
-    backgroundColor: '#1E2A3A',
+    marginHorizontal: BrandTheme.spacing.LG,
+    marginVertical: BrandTheme.spacing.SM,
+    backgroundColor: BrandTheme.colors.SURFACE_1,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: BrandTheme.colors.BORDER,
   },
   cardGradient: {
-    padding: 16,
+    padding: BrandTheme.spacing.LG,
   },
   jobTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: BrandTheme.colors.TEXT_PRIMARY,
     marginBottom: 4,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   jobType: {
-    fontSize: 14,
-    color: '#C6FF00',
+    fontSize: 12,
+    color: BrandTheme.colors.YELLOW,
     fontWeight: '600',
-    marginBottom: 16,
-    fontFamily: 'Inter_600SemiBold',
+    marginBottom: BrandTheme.spacing.LG,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   jobMeta: {
-    gap: 8,
-    marginBottom: 16,
+    gap: BrandTheme.spacing.SM,
+    marginBottom: BrandTheme.spacing.LG,
   },
   metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: BrandTheme.spacing.SM,
   },
   metaText: {
     fontSize: 14,
-    color: '#8E9AAE',
-    fontFamily: 'Inter_400Regular',
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
   },
   descriptionContainer: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
+    gap: BrandTheme.spacing.SM,
+    marginTop: BrandTheme.spacing.SM,
   },
   description: {
     fontSize: 14,
-    color: '#8E9AAE',
+    color: BrandTheme.colors.TEXT_SECONDARY,
     lineHeight: 20,
     flex: 1,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: BrandTheme.typography.fontFamily.regular,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 16,
-    fontFamily: 'Inter_700Bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    marginBottom: BrandTheme.spacing.LG,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   mapHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: BrandTheme.spacing.LG,
   },
   directionsButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#C6FF00',
-    paddingHorizontal: 12,
+    backgroundColor: BrandTheme.colors.YELLOW,
+    paddingHorizontal: BrandTheme.spacing.MD,
     paddingVertical: 6,
-    borderRadius: 8,
     gap: 4,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.YELLOW,
   },
   directionsText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#0B0F1A',
-    fontFamily: 'Inter_600SemiBold',
+    color: BrandTheme.colors.BLACK,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   mapContainer: {
     height: 200,
-    borderRadius: 12,
     overflow: 'hidden',
   },
   map: {
@@ -641,74 +869,203 @@ const styles = StyleSheet.create({
   },
   webMapContainer: {
     height: 200,
-    borderRadius: 12,
-    backgroundColor: '#374151',
+    backgroundColor: BrandTheme.colors.SURFACE_2,
     borderWidth: 1,
-    borderColor: '#4B5563',
+    borderColor: BrandTheme.colors.BORDER,
     overflow: 'hidden',
   },
   webMapContent: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    padding: BrandTheme.spacing.XL,
   },
   webMapAddress: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: BrandTheme.colors.TEXT_PRIMARY,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: BrandTheme.spacing.SM,
     marginBottom: 4,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
   },
   webMapCity: {
     fontSize: 14,
-    color: '#8E9AAE',
+    color: BrandTheme.colors.TEXT_SECONDARY,
     textAlign: 'center',
-    marginBottom: 16,
-    fontFamily: 'Inter_400Regular',
+    marginBottom: BrandTheme.spacing.LG,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
   },
   webMapButton: {
-    borderRadius: 8,
     overflow: 'hidden',
   },
   webMapButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
+    paddingHorizontal: BrandTheme.spacing.LG,
+    paddingVertical: BrandTheme.spacing.SM,
+    gap: BrandTheme.spacing.SM,
+    backgroundColor: BrandTheme.colors.YELLOW,
   },
   webMapButtonText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#0B0F1A',
-    fontFamily: 'Inter_600SemiBold',
+    color: BrandTheme.colors.BLACK,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   actionsContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: BrandTheme.spacing.LG,
+    paddingVertical: BrandTheme.spacing.LG,
   },
   actionButton: {
-    borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: BrandTheme.spacing.MD,
   },
   actionButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
+    paddingVertical: BrandTheme.spacing.LG,
+    gap: BrandTheme.spacing.SM,
   },
   actionButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#ffffff',
-    fontFamily: 'Inter_700Bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   bottomSpacing: {
-    height: 20,
+    height: BrandTheme.spacing.XL,
+  },
+  // Property Name Section
+  propertyNameSection: {
+    marginBottom: BrandTheme.spacing.LG,
+    paddingHorizontal: BrandTheme.spacing.XL,
+  },
+  propertyNameLabel: {
+    fontSize: 11,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    marginBottom: 4,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  propertyName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.YELLOW,
+    fontFamily: BrandTheme.typography.fontFamily.accent,
+  },
+  // Section Headers
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.SM,
+    marginBottom: BrandTheme.spacing.MD,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  // Property Photos
+  photosScrollView: {
+    marginTop: BrandTheme.spacing.SM,
+  },
+  propertyPhoto: {
+    width: 300,
+    height: 200,
+    marginRight: BrandTheme.spacing.MD,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.BORDER,
+  },
+  noPhotosSection: {
+    padding: BrandTheme.spacing.LG,
+    backgroundColor: BrandTheme.colors.SURFACE_2,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.BORDER,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: BrandTheme.spacing.SM,
+  },
+  noPhotosText: {
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+  },
+  // Access Instructions
+  accessSection: {
+    marginTop: BrandTheme.spacing.SM,
+  },
+  accessText: {
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    lineHeight: 20,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+  },
+  // Booking Details
+  bookingSection: {
+    marginTop: BrandTheme.spacing.SM,
+    gap: BrandTheme.spacing.SM,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: BrandTheme.spacing.SM,
+    borderBottomWidth: 1,
+    borderBottomColor: BrandTheme.colors.BORDER_SUBTLE,
+  },
+  detailLabel: {
+    fontSize: 13,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  detailValue: {
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    fontWeight: '600',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+  },
+  // Special Notes
+  notesSection: {
+    marginTop: BrandTheme.spacing.SM,
+  },
+  notesText: {
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    lineHeight: 20,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+  },
+  // Google Maps Button
+  mapsButton: {
+    overflow: 'hidden',
+  },
+  mapsButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: BrandTheme.spacing.LG,
+    gap: BrandTheme.spacing.MD,
+    backgroundColor: BrandTheme.colors.YELLOW,
+  },
+  mapsButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.BLACK,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    flex: 1,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
 });

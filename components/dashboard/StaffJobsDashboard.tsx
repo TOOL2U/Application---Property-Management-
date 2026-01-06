@@ -20,7 +20,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Animatable from 'react-native-animatable';
 import { usePINAuth } from "@/contexts/PINAuthContext";
 import { jobService } from '@/services/jobService';
 import type { Job } from '@/types/job';
@@ -441,9 +440,7 @@ export default function StaffJobsDashboard({
         onRequestClose={() => setShowDeclineModal(false)}
       >
         <View className="flex-1 bg-black/50 items-center justify-center px-6">
-          <Animatable.View
-            animation="zoomIn"
-            duration={300}
+          <View
             className="w-full max-w-sm"
           >
             <SiaMoonCard
@@ -504,7 +501,7 @@ export default function StaffJobsDashboard({
                 />
               </View>
             </SiaMoonCard>
-          </Animatable.View>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>

@@ -13,7 +13,6 @@ import {
   ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Animatable from 'react-native-animatable';
 import { JOB_COLORS, COMMON_STYLES } from '@/utils/jobUtils';
 
 // Loading State Component
@@ -59,8 +58,7 @@ export function ErrorState({
   icon = 'alert-circle-outline',
 }: ErrorStateProps) {
   return (
-    <Animatable.View 
-      animation="fadeIn" 
+    <View 
       style={[styles.container, style]}
     >
       <Ionicons 
@@ -88,7 +86,7 @@ export function ErrorState({
           <Text style={styles.retryText}>{retryLabel}</Text>
         </TouchableOpacity>
       )}
-    </Animatable.View>
+    </View>
   );
 }
 
@@ -111,8 +109,7 @@ export function EmptyState({
   style,
 }: EmptyStateProps) {
   return (
-    <Animatable.View 
-      animation="fadeIn" 
+    <View 
       style={[styles.container, style]}
     >
       <Ionicons 
@@ -134,7 +131,7 @@ export function EmptyState({
           <Text style={styles.actionText}>{actionLabel}</Text>
         </TouchableOpacity>
       )}
-    </Animatable.View>
+    </View>
   );
 }
 
@@ -153,12 +150,9 @@ export function LoadingSkeleton({
   return (
     <View style={[styles.skeletonContainer, style]}>
       {Array.from({ length: count }).map((_, index) => (
-        <Animatable.View
+        <View
           key={index}
-          animation="pulse"
-          iterationCount="infinite"
           direction="alternate"
-          duration={1500}
           style={[styles.skeletonCard, cardStyle]}
         >
           {/* Header skeleton */}
@@ -182,7 +176,7 @@ export function LoadingSkeleton({
             <View style={styles.skeletonButton} />
             <View style={styles.skeletonButton} />
           </View>
-        </Animatable.View>
+        </View>
       ))}
     </View>
   );
@@ -206,9 +200,7 @@ export function ProgressIndicator({
     <View style={[styles.progressContainer, style]}>
       {label && <Text style={styles.progressLabel}>{label}</Text>}
       <View style={styles.progressTrack}>
-        <Animatable.View
-          animation="slideInLeft"
-          duration={500}
+        <View
           style={[
             styles.progressBar,
             { width: `${progressPercentage}%` }

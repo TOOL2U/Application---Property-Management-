@@ -2,8 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Home, ArrowLeft } from 'lucide-react-native';
-import { NeumorphicTheme } from '@/constants/NeumorphicTheme';
+import { Ionicons } from '@expo/vector-icons';
+import { BRAND_COLORS } from '@/constants/BrandTheme';
 
 export default function NotFoundScreen() {
   const router = useRouter();
@@ -12,7 +12,7 @@ export default function NotFoundScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Home size={64} color={NeumorphicTheme.colors.text.tertiary} />
+          <Ionicons name="home-outline" size={64} color={BRAND_COLORS.TEXT_MUTED} />
         </View>
         
         <Text style={styles.title}>Page Not Found</Text>
@@ -22,10 +22,10 @@ export default function NotFoundScreen() {
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() => router.replace('/')}
+          onPress={() => router.replace('/(auth)/select-profile')}
         >
-          <ArrowLeft size={20} color="#ffffff" />
-          <Text style={styles.buttonText}>Go to Dashboard</Text>
+          <Ionicons name="arrow-back" size={20} color={BRAND_COLORS.BLACK} />
+          <Text style={styles.buttonText}>Go to Profile Selection</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -35,52 +35,53 @@ export default function NotFoundScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: NeumorphicTheme.colors.background.primary,
+    backgroundColor: BRAND_COLORS.GREY_PRIMARY,
   },
   content: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: NeumorphicTheme.spacing[6],
+    paddingHorizontal: 24,
   },
   iconContainer: {
-    marginBottom: NeumorphicTheme.spacing[8],
+    marginBottom: 32,
   },
   title: {
-    fontSize: NeumorphicTheme.typography.sizes['3xl'].fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.bold,
-    color: NeumorphicTheme.colors.text.primary,
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: BRAND_COLORS.TEXT_PRIMARY,
     textAlign: 'center',
-    marginBottom: NeumorphicTheme.spacing[4],
+    marginBottom: 16,
   },
   subtitle: {
-    fontSize: NeumorphicTheme.typography.sizes.base.fontSize,
-    color: NeumorphicTheme.colors.text.secondary,
+    fontSize: 16,
+    color: BRAND_COLORS.TEXT_SECONDARY,
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: NeumorphicTheme.spacing[8],
-    paddingHorizontal: NeumorphicTheme.spacing[4],
+    marginBottom: 32,
+    paddingHorizontal: 16,
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: NeumorphicTheme.colors.brand.primary,
-    paddingHorizontal: NeumorphicTheme.spacing[6],
-    paddingVertical: NeumorphicTheme.spacing[4],
-    borderRadius: NeumorphicTheme.borderRadius.md,
+    backgroundColor: BRAND_COLORS.YELLOW,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 0, // Sharp corners per brand
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: BRAND_COLORS.YELLOW,
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 4,
     },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   buttonText: {
-    fontSize: NeumorphicTheme.typography.sizes.base.fontSize,
-    fontWeight: NeumorphicTheme.typography.weights.semibold,
-    color: '#ffffff',
-    marginLeft: NeumorphicTheme.spacing[2],
+    fontSize: 16,
+    fontWeight: '600',
+    color: BRAND_COLORS.BLACK,
+    marginLeft: 8,
+    textTransform: 'uppercase',
   },
 });

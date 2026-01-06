@@ -16,7 +16,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Animatable from 'react-native-animatable';
 import { useAppNotifications } from '@/contexts/AppNotificationContext';
 import { shadowStyles } from '@/utils/shadowUtils';
 import { AppNotification } from '@/services/notificationDisplayService';
@@ -255,9 +254,7 @@ export const NotificationModal: React.FC = () => {
           }}
           onPress={hideNotificationModal}
         >
-          <Animatable.View
-            animation="slideInDown"
-            duration={300}
+          <View
             style={{
               backgroundColor: '#0B0F1A',
               marginHorizontal: 16,
@@ -398,7 +395,7 @@ export const NotificationModal: React.FC = () => {
                 )}
               </View>
             </SafeAreaView>
-          </Animatable.View>
+          </View>
         </Pressable>
       </Modal>
 

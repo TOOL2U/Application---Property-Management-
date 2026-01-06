@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import * as Animatable from 'react-native-animatable';
 import { SiaMoonTheme } from '@/constants/NeumorphicTheme';
 
 // =============================================================================

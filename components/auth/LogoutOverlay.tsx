@@ -1,6 +1,6 @@
 /**
- * Logout Overlay Component - Beautiful AIS Telecom Style
- * Provides smooth fadeOut animations during logout process
+ * Logout Overlay Component - Brand Kit Style
+ * Provides smooth animations during logout/profile switching process
  */
 
 import React from 'react';
@@ -10,9 +10,8 @@ import {
   ActivityIndicator,
   StatusBar,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import * as Animatable from 'react-native-animatable';
+import { BrandTheme } from '@/constants/BrandTheme';
 
 interface LogoutOverlayProps {
   visible: boolean;
@@ -26,9 +25,7 @@ export default function LogoutOverlay({
   if (!visible) return null;
 
   return (
-    <Animatable.View
-      animation="fadeIn"
-      duration={600}
+    <View
       style={{
         position: 'absolute',
         top: 0,
@@ -36,75 +33,53 @@ export default function LogoutOverlay({
         right: 0,
         bottom: 0,
         zIndex: 9999,
-        backgroundColor: 'rgba(11, 15, 26, 0.95)',
+        backgroundColor: 'rgba(20, 22, 26, 0.95)',
         justifyContent: 'center',
         alignItems: 'center',
       }}
     >
-      <StatusBar barStyle="light-content" backgroundColor="rgba(11, 15, 26, 0.95)" />
-      
-      {/* Background Gradient */}
-      <LinearGradient
-        colors={[
-          'rgba(11, 15, 26, 0.9)',
-          'rgba(28, 31, 42, 0.9)',
-          'rgba(11, 15, 26, 0.9)',
-        ]}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-        }}
-      />
+      <StatusBar barStyle="light-content" backgroundColor="rgba(20, 22, 26, 0.95)" />
 
       {/* Logout Content */}
-      <Animatable.View
-        animation="fadeInUp"
-        duration={600}
-        delay={200}
+      <View
         style={{
           alignItems: 'center',
           paddingHorizontal: 32,
         }}
       >
         {/* Icon Container */}
-        <Animatable.View
-          animation="pulse"
-          iterationCount="infinite"
-          duration={2000}
+        <View
           style={{
             width: 80,
             height: 80,
-            borderRadius: 40,
-            backgroundColor: 'rgba(198, 255, 0, 0.1)',
+            borderRadius: 0,
+            backgroundColor: BrandTheme.colors.SURFACE_1,
             borderWidth: 2,
-            borderColor: '#C6FF00',
+            borderColor: BrandTheme.colors.YELLOW,
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: 24,
           }}
         >
-          <Ionicons name="log-out-outline" size={32} color="#C6FF00" />
-        </Animatable.View>
+          <Ionicons name="log-out-outline" size={32} color={BrandTheme.colors.YELLOW} />
+        </View>
 
         {/* Loading Spinner */}
         <ActivityIndicator 
           size="large" 
-          color="#C6FF00" 
+          color={BrandTheme.colors.YELLOW}
           style={{ marginBottom: 16 }}
         />
 
         {/* Message */}
         <Text
           style={{
-            color: 'white',
+            color: BrandTheme.colors.TEXT_PRIMARY,
             fontSize: 18,
             fontWeight: '600',
             textAlign: 'center',
             marginBottom: 8,
-            fontFamily: 'Urbanist',
+            fontFamily: BrandTheme.typography.fontFamily.primary,
           }}
         >
           {message}
@@ -112,10 +87,10 @@ export default function LogoutOverlay({
 
         <Text
           style={{
-            color: '#9CA3AF',
+            color: BrandTheme.colors.TEXT_SECONDARY,
             fontSize: 14,
             textAlign: 'center',
-            fontFamily: 'Inter',
+            fontFamily: BrandTheme.typography.fontFamily.regular,
           }}
         >
           Returning to profile selection...
@@ -130,29 +105,22 @@ export default function LogoutOverlay({
           }}
         >
           {[0, 1, 2].map((index) => (
-            <Animatable.View
+            <View
               key={index}
-              animation="fadeInOut"
-              iterationCount="infinite"
-              duration={1500}
-              delay={index * 200}
               style={{
                 width: 8,
                 height: 8,
-                borderRadius: 4,
-                backgroundColor: '#C6FF00',
+                borderRadius: 0,
+                backgroundColor: BrandTheme.colors.YELLOW,
                 marginHorizontal: 4,
               }}
             />
           ))}
         </View>
-      </Animatable.View>
+      </View>
 
       {/* Bottom Branding */}
-      <Animatable.View
-        animation="fadeInUp"
-        duration={600}
-        delay={400}
+      <View
         style={{
           position: 'absolute',
           bottom: 60,
@@ -161,28 +129,14 @@ export default function LogoutOverlay({
       >
         <Text
           style={{
-            color: '#6B7280',
+            color: BrandTheme.colors.TEXT_SECONDARY,
             fontSize: 12,
-            fontFamily: 'Inter',
+            fontFamily: BrandTheme.typography.fontFamily.regular,
           }}
         >
-          AIS Property Management
+          Sia Moon Property Management
         </Text>
-      </Animatable.View>
-    </Animatable.View>
+      </View>
+    </View>
   );
-}
-
-// Custom animation definitions for smooth logout experience
-const fadeInOut = {
-  0: { opacity: 0.3 },
-  0.5: { opacity: 1 },
-  1: { opacity: 0.3 },
-};
-
-// Register custom animation
-if (Animatable && Animatable.initializeRegistryWithDefinitions) {
-  Animatable.initializeRegistryWithDefinitions({
-    fadeInOut,
-  });
 }

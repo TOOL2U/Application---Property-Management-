@@ -5,6 +5,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 
 // Web-compatible secure storage
 let SecureStore: any;
@@ -182,27 +183,8 @@ class LocalStaffService {
   }
 
   /**
-   * Verify PIN for a staff profile
-   */
-  async verifyStaffPIN(profileId: string, pin: string): Promise<boolean> {
-    try {
-      const pinKey = createSecureStoreKey(profileId);
-      const storedPin = await SecureStore.getItemAsync(pinKey);
-      
-      if (!storedPin) {
-        console.log(`🔐 LocalStaffService: No PIN found for profile ${profileId} (key: ${pinKey})`);
-        return false;
-      }
-      
-      const isValid = storedPin === pin;
-      console.log(`🔐 LocalStaffService: PIN verification for ${profileId}: ${isValid ? 'SUCCESS' : 'FAILED'}`);
-      return isValid;
-    } catch (error) {
-      console.error('❌ LocalStaffService: Failed to verify PIN:', error);
-      return false;
-    }
-  }  /**
    * Check if PIN exists for a staff profile
+   * First checks local storage, then falls back to Firebase
    */
   async hasPIN(profileId: string): Promise<boolean> {
     try {
@@ -224,10 +206,26 @@ class LocalStaffService {
       
       console.log(`🔑 LocalStaffService: Using valid key: "${pinKey}"`);
       
+      // Check local storage first (fast)
       const storedPin = await SecureStore.getItemAsync(pinKey);
-      const hasPin = !!storedPin;
-      console.log(`🔐 LocalStaffService: PIN check for ${profileId} (key: ${pinKey}): ${hasPin ? 'EXISTS' : 'NOT_FOUND'}`);
-      return hasPin;
+      if (storedPin) {
+        console.log(`✅ LocalStaffService: PIN found in local storage for ${profileId}`);
+        return true;
+      }
+      
+      console.log(`� LocalStaffService: No local PIN, checking Firebase for ${profileId}...`);
+      
+      // Check Firebase for PIN
+      const firebasePin = await this.getFirebasePIN(profileId);
+      if (firebasePin) {
+        console.log(`✅ LocalStaffService: PIN found in Firebase for ${profileId}, caching locally...`);
+        // Cache the PIN locally for future use
+        await SecureStore.setItemAsync(pinKey, firebasePin);
+        return true;
+      }
+      
+      console.log(`❌ LocalStaffService: No PIN found (local or Firebase) for ${profileId}`);
+      return false;
     } catch (error) {
       console.error('❌ LocalStaffService: Failed to check PIN existence:', error);
       console.error(`   Profile ID: "${profileId}" (type: ${typeof profileId})`);
@@ -237,9 +235,76 @@ class LocalStaffService {
   }
 
   /**
+   * Get PIN from Firebase staff_accounts collection
+   */
+  private async getFirebasePIN(profileId: string): Promise<string | null> {
+    try {
+      const db = getFirestore();
+      const staffDocRef = doc(db, 'staff_accounts', profileId);
+      const staffDoc = await getDoc(staffDocRef);
+      
+      if (staffDoc.exists()) {
+        const data = staffDoc.data();
+        const pin = data?.pin;
+        
+        if (pin && typeof pin === 'string') {
+          console.log(`🔥 LocalStaffService: Retrieved PIN from Firebase for ${profileId}`);
+          return pin;
+        } else {
+          console.log(`⚠️ LocalStaffService: Firebase document exists but no PIN field for ${profileId}`);
+          return null;
+        }
+      } else {
+        console.log(`⚠️ LocalStaffService: No Firebase document found for ${profileId}`);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ LocalStaffService: Failed to get PIN from Firebase:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Verify PIN for a staff profile
+   * Checks both local storage and Firebase
+   */
+  async verifyStaffPIN(profileId: string, pin: string): Promise<boolean> {
+    try {
+      const pinKey = createSecureStoreKey(profileId);
+      let storedPin = await SecureStore.getItemAsync(pinKey);
+      
+      // If not found locally, check Firebase
+      if (!storedPin) {
+        console.log(`📡 LocalStaffService: PIN not in local storage, checking Firebase...`);
+        storedPin = await this.getFirebasePIN(profileId);
+        
+        // If found in Firebase, cache it locally
+        if (storedPin) {
+          console.log(`💾 LocalStaffService: Caching Firebase PIN locally for ${profileId}`);
+          await SecureStore.setItemAsync(pinKey, storedPin);
+        }
+      }
+      
+      if (!storedPin) {
+        console.log(`🔐 LocalStaffService: No PIN found (local or Firebase) for profile ${profileId}`);
+        return false;
+      }
+      
+      const isValid = storedPin === pin;
+      console.log(`🔐 LocalStaffService: PIN verification for ${profileId}: ${isValid ? 'SUCCESS' : 'FAILED'}`);
+      return isValid;
+    } catch (error) {
+      console.error('❌ LocalStaffService: Failed to verify PIN:', error);
+      return false;
+    }
+  }
+
+  /**
    * Create a new session for a staff profile
    */
   async createSession(profileId: string): Promise<StaffSession> {
+    console.log(`🔐 LocalStaffService: Creating session for profile ${profileId}...`);
+    
     const session: StaffSession = {
       profileId,
       loginTime: new Date(),
@@ -247,13 +312,16 @@ class LocalStaffService {
       deviceId: 'mobile-app', // Could be made dynamic
     };
 
+    console.log(`⏰ LocalStaffService: Session will expire at ${session.expiresAt.toISOString()}`);
+
     try {
       await AsyncStorage.setItem(CURRENT_SESSION_KEY, JSON.stringify(session));
+      console.log(`💾 LocalStaffService: Session saved to AsyncStorage`);
       
       // Update last login time for the profile
       await this.updateLastLogin(profileId);
       
-      console.log(`✅ LocalStaffService: Session created for profile ${profileId}`);
+      console.log(`✅ LocalStaffService: Session created successfully for profile ${profileId}`);
       return session;
     } catch (error) {
       console.error('❌ LocalStaffService: Failed to create session:', error);
@@ -266,26 +334,37 @@ class LocalStaffService {
    */
   async getCurrentSession(): Promise<StaffSession | null> {
     try {
+      console.log('🔍 LocalStaffService: Checking for current session...');
       const sessionData = await AsyncStorage.getItem(CURRENT_SESSION_KEY);
-      if (sessionData) {
-        const session = JSON.parse(sessionData);
-        // Convert date strings back to Date objects
-        const parsedSession: StaffSession = {
-          ...session,
-          loginTime: new Date(session.loginTime),
-          expiresAt: new Date(session.expiresAt),
-        };
-
-        // Check if session is still valid
-        if (parsedSession.expiresAt > new Date()) {
-          return parsedSession;
-        } else {
-          console.log('⏰ LocalStaffService: Session expired, clearing...');
-          await this.clearSession();
-          return null;
-        }
+      
+      if (!sessionData) {
+        console.log('⚠️ LocalStaffService: No session data found in AsyncStorage');
+        return null;
       }
-      return null;
+
+      console.log('📦 LocalStaffService: Session data found, parsing...');
+      const session = JSON.parse(sessionData);
+      
+      // Convert date strings back to Date objects
+      const parsedSession: StaffSession = {
+        ...session,
+        loginTime: new Date(session.loginTime),
+        expiresAt: new Date(session.expiresAt),
+      };
+
+      const now = new Date();
+      const timeUntilExpiry = parsedSession.expiresAt.getTime() - now.getTime();
+      console.log(`⏰ LocalStaffService: Session expires in ${Math.floor(timeUntilExpiry / (1000 * 60))} minutes`);
+
+      // Check if session is still valid
+      if (parsedSession.expiresAt > now) {
+        console.log(`✅ LocalStaffService: Session valid for profile ${parsedSession.profileId}`);
+        return parsedSession;
+      } else {
+        console.log('⏰ LocalStaffService: Session expired, clearing...');
+        await this.clearSession();
+        return null;
+      }
     } catch (error) {
       console.error('❌ LocalStaffService: Failed to get current session:', error);
       return null;

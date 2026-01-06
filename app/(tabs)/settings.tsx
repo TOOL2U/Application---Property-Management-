@@ -19,7 +19,6 @@ import { useRouter } from 'expo-router';
 import LogoutOverlay from '@/components/auth/LogoutOverlay';
 import LanguagePicker from '@/components/settings/LanguagePicker';
 import { useTranslation } from '@/hooks/useTranslation';
-import * as Animatable from 'react-native-animatable';
 
 interface SettingItem {
   id: string;
@@ -290,10 +289,8 @@ export default function SettingsScreen() {
   };
 
   const renderSettingItem = (item: SettingItem, index: number) => (
-    <Animatable.View
+    <View
       key={item.id}
-      animation="fadeInUp"
-      delay={index * 50}
       style={{ marginBottom: 12 }}
     >
       <TouchableOpacity
@@ -372,7 +369,7 @@ export default function SettingsScreen() {
           />
         )}
       </TouchableOpacity>
-    </Animatable.View>
+    </View>
   );
 
   return (
@@ -380,9 +377,7 @@ export default function SettingsScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#0B0F1A" />
       <SafeAreaView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 32 }}>
         {/* Header */}
-        <Animatable.View
-          animation="fadeInDown"
-          duration={600}
+        <View
           style={{ marginBottom: 24 }}
         >
           <Text style={{
@@ -401,12 +396,10 @@ export default function SettingsScreen() {
           }}>
             Manage your account and app preferences
           </Text>
-        </Animatable.View>
+        </View>
 
         {/* User Info Card */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
+        <View
           style={{
             backgroundColor: '#1C1F2A',
             borderRadius: 16,
@@ -497,7 +490,7 @@ export default function SettingsScreen() {
               </View>
             </View>
           </View>
-        </Animatable.View>
+        </View>
 
         {/* Settings List */}
         <ScrollView 

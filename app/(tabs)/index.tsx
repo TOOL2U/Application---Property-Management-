@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,19 +6,20 @@ import {
   RefreshControl,
   TouchableOpacity,
   StatusBar,
-  Alert,
+  StyleSheet,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Animatable from 'react-native-animatable';
 import { Ionicons } from '@expo/vector-icons';
 import { usePINAuth } from "@/contexts/PINAuthContext";
-import { useRouter } from 'expo-router';
-import { shadowStyles } from '@/utils/shadowUtils';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useStaffJobs } from '@/hooks/useStaffJobs';
 import LogoutOverlay from '@/components/auth/LogoutOverlay';
 import { useTranslation } from '@/hooks/useTranslation';
+import { BrandTheme } from '@/constants/BrandTheme';
+import { Card } from '@/components/ui/BrandCard';
+import { Button } from '@/components/ui/BrandButton';
 
 export default function IndexScreen() {
   const { currentProfile, isAuthenticated, logout } = usePINAuth();
@@ -27,11 +28,58 @@ export default function IndexScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [isSwitchingProfile, setIsSwitchingProfile] = useState(false);
 
-  // Use the useStaffJobs hook to get pending jobs
-  const { pendingJobs, refreshJobs, loading: loadingJobs } = useStaffJobs({
+  // Use the useStaffJobs hook to get all job data
+  const { 
+    pendingJobs, 
+    activeJobs, 
+    completedJobs,
+    jobs,
+    refreshJobs, 
+    loading: loadingJobs 
+  } = useStaffJobs({
     enableRealtime: true,
     enableCache: true,
   });
+
+  // Auto-refresh on screen focus for better UX
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isAuthenticated && currentProfile?.id) {
+        console.log('🔄 Home Screen: Screen focused, refreshing jobs...');
+        refreshJobs();
+      }
+    }, [isAuthenticated, currentProfile?.id, refreshJobs])
+  );
+
+  // Get today's jobs
+  const todaysJobs = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return [...pendingJobs, ...activeJobs].filter(job => {
+      if (!job.scheduledDate) return false;
+      const jobDate = (job.scheduledDate as any).toDate ? (job.scheduledDate as any).toDate() : new Date(job.scheduledDate);
+      jobDate.setHours(0, 0, 0, 0);
+      return jobDate.getTime() === today.getTime();
+    }).sort((a, b) => {
+      const aTime = (a.scheduledDate as any).toDate ? (a.scheduledDate as any).toDate() : new Date(a.scheduledDate);
+      const bTime = (b.scheduledDate as any).toDate ? (b.scheduledDate as any).toDate() : new Date(b.scheduledDate);
+      return aTime.getTime() - bTime.getTime();
+    });
+  }, [pendingJobs, activeJobs]);
+
+  // Get urgent jobs (high priority pending jobs)
+  const urgentJobs = useMemo(() => {
+    return pendingJobs.filter(job => job.priority === 'urgent' || job.priority === 'high');
+  }, [pendingJobs]);
+
+  // Get current time greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
 
   // Handle refresh
   const onRefresh = async () => {
@@ -49,529 +97,747 @@ export default function IndexScreen() {
 
   // Handle profile selection
   const handleProfilePress = () => {
-    router.push('/(auth)/select-profile');
+    setIsSwitchingProfile(true);
   };
 
-  // Get user initials for avatar
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word.charAt(0))
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
+  // Handle logout
+  const handleLogoutConfirm = async () => {
+    setIsSwitchingProfile(false);
+    await logout();
+    router.replace('/(auth)/select-staff-profile');
   };
 
-  // Handle switch profile functionality
-  const handleSwitchProfile = () => {
-    Alert.alert(
-      'Switch Profile',
-      'Are you sure you want to switch to a different profile? This will log you out of the current session.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Switch Profile',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsSwitchingProfile(true);
-              console.log('🔄 Dashboard: Starting profile switch process...');
+  const pendingJobCount = pendingJobs?.length || 0;
+  const activeJobCount = activeJobs?.length || 0;
+  const todaysJobCount = todaysJobs?.length || 0;
 
-              // Add smooth transition delay for better UX
-              await new Promise(resolve => setTimeout(resolve, 300));
+  // Format time
+  const formatTime = (date: any) => {
+    const d = date?.toDate ? date.toDate() : new Date(date);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
-              // Perform the comprehensive logout
-              await logout();
-              console.log('✅ Dashboard: Logout completed, navigating to profile selection...');
+  // Get status icon
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'assigned': return 'time-outline';
+      case 'in_progress': return 'play-circle';
+      case 'accepted': return 'checkmark-circle-outline';
+      default: return 'ellipse-outline';
+    }
+  };
 
-              // Add smooth transition delay
-              await new Promise(resolve => setTimeout(resolve, 300));
+  // Get status color
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'assigned': return BrandTheme.colors.YELLOW;
+      case 'in_progress': return BrandTheme.colors.WARNING;
+      case 'accepted': return BrandTheme.colors.INFO;
+      default: return BrandTheme.colors.TEXT_SECONDARY;
+    }
+  };
 
-              // Navigate to profile selection screen and completely clear navigation stack
-              router.replace('/(auth)/select-profile');
-              console.log('✅ Dashboard: Navigation to profile selection completed');
-
-            } catch (error) {
-              console.error('❌ Dashboard: Profile switch error:', error);
-
-              // Show user-friendly error message
-              const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-              Alert.alert(
-                'Profile Switch Complete',
-                `You have been successfully logged out.\\n\\n${errorMessage ? `Note: ${errorMessage}` : ''}`,
-                [{
-                  text: 'Continue',
-                  onPress: () => {
-                    // Ensure navigation happens even if there were errors
-                    router.replace('/(auth)/select-profile');
-                  }
-                }]
-              );
-            } finally {
-              setIsSwitchingProfile(false);
-            }
-          }
-        }
-      ]
+  if (!isAuthenticated || !currentProfile) {
+    return (
+      <View style={styles.loadingContainer}>
+        <StatusBar barStyle="light-content" backgroundColor={BrandTheme.colors.BLACK} />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
     );
-  };
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0B0F1A' }}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B0F1A" />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={BrandTheme.colors.BLACK} />
       
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView
-          style={{ flex: 1 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 32 }}
-        >
-          {/* Header */}
-          <Animatable.View
-            animation="fadeInDown"
-            duration={600}
-            style={{
-              paddingHorizontal: 16,
-              paddingTop: 24,
-              paddingBottom: 16,
-            }}
-          >
-            <Text style={{
-              color: '#F1F1F1',
-              fontSize: 24,
-              fontWeight: 'bold',
-              fontFamily: 'Urbanist_700Bold',
-            }}>
-              Property Management
-            </Text>
-            <Text style={{
-              color: '#9CA3AF',
-              fontSize: 16,
-              marginTop: 4,
-              fontFamily: 'Inter_400Regular',
-            }}>
-              {isAuthenticated && currentProfile 
-                ? t('home.welcomeBack', { name: currentProfile.name })
-                : t('home.pleaseLogin')
-              }
-            </Text>
-          </Animatable.View>
-
-          {/* Profile Card */}
-          <Animatable.View
-            animation="fadeInUp"
-            duration={600}
-            delay={200}
-            style={{
-              marginHorizontal: 16,
-              marginBottom: 24,
-              backgroundColor: '#1C1F2A',
-              borderRadius: 16,
-              padding: 20,
-              borderWidth: 1,
-              borderColor: '#374151',
-              ...shadowStyles.large,
-            }}
-          >
-            {isAuthenticated && currentProfile ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {/* Profile Photo or Initials */}
-                {currentProfile.avatar ? (
-                  <Image
-                    source={{ uri: currentProfile.avatar }}
-                    style={{
-                      width: 60,
-                      height: 60,
-                      borderRadius: 30,
-                      marginRight: 16,
-                    }}
-                  />
-                ) : (
-                  <LinearGradient
-                    colors={['#C6FF00', '#A3E635']}
-                    style={{
-                      width: 60,
-                      height: 60,
-                      borderRadius: 30,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 16,
-                    }}
-                  >
-                    <Text style={{
-                      color: '#0B0F1A',
-                      fontSize: 20,
-                      fontWeight: 'bold',
-                      fontFamily: 'Inter_700Bold',
-                    }}>
-                      {getInitials(currentProfile.name)}
-                    </Text>
-                  </LinearGradient>
-                )}
-                
-                <View style={{ flex: 1 }}>
-                  <Text style={{
-                    color: '#F1F1F1',
-                    fontSize: 18,
-                    fontWeight: '600',
-                    fontFamily: 'Inter_600SemiBold',
-                    marginBottom: 4,
-                  }}>
-                    {currentProfile.name}
-                  </Text>
-                  <Text style={{
-                    color: '#9CA3AF',
-                    fontSize: 14,
-                    fontFamily: 'Inter_400Regular',
-                    marginBottom: 4,
-                  }}>
-                    {currentProfile.role} • Ready for jobs
-                  </Text>
-                  <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                  }}>
-                    <View style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: '#22C55E',
-                      marginRight: 8,
-                    }} />
-                    <Text style={{
-                      color: '#22C55E',
-                      fontSize: 12,
-                      fontFamily: 'Inter_500Medium',
-                    }}>
-                      Online
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Switch Profile Button */}
-                <TouchableOpacity
-                  onPress={handleSwitchProfile}
-                  style={{
-                    backgroundColor: 'rgba(198, 255, 0, 0.1)',
-                    borderWidth: 1,
-                    borderColor: '#C6FF00',
-                    borderRadius: 8,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginLeft: 12,
-                    ...shadowStyles.small,
-                  }}
-                  disabled={isSwitchingProfile}
-                >
-                  <Ionicons
-                    name="swap-horizontal-outline"
-                    size={20}
-                    color="#C6FF00"
-                  />
-                  <Text style={{
-                    color: '#C6FF00',
-                    fontSize: 10,
-                    fontWeight: '600',
-                    fontFamily: 'Inter_600SemiBold',
-                    marginTop: 2,
-                  }}>
-                    {t('home.switch')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={{ alignItems: 'center' }}>
-                <Ionicons name="person-circle-outline" size={64} color="#9CA3AF" />
-                <Text style={{
-                  color: '#F1F1F1',
-                  fontSize: 16,
-                  fontWeight: '600',
-                  fontFamily: 'Inter_600SemiBold',
-                  marginTop: 12,
-                  marginBottom: 8,
-                }}>
-                  {t('home.notLoggedIn')}
-                </Text>
-                <Text style={{
-                  color: '#9CA3AF',
-                  fontSize: 14,
-                  fontFamily: 'Inter_400Regular',
-                  textAlign: 'center',
-                  marginBottom: 16,
-                }}>
-                  {t('home.pleaseLoginToReceiveJobs')}
-                </Text>
-                <TouchableOpacity
-                  onPress={handleProfilePress}
-                  style={{
-                    backgroundColor: '#C6FF00',
-                    paddingHorizontal: 24,
-                    paddingVertical: 12,
-                    borderRadius: 12,
-                  }}
-                >
-                  <Text style={{
-                    color: '#0B0F1A',
-                    fontSize: 14,
-                    fontWeight: '600',
-                    fontFamily: 'Inter_600SemiBold',
-                  }}>
-                    {t('auth.signIn')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </Animatable.View>
-
-          {/* Central JOBS Button */}
-          <Animatable.View
-            animation="fadeInUp"
-            duration={600}
-            delay={400}
-            style={{
-              marginHorizontal: 32,
-              marginBottom: 32,
-              marginTop: 32,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <TouchableOpacity
-              onPress={handleViewJobs}
-              style={{
-                width: '100%',
-                minHeight: 120,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 24,
-                position: 'relative',
-              }}
-              activeOpacity={0.8}
-            >
-              {/* Glow Effect - Brighter when pending jobs */}
-              <View
-                style={{
-                  position: 'absolute',
-                  top: -8,
-                  left: -8,
-                  right: -8,
-                  bottom: -8,
-                  borderRadius: 32,
-                  backgroundColor: isAuthenticated && pendingJobs.length > 0 ? '#C6FF00' : 'rgba(198, 255, 0, 0.3)',
-                  opacity: isAuthenticated && pendingJobs.length > 0 ? 0.4 : 0.2,
-                  shadowColor: '#C6FF00',
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: isAuthenticated && pendingJobs.length > 0 ? 0.6 : 0.3,
-                  shadowRadius: isAuthenticated && pendingJobs.length > 0 ? 20 : 12,
-                  elevation: isAuthenticated && pendingJobs.length > 0 ? 15 : 8,
-                }}
-              />
-              
-              {/* Main Button */}
-              <LinearGradient
-                colors={
-                  isAuthenticated && pendingJobs.length > 0 
-                    ? ['#C6FF00', '#A3E635', '#84CC16'] 
-                    : ['rgba(198, 255, 0, 0.8)', 'rgba(163, 230, 53, 0.6)', 'rgba(132, 204, 22, 0.4)']
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  width: '100%',
-                  minHeight: 120,
-                  borderRadius: 24,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexDirection: 'row',
-                  shadowColor: '#C6FF00',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: isAuthenticated && pendingJobs.length > 0 ? 0.5 : 0.3,
-                  shadowRadius: 12,
-                  elevation: 8,
-                }}
-              >
-                <Text
-                  style={{
-                    color: '#0B0F1A',
-                    fontSize: 28,
-                    fontWeight: 'bold',
-                    fontFamily: 'Inter_700Bold',
-                    letterSpacing: 2,
-                    marginRight: 12,
-                  }}
-                >
-                  {t('navigation.jobs').toUpperCase()}
-                </Text>
-                
-                <Ionicons 
-                  name="chevron-forward" 
-                  size={24} 
-                  color="#0B0F1A" 
-                  style={{
-                    marginLeft: 4,
-                  }}
-                />
-                
-                {/* Pending Jobs Badge */}
-                {isAuthenticated && pendingJobs.length > 0 && (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      top: 12,
-                      right: 16,
-                      backgroundColor: '#EF4444',
-                      borderRadius: 12,
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderWidth: 2,
-                      borderColor: '#0B0F1A',
-                      shadowColor: '#EF4444',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.6,
-                      shadowRadius: 8,
-                      elevation: 6,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: '#FFFFFF',
-                        fontSize: 12,
-                        fontWeight: '700',
-                        fontFamily: 'Inter_700Bold',
-                      }}
-                    >
-                      {pendingJobs.length}
-                    </Text>
-                  </View>
-                )}
-              </LinearGradient>
-              
-              {/* Pulse Animation for Pending Jobs */}
-              {isAuthenticated && pendingJobs.length > 0 && (
-                <Animatable.View
-                  animation="pulse"
-                  iterationCount="infinite"
-                  duration={2000}
-                  style={{
-                    position: 'absolute',
-                    top: -12,
-                    left: -12,
-                    right: -12,
-                    bottom: -12,
-                    borderRadius: 36,
-                    borderWidth: 3,
-                    borderColor: 'rgba(198, 255, 0, 0.4)',
-                  }}
-                />
-              )}
-            </TouchableOpacity>
-            
-            {/* Status Text Below Button */}
-            <Text
-              style={{
-                color: '#9CA3AF',
-                fontSize: 14,
-                fontFamily: 'Inter_400Regular',
-                marginTop: 16,
-                textAlign: 'center',
-              }}
-            >
-              {isAuthenticated 
-                ? (pendingJobs.length > 0 
-                  ? t('home.jobsWaiting', { count: pendingJobs.length })
-                  : t('home.noPendingJobs')
-                )
-                : t('home.loginToReceiveJobs')
-              }
-            </Text>
-          </Animatable.View>
-
-          {/* Quick Actions */}
-          {isAuthenticated && currentProfile && (
-            <Animatable.View
-              animation="fadeInUp"
-              duration={600}
-              delay={600}
-              style={{
-                marginHorizontal: 16,
-              }}
-            >
-              <Text style={{
-                color: '#F1F1F1',
-                fontSize: 18,
-                fontWeight: '600',
-                fontFamily: 'Inter_600SemiBold',
-                marginBottom: 16,
-              }}>
-                Quick Actions
+      {/* Header */}
+      <LinearGradient
+        colors={[BrandTheme.colors.BLACK, BrandTheme.colors.GREY_PRIMARY]}
+        style={styles.header}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.headerLeft}>
+            <View style={styles.avatarContainer}>
+              <Text style={styles.avatarText}>
+                {currentProfile.name ? currentProfile.name.charAt(0).toUpperCase() : 'U'}
               </Text>
+            </View>
+            <View style={styles.userInfo}>
+              <Text style={styles.userName}>{currentProfile.name}</Text>
+              <Text style={styles.userRole}>{currentProfile.role}</Text>
+            </View>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.profileButton}
+            onPress={handleProfilePress}
+          >
+            <Ionicons 
+              name="person-outline" 
+              size={24} 
+              color={BrandTheme.colors.YELLOW} 
+            />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <TouchableOpacity
-                  onPress={() => router.push('/scan')}
-                  style={{
-                    flex: 1,
-                    backgroundColor: '#1C1F2A',
-                    borderRadius: 16,
-                    padding: 16,
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: '#374151',
-                    ...shadowStyles.small,
-                  }}
-                >
-                  <Ionicons name="qr-code" size={32} color="#C6FF00" />
-                  <Text style={{
-                    color: '#F1F1F1',
-                    fontSize: 14,
-                    fontWeight: '500',
-                    fontFamily: 'Inter_500Medium',
-                    marginTop: 8,
-                  }}>
-                    Scan QR
-                  </Text>
-                </TouchableOpacity>
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={BrandTheme.colors.YELLOW}
+            colors={[BrandTheme.colors.YELLOW]}
+          />
+        }
+      >
+        {/* Greeting */}
+        <View style={styles.greetingSection}>
+          <Text style={styles.greetingText}>{getGreeting()}, {currentProfile.name}!</Text>
+          <Text style={styles.dateText}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </Text>
+        </View>
 
-                <TouchableOpacity
-                  onPress={() => router.push('/(tabs)/profile')}
-                  style={{
-                    flex: 1,
-                    backgroundColor: '#1C1F2A',
-                    borderRadius: 16,
-                    padding: 16,
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: '#374151',
-                    ...shadowStyles.small,
-                  }}
-                >
-                  <Ionicons name="person" size={32} color="#C6FF00" />
-                  <Text style={{
-                    color: '#F1F1F1',
-                    fontSize: 14,
-                    fontWeight: '500',
-                    fontFamily: 'Inter_500Medium',
-                    marginTop: 8,
-                  }}>
-                    Profile
-                  </Text>
-                </TouchableOpacity>
+        {/* Urgent Alerts */}
+        {urgentJobs.length > 0 && (
+          <Card variant="elevated" style={styles.urgentCard}>
+            <View style={styles.urgentHeader}>
+              <View style={styles.urgentIconContainer}>
+                <Ionicons name="alert-circle" size={24} color={BrandTheme.colors.ERROR} />
               </View>
-            </Animatable.View>
-          )}
-        </ScrollView>
-      </SafeAreaView>
+              <View style={styles.urgentContent}>
+                <Text style={styles.urgentTitle}>Needs Attention</Text>
+                <Text style={styles.urgentCount}>{urgentJobs.length} urgent {urgentJobs.length === 1 ? 'job' : 'jobs'}</Text>
+              </View>
+              <TouchableOpacity onPress={handleViewJobs}>
+                <Ionicons name="arrow-forward" size={24} color={BrandTheme.colors.ERROR} />
+              </TouchableOpacity>
+            </View>
+          </Card>
+        )}
 
-      {/* Beautiful Logout Overlay with AIS Telecom Styling */}
+        {/* Today's Schedule */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Today's Schedule</Text>
+            {todaysJobCount > 3 && (
+              <TouchableOpacity onPress={handleViewJobs}>
+                <Text style={styles.sectionLink}>VIEW ALL</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {todaysJobCount === 0 ? (
+            <Card variant="standard" style={styles.emptyScheduleCard}>
+              <View style={styles.emptySchedule}>
+                <Ionicons name="calendar-outline" size={48} color={BrandTheme.colors.TEXT_SECONDARY} />
+                <Text style={styles.emptyScheduleTitle}>No jobs scheduled today</Text>
+                <Text style={styles.emptyScheduleText}>Enjoy your free time!</Text>
+              </View>
+            </Card>
+          ) : (
+            todaysJobs.slice(0, 3).map((job) => (
+              <TouchableOpacity
+                key={job.id}
+                onPress={() => router.push(`/jobs/${job.id}`)}
+              >
+                <Card variant="standard" style={styles.scheduleCard}>
+                  <View style={styles.scheduleCardContent}>
+                    <View style={styles.scheduleTime}>
+                      <Ionicons 
+                        name={getStatusIcon(job.status)} 
+                        size={24} 
+                        color={getStatusColor(job.status)} 
+                      />
+                      <Text style={styles.timeText}>{formatTime(job.scheduledDate)}</Text>
+                    </View>
+                    <View style={styles.scheduleDetails}>
+                      <Text style={styles.scheduleTitle} numberOfLines={1}>
+                        {job.title}
+                      </Text>
+                      <View style={styles.scheduleMetaRow}>
+                        {job.location?.address && (
+                          <View style={styles.scheduleMeta}>
+                            <Ionicons name="location-outline" size={14} color={BrandTheme.colors.TEXT_SECONDARY} />
+                            <Text style={styles.scheduleMetaText} numberOfLines={1}>
+                              {job.location.address}
+                            </Text>
+                          </View>
+                        )}
+                        {job.priority && (
+                          <View style={[styles.priorityPill, { 
+                            backgroundColor: job.priority === 'urgent' || job.priority === 'high' 
+                              ? BrandTheme.colors.ERROR 
+                              : BrandTheme.colors.SUCCESS 
+                          }]}>
+                            <Text style={styles.priorityText}>
+                              {job.priority.toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                </Card>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+
+        {/* Quick Stats */}
+        <View style={styles.statsSection}>
+          <View style={styles.statsRow}>
+            <Card variant="elevated" style={styles.statCard}>
+              <View style={styles.statContent}>
+                <View style={styles.statIconWrapper}>
+                  <Ionicons name="time-outline" size={28} color={BrandTheme.colors.YELLOW} />
+                </View>
+                <Text style={styles.statNumber}>{pendingJobCount}</Text>
+                <Text style={styles.statLabel}>Pending</Text>
+              </View>
+            </Card>
+
+            <Card variant="elevated" style={styles.statCard}>
+              <View style={styles.statContent}>
+                <View style={styles.statIconWrapper}>
+                  <Ionicons name="play-circle" size={28} color={BrandTheme.colors.WARNING} />
+                </View>
+                <Text style={styles.statNumber}>{activeJobCount}</Text>
+                <Text style={styles.statLabel}>Active</Text>
+              </View>
+            </Card>
+
+            <Card variant="elevated" style={styles.statCard}>
+              <View style={styles.statContent}>
+                <View style={styles.statIconWrapper}>
+                  <Ionicons name="calendar" size={28} color={BrandTheme.colors.INFO} />
+                </View>
+                <Text style={styles.statNumber}>{todaysJobCount}</Text>
+                <Text style={styles.statLabel}>Today</Text>
+              </View>
+            </Card>
+          </View>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          
+          <View style={styles.quickActionsGrid}>
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={handleViewJobs}
+            >
+              <Card variant="elevated" style={styles.actionCardInner}>
+                <View style={styles.actionIconContainer}>
+                  <Ionicons name="briefcase" size={32} color={BrandTheme.colors.YELLOW} />
+                </View>
+                <Text style={styles.actionTitle}>View Jobs</Text>
+                <Text style={styles.actionSubtitle}>All assignments</Text>
+              </Card>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/(tabs)/jobs')}
+            >
+              <Card variant="elevated" style={styles.actionCardInner}>
+                <View style={styles.actionIconContainer}>
+                  <Ionicons name="add-circle" size={32} color={BrandTheme.colors.SUCCESS} />
+                </View>
+                <Text style={styles.actionTitle}>Start Job</Text>
+                <Text style={styles.actionSubtitle}>Begin work</Text>
+              </Card>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/(tabs)/settings')}
+            >
+              <Card variant="elevated" style={styles.actionCardInner}>
+                <View style={styles.actionIconContainer}>
+                  <Ionicons name="person" size={32} color={BrandTheme.colors.INFO} />
+                </View>
+                <Text style={styles.actionTitle}>Profile</Text>
+                <Text style={styles.actionSubtitle}>Your account</Text>
+              </Card>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => router.push('/(tabs)/settings')}
+            >
+              <Card variant="elevated" style={styles.actionCardInner}>
+                <View style={styles.actionIconContainer}>
+                  <Ionicons name="settings" size={32} color={BrandTheme.colors.TEXT_SECONDARY} />
+                </View>
+                <Text style={styles.actionTitle}>Settings</Text>
+                <Text style={styles.actionSubtitle}>Preferences</Text>
+              </Card>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Logout Overlay */}
+            {/* Logout Overlay */}
       <LogoutOverlay
         visible={isSwitchingProfile}
         message="Switching profile..."
       />
-    </View>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: BrandTheme.colors.GREY_PRIMARY,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: BrandTheme.colors.GREY_PRIMARY,
+  },
+
+  loadingText: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 16,
+    color: BrandTheme.colors.TEXT_PRIMARY,
+  },
+
+  header: {
+    paddingHorizontal: BrandTheme.spacing.LG,
+    paddingVertical: BrandTheme.spacing.MD,
+    borderBottomWidth: 1,
+    borderBottomColor: BrandTheme.colors.BORDER_SUBTLE,
+  },
+
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+
+  avatarContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: BrandTheme.colors.YELLOW,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: BrandTheme.spacing.MD,
+  },
+
+  avatarText: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.BLACK,
+  },
+
+  userInfo: {
+    flex: 1,
+  },
+
+  userName: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    marginBottom: 2,
+  },
+
+  userRole: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    textTransform: 'capitalize',
+  },
+
+  profileButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: BrandTheme.colors.SURFACE_2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.BORDER,
+  },
+
+  scrollView: {
+    flex: 1,
+    paddingHorizontal: BrandTheme.spacing.LG,
+  },
+
+  greetingSection: {
+    paddingVertical: BrandTheme.spacing.XL,
+  },
+
+  greetingText: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    marginBottom: BrandTheme.spacing.XS,
+  },
+
+  dateText: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 16,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+  },
+
+  urgentCard: {
+    marginBottom: BrandTheme.spacing.LG,
+    borderLeftWidth: 4,
+    borderLeftColor: BrandTheme.colors.ERROR,
+  },
+
+  urgentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  urgentIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: `${BrandTheme.colors.ERROR}20`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: BrandTheme.spacing.MD,
+  },
+
+  urgentContent: {
+    flex: 1,
+  },
+
+  urgentTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.ERROR,
+    marginBottom: 2,
+  },
+
+  urgentCount: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+  },
+
+  emptyScheduleCard: {
+    marginTop: BrandTheme.spacing.SM,
+  },
+
+  emptySchedule: {
+    alignItems: 'center',
+    paddingVertical: BrandTheme.spacing.XXL,
+  },
+
+  emptyScheduleTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    marginTop: BrandTheme.spacing.MD,
+    marginBottom: BrandTheme.spacing.XS,
+  },
+
+  emptyScheduleText: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+  },
+
+  scheduleCard: {
+    marginTop: BrandTheme.spacing.SM,
+  },
+
+  scheduleCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.MD,
+  },
+
+  scheduleTime: {
+    alignItems: 'center',
+    minWidth: 70,
+  },
+
+  timeText: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 14,
+    fontWeight: '600',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    marginTop: 4,
+  },
+
+  scheduleDetails: {
+    flex: 1,
+  },
+
+  scheduleTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    marginBottom: 4,
+  },
+
+  scheduleMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.MD,
+  },
+
+  scheduleMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+  },
+
+  scheduleMetaText: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 12,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+  },
+
+  priorityPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 0,
+  },
+
+  priorityText: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+  },
+
+  statsSection: {
+    marginBottom: BrandTheme.spacing.XL,
+  },
+
+  statsRow: {
+    flexDirection: 'row',
+    gap: BrandTheme.spacing.MD,
+  },
+
+  statCard: {
+    flex: 1,
+    minHeight: 120,
+  },
+
+  statContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: BrandTheme.spacing.MD,
+  },
+
+  statIconWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: `${BrandTheme.colors.YELLOW}20`,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: BrandTheme.spacing.SM,
+  },
+
+  statNumber: {
+    fontFamily: BrandTheme.typography.fontFamily.display,
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    marginBottom: BrandTheme.spacing.XS,
+  },
+
+  statLabel: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 12,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: BrandTheme.spacing.MD,
+    marginTop: BrandTheme.spacing.MD,
+  },
+
+  actionCard: {
+    width: '48%',
+  },
+
+  actionCardInner: {
+    alignItems: 'center',
+    paddingVertical: BrandTheme.spacing.XL,
+  },
+
+  actionIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: BrandTheme.colors.SURFACE_2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: BrandTheme.spacing.MD,
+  },
+
+  actionTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    marginBottom: 4,
+  },
+
+  actionSubtitle: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 12,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+  },
+
+  section: {
+    marginBottom: BrandTheme.spacing.XXL,
+  },
+
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: BrandTheme.spacing.LG,
+  },
+
+  sectionTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+  },
+
+  sectionLink: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    color: BrandTheme.colors.YELLOW,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  jobCard: {
+    marginBottom: BrandTheme.spacing.MD,
+  },
+
+  jobHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: BrandTheme.spacing.SM,
+  },
+
+  jobTitle: {
+    flex: 1,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    marginRight: BrandTheme.spacing.SM,
+  },
+
+  priorityBadge: {
+    paddingHorizontal: BrandTheme.spacing.SM,
+    paddingVertical: BrandTheme.spacing.XS,
+    borderRadius: 0, // Brand kit: sharp corners
+  },
+
+  jobDescription: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    lineHeight: 20,
+    marginBottom: BrandTheme.spacing.MD,
+  },
+
+  jobFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  jobTime: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.XS,
+  },
+
+  jobTimeText: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 12,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+  },
+
+  viewJobButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.XS,
+  },
+
+  viewJobText: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 12,
+    fontWeight: '600',
+    color: BrandTheme.colors.YELLOW,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  quickActionButton: {
+    flex: 1,
+  },
+
+  emptyStateCard: {
+    marginVertical: BrandTheme.spacing.XXL,
+  },
+
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: BrandTheme.spacing.XXL,
+  },
+
+  emptyIconContainer: {
+    marginBottom: BrandTheme.spacing.LG,
+  },
+
+  emptyTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    marginBottom: BrandTheme.spacing.SM,
+  },
+
+  emptySubtext: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    textAlign: 'center',
+  },
+});

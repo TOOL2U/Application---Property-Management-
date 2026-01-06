@@ -12,7 +12,6 @@ import {
   ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Animatable from 'react-native-animatable';
 import { useTranslation } from '@/hooks/useTranslation';
 import { 
   getStatusColor, 
@@ -114,10 +113,7 @@ export default function SharedJobCard({
   const finalActions = actions.length > 0 ? actions : defaultActions;
 
   return (
-    <Animatable.View
-      animation="fadeInUp"
-      duration={300}
-      delay={animationDelay}
+    <View
       style={[styles.container, style]}
     >
       <TouchableOpacity
@@ -259,7 +255,7 @@ export default function SharedJobCard({
           </View>
         )}
       </TouchableOpacity>
-    </Animatable.View>
+    </View>
   );
 }
 

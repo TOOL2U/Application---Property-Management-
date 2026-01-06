@@ -21,6 +21,7 @@ import {
 import { getDb } from '@/lib/firebase';
 import { Job, JobStatus, JobFilter } from '@/types/job';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureFirestore } from './secureFirestore';
 
 interface CachedJobData {
   jobs: Job[];
@@ -55,97 +56,87 @@ class StaffJobService {
       // Try to get from cache first if enabled
       if (useCache) {
         const cachedData = await this.getCachedJobs(staffId);
-        if (cachedData) {
+        if (cachedData && !this.isCacheExpired(cachedData)) {
           console.log('📦 StaffJobService: Returning cached jobs');
           return {
             success: true,
             jobs: this.applyFilters(cachedData.jobs, filters),
             fromCache: true,
           };
+        } else if (cachedData) {
+          console.log('⏰ StaffJobService: Cache expired for staff:', staffId);
         }
       }
 
-      // First, get the Firebase UID for this staff member from staff_accounts collection
-      const db = await getDb();
-      const staffAccountsRef = collection(db, 'staff_accounts');
-      const staffQuery = query(staffAccountsRef, where('__name__', '==', staffId));
-      const staffSnapshot = await getDocs(staffQuery);
-      
-      let firebaseUid = null;
-      if (!staffSnapshot.empty) {
-        const staffData = staffSnapshot.docs[0].data();
-        firebaseUid = staffData.userId;
-        console.log('🔍 StaffJobService: Found Firebase UID for staff:', firebaseUid);
-      } else {
-        console.warn('⚠️ StaffJobService: No staff account found for ID:', staffId);
+      // **NEW SECURITY REQUIREMENT**: Use secure Firestore service for authenticated access
+      try {
+        console.log('🔐 StaffJobService: Using secure Firestore service for job queries...');
+        
+        // Use secure Firestore service to get staff jobs
+        const jobs = await secureFirestore.getStaffJobs(staffId);
+        
+        console.log(`✅ StaffJobService: Successfully loaded ${jobs.length} jobs from secure Firestore`);
+        
+        // Cache the jobs for offline access
+        await this.cacheJobs(staffId, jobs);
+        
         return {
-          success: false,
-          jobs: [],
-          error: 'Staff account not found',
+          success: true,
+          jobs: this.applyFilters(jobs, filters),
+          fromCache: false,
         };
+        
+      } catch (secureFirestoreError: any) {
+        console.warn('⚠️ StaffJobService: Secure Firestore access failed:', secureFirestoreError.message);
+        
+        // If authentication is required, try to fallback to cached data
+        if (secureFirestoreError.message.includes('Authentication required') || 
+            secureFirestoreError.message.includes('Permission denied')) {
+          console.log('� StaffJobService: Authentication required, falling back to cached data...');
+          
+          const cachedData = await this.getCachedJobs(staffId);
+          if (cachedData) {
+            console.log('📦 StaffJobService: Returning stale cached jobs as fallback');
+            return {
+              success: true,
+              jobs: this.applyFilters(cachedData.jobs, filters),
+              fromCache: true,
+            };
+          } else {
+            console.log('❌ StaffJobService: No cached data available');
+            return {
+              success: false,
+              jobs: [],
+              error: 'Authentication required and no cached data available. Please ensure you are logged in.',
+            };
+          }
+        } else {
+          // Some other error, try fallback to cached data
+          console.error('❌ StaffJobService: Unexpected error, trying cache fallback:', secureFirestoreError);
+          
+          const cachedData = await this.getCachedJobs(staffId);
+          if (cachedData) {
+            console.log('� StaffJobService: Returning stale cached jobs as fallback');
+            return {
+              success: true,
+              jobs: this.applyFilters(cachedData.jobs, filters),
+              fromCache: true,
+            };
+          } else {
+            return {
+              success: false,
+              jobs: [],
+              error: `Failed to load jobs: ${secureFirestoreError.message}`,
+            };
+          }
+        }
       }
-
-      if (!firebaseUid) {
-        console.warn('⚠️ StaffJobService: No Firebase UID found for staff account:', staffId);
-        return {
-          success: false,
-          jobs: [],
-          error: 'No Firebase UID linked to staff account',
-        };
-      }
-
-      // Fetch jobs using the Firebase UID
-      const jobsRef = collection(db, this.JOBS_COLLECTION);
       
-      console.log('🔍 StaffJobService: Querying jobs collection with assignedStaffId:', firebaseUid);
-      
-      let q = query(
-        jobsRef,
-        where('assignedStaffId', '==', firebaseUid)
-      );
-
-      // Apply status filter if provided
-      if (filters?.status && filters.status.length > 0) {
-        q = query(q, where('status', 'in', filters.status));
-      }
-
-      const querySnapshot = await getDocs(q);
-      const jobs: Job[] = [];
-
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        console.log('📄 StaffJobService: Found job document:', doc.id, {
-          status: data.status,
-          assignedStaffId: data.assignedStaffId,
-          title: data.title
-        });
-        const job = this.mapFirestoreDataToJob(doc.id, data);
-        jobs.push(job);
-      });
-
-      // Sort jobs by scheduled date in memory (since we can't use orderBy in the query)
-      jobs.sort((a, b) => {
-        const aDate = a.scheduledDate ? new Date(a.scheduledDate).getTime() : 0;
-        const bDate = b.scheduledDate ? new Date(b.scheduledDate).getTime() : 0;
-        return bDate - aDate; // Descending order (newest first)
-      });
-
-      // Cache the results
-      await this.cacheJobs(staffId, jobs);
-
-      console.log(`✅ StaffJobService: Retrieved ${jobs.length} jobs for staff ${staffId}`);
-      
-      return {
-        success: true,
-        jobs: this.applyFilters(jobs, filters),
-        fromCache: false,
-      };
-
     } catch (error) {
       console.error('❌ StaffJobService: Error getting staff jobs:', error);
       
       // Try to return cached data as fallback
-      const cachedData = await this.getCachedJobs(staffId, false);
+      const cachedData = await this.getCachedJobs(staffId);
       if (cachedData) {
         console.log('📦 StaffJobService: Returning stale cached jobs as fallback');
         return {
@@ -419,6 +410,15 @@ class StaffJobService {
     } catch (error) {
       console.error('❌ StaffJobService: Error invalidating cache:', error);
     }
+  }
+
+  private isCacheExpired(cachedData: CachedJobData): boolean {
+    const now = Date.now();
+    const isExpired = (now - cachedData.timestamp) > this.CACHE_DURATION;
+    if (isExpired) {
+      console.log('⏰ StaffJobService: Cache expired for staff:', cachedData.staffId);
+    }
+    return isExpired;
   }
 
   private applyFilters(jobs: Job[], filters?: JobFilter): Job[] {

@@ -1,0 +1,70 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for Property Management App
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if file is an image
+    function isImage() {
+      return request.resource == null || 
+             request.resource.contentType == null ||
+             request.resource.contentType.matches('image/.*');
+    }
+    
+    // Helper function to check file size (max 10MB)
+    function isValidSize() {
+      return request.resource == null ||
+             request.resource.size < 10 * 1024 * 1024;
+    }
+    
+    // Job photos - accessible by authenticated users
+    match /job_photos/{jobId}/{fileName} {
+      // Allow read for all authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow write (upload) for authenticated users
+      // with image validation and size limits
+      allow write: if isAuthenticated() 
+                   && isImage() 
+                   && isValidSize();
+    }
+    
+    // Alternative path for job photos (if using different structure)
+    match /jobs/{jobId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() 
+                   && isImage() 
+                   && isValidSize();
+    }
+    
+    // Property photos - accessible by authenticated users
+    match /property_photos/{propertyId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() 
+                   && isImage() 
+                   && isValidSize();
+    }
+    
+    // Staff profile photos
+    match /staff_photos/{staffId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() 
+                   && isImage() 
+                   && isValidSize();
+    }
+    
+    // Catch-all for any file (allows flexible naming patterns)
+    // This covers job_{jobId}_completion_{timestamp}.jpg and similar patterns
+    match /{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() 
+                   && isImage() 
+                   && isValidSize();
+    }
+  }
+}

@@ -15,7 +15,6 @@ import {
   ActivityIndicator 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Animatable from 'react-native-animatable';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -174,11 +173,8 @@ export default function SelectStaffProfileScreen() {
           <View>
             {/* Profile Cards */}
             {staffProfiles.map((staff, index) => (
-              <Animatable.View
+              <View
                 key={staff.id}
-                animation="fadeInUp"
-                duration={600}
-                delay={index * 100}
                 style={styles.profileCardContainer}
               >
                 <TouchableOpacity
@@ -221,7 +217,7 @@ export default function SelectStaffProfileScreen() {
                     <Ionicons name="chevron-forward" size={20} color={JOB_COLORS.textMuted} />
                   </View>
                 </TouchableOpacity>
-              </Animatable.View>
+              </View>
             ))}
 
             {/* Security Notice */}

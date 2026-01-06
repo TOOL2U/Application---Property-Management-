@@ -8,21 +8,24 @@ import {
   ActivityIndicator,
   StatusBar,
   Image,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Animatable from 'react-native-animatable';
 import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useTranslationContext } from "@/contexts/TranslationContext";
 import { useRouter } from 'expo-router';
 import LogoutOverlay from '@/components/auth/LogoutOverlay';
+import { BrandTheme } from '@/constants/BrandTheme';
+import { Card } from '@/components/ui/BrandCard';
+import { Button } from '@/components/ui/BrandButton';
 
 // User status options
 const statusOptions = [
-  { id: 'available', labelKey: 'profile.available', color: '#22c55e', icon: 'checkmark-circle' },
-  { id: 'busy', labelKey: 'profile.busy', color: '#f59e0b', icon: 'time' },
-  { id: 'offline', labelKey: 'profile.offline', color: '#71717A', icon: 'moon' },
+  { id: 'available', labelKey: 'profile.available', color: BrandTheme.colors.SUCCESS, icon: 'checkmark-circle' },
+  { id: 'busy', labelKey: 'profile.busy', color: BrandTheme.colors.WARNING, icon: 'time' },
+  { id: 'offline', labelKey: 'profile.offline', color: BrandTheme.colors.TEXT_SECONDARY, icon: 'moon' },
 ] as const;
 
 type UserStatus = typeof statusOptions[number]['id'];
@@ -49,7 +52,7 @@ export default function ProfileScreen() {
           onPress: async () => {
             try {
               setIsSigningOut(true);
-              console.log('🚪 Profile: Starting beautiful logout process with AIS telecom styling...');
+              console.log('🚪 Profile: Starting beautiful logout process...');
 
               // Add beautiful fadeOut animation before logout
               console.log('🎨 Profile: Starting fadeOut animation...');
@@ -76,7 +79,7 @@ export default function ProfileScreen() {
             } catch (error) {
               console.error('❌ Profile: Logout error:', error);
 
-              // Show user-friendly error message with AIS styling
+              // Show user-friendly error message
               const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
               Alert.alert(
                 'Logout Complete',
@@ -123,15 +126,14 @@ export default function ProfileScreen() {
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'admin': return '#ef4444'; // red
-      case 'manager': return '#f59e0b'; // orange
-      case 'staff': return '#3b82f6'; // blue
-      case 'cleaner': return '#10b981'; // green
-      case 'maintenance': return '#8b5cf6'; // purple
-      default: return '#71717A'; // gray
+      case 'admin': return BrandTheme.colors.ERROR;
+      case 'manager': return BrandTheme.colors.WARNING;
+      case 'staff': return BrandTheme.colors.INFO;
+      case 'cleaner': return BrandTheme.colors.SUCCESS;
+      case 'maintenance': return BrandTheme.colors.YELLOW;
+      default: return BrandTheme.colors.TEXT_SECONDARY;
     }
   };
-
 
   const getInitials = (name: string) => {
     return name
@@ -142,7 +144,7 @@ export default function ProfileScreen() {
       .substring(0, 2);
   };
 
-  // Action Button Component with AIS-inspired design
+  // Action Button Component with brand styling
   const ActionButton = ({
     icon,
     title,
@@ -163,73 +165,49 @@ export default function ProfileScreen() {
     disabled?: boolean;
   }) => (
     <TouchableOpacity
-      style={{
-        backgroundColor: isSpecial ? '#C6FF00' : '#1C1F2A',
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 12,
-        opacity: disabled ? 0.5 : 1,
-        borderWidth: 1,
-        borderColor: '#374151',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
-      }}
+      style={[
+        styles.actionButton,
+        isSpecial && styles.actionButtonSpecial,
+        disabled && styles.actionButtonDisabled
+      ]}
       onPress={disabled ? undefined : onPress}
       activeOpacity={disabled ? 1 : 0.8}
       accessibilityLabel={title}
       accessibilityHint={subtitle}
       disabled={disabled}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <View style={styles.actionButtonContent}>
         {/* Icon Container */}
-        <View
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 16,
-            backgroundColor: isSpecial ? 'rgba(11, 15, 26, 0.2)' : 'rgba(198, 255, 0, 0.2)'
-          }}
-        >
+        <View style={[
+          styles.actionButtonIcon,
+          isSpecial && styles.actionButtonIconSpecial
+        ]}>
           {isLoading ? (
             <ActivityIndicator
               size="small"
-              color={isSpecial ? '#0B0F1A' : '#C6FF00'}
+              color={isSpecial ? BrandTheme.colors.BLACK : BrandTheme.colors.YELLOW}
             />
           ) : (
             <Ionicons
               name={icon}
               size={20}
-              color={isSpecial ? '#0B0F1A' : '#C6FF00'}
+              color={isSpecial ? BrandTheme.colors.BLACK : BrandTheme.colors.YELLOW}
             />
           )}
         </View>
 
         {/* Text Container */}
-        <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              fontSize: 16,
-              fontWeight: '600',
-              color: isSpecial ? '#0B0F1A' : 'white',
-              fontFamily: 'Urbanist'
-            }}
-          >
+        <View style={styles.actionButtonText}>
+          <Text style={[
+            styles.actionButtonTitle,
+            isSpecial && styles.actionButtonTitleSpecial
+          ]}>
             {isLoading ? t('common.signingOut') : title}
           </Text>
-          <Text
-            style={{
-              fontSize: 14,
-              marginTop: 4,
-              color: isSpecial ? 'rgba(11, 15, 26, 0.7)' : '#9CA3AF',
-              fontFamily: 'Inter'
-            }}
-          >
+          <Text style={[
+            styles.actionButtonSubtitle,
+            isSpecial && styles.actionButtonSubtitleSpecial
+          ]}>
             {isLoading ? t('common.pleaseWaitSignOut') : subtitle}
           </Text>
         </View>
@@ -239,13 +217,13 @@ export default function ProfileScreen() {
           <Ionicons
             name="chevron-forward"
             size={20}
-            color={isSpecial ? '#0B0F1A' : '#9CA3AF'}
+            color={isSpecial ? BrandTheme.colors.BLACK : BrandTheme.colors.TEXT_SECONDARY}
           />
         )}
         {isLoading && (
           <ActivityIndicator
             size="small"
-            color={isSpecial ? '#0B0F1A' : '#9CA3AF'}
+            color={isSpecial ? BrandTheme.colors.BLACK : BrandTheme.colors.TEXT_SECONDARY}
           />
         )}
       </View>
@@ -253,240 +231,327 @@ export default function ProfileScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0B0F1A' }}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B0F1A" />
-      <SafeAreaView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 32 }}>
-        {/* Header */}
-        <Animatable.View
-          animation="fadeInDown"
-          duration={600}
-          style={{ marginBottom: 24 }}
-        >
-          <Text style={{
-            color: 'white',
-            fontSize: 32,
-            fontWeight: 'bold',
-            fontFamily: 'Urbanist'
-          }}>
-            Profile
-          </Text>
-          <Text style={{
-            color: '#9CA3AF',
-            fontSize: 16,
-            marginTop: 4,
-            fontFamily: 'Inter'
-          }}>
-            Manage your account and preferences
-          </Text>
-        </Animatable.View>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={BrandTheme.colors.BLACK} />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={styles.headerSubtitle}>
+          Manage your account and preferences
+        </Text>
+      </View>
 
-        <ScrollView
-          style={{ flex: 1 }}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100 }}
-        >
-          {/* Profile Header Section */}
-          <Animatable.View
-            animation="fadeInUp"
-            duration={600}
-            delay={0}
-            style={{
-              backgroundColor: '#1C1F2A',
-              borderRadius: 16,
-              padding: 20,
-              marginBottom: 16,
-              borderWidth: 1,
-              borderColor: '#374151',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 8,
-            }}
-          >
-            <View style={{ alignItems: 'center' }}>
-              {/* User Avatar */}
-              <LinearGradient
-                colors={['#C6FF00', '#A3E635']}
-                style={{
-                  width: 88,
-                  height: 88,
-                  borderRadius: 44,
-                  padding: 3,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: 16,
-                }}
-              >
-                <View style={{
-                  width: 82,
-                  height: 82,
-                  borderRadius: 41,
-                  backgroundColor: '#374151',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Profile Header Section */}
+        <Card variant="elevated" style={styles.profileCard}>
+          <View style={styles.profileHeader}>
+            {/* User Avatar */}
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatarGradient}>
+                <View style={styles.avatarInner}>
                   {currentProfile?.avatar ? (
                     <Image
                       source={{ uri: currentProfile.avatar }}
-                      style={{ width: 82, height: 82, borderRadius: 41 }}
+                      style={styles.avatarImage}
                     />
                   ) : (
-                    <Text style={{
-                      color: '#C6FF00',
-                      fontSize: 24,
-                      fontWeight: 'bold',
-                      fontFamily: 'Urbanist'
-                    }}>
+                    <Text style={styles.avatarText}>
                       {getInitials(currentProfile?.name || 'Staff Member')}
                     </Text>
                   )}
                 </View>
-              </LinearGradient>
-
-              {/* User Information */}
-              <Text style={{
-                color: 'white',
-                fontSize: 20,
-                fontWeight: '600',
-                textAlign: 'center',
-                fontFamily: 'Urbanist'
-              }}>
-                {currentProfile?.name || 'Staff Member'}
-              </Text>
-              <Text style={{
-                color: '#9CA3AF',
-                fontSize: 16,
-                marginTop: 4,
-                textAlign: 'center',
-                fontFamily: 'Inter'
-              }}>
-                {currentProfile?.email || 'staff@property.com'}
-              </Text>
-
-              {/* Role Badge */}
-              <View
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 4,
-                  borderRadius: 12,
-                  marginTop: 12,
-                  backgroundColor: getRoleBadgeColor(currentProfile?.role || 'staff'),
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: '500',
-                    textTransform: 'capitalize',
-                    color: 'white',
-                    fontFamily: 'Inter'
-                  }}
-                >
-                  {currentProfile?.role || 'Staff'}
-                </Text>
-              </View>
-
-              {/* Status Indicator */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
-                <View
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    marginRight: 8,
-                    backgroundColor: getCurrentStatus().color
-                  }}
-                />
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: '500',
-                    color: getCurrentStatus().color,
-                    fontFamily: 'Inter'
-                  }}
-                >
-                  {t(getCurrentStatus().labelKey)}
-                </Text>
               </View>
             </View>
-          </Animatable.View>
 
-          {/* Action Buttons Section */}
-          <View>
-            {/* Edit Profile Button */}
-            <Animatable.View
-              animation="fadeInUp"
-              duration={600}
-              delay={100}
-            >
-              <ActionButton
-                icon="person-outline"
-                title={t('profile.editProfile')}
-                subtitle={t('profile.personalInfo')}
-                onPress={handleEditProfile}
-                disabled={isSigningOut || isLoading}
-              />
-            </Animatable.View>
+            {/* User Information */}
+            <Text style={styles.userName}>
+              {currentProfile?.name || 'Staff Member'}
+            </Text>
+            <Text style={styles.userEmail}>
+              {currentProfile?.email || 'staff@property.com'}
+            </Text>
 
-            {/* Change Status Button */}
-            <Animatable.View
-              animation="fadeInUp"
-              duration={600}
-              delay={200}
-            >
-              <ActionButton
-                icon="radio-button-on-outline"
-                title={t('profile.status')}
-                subtitle={`${t('profile.currentStatus')}: ${t(getCurrentStatus().labelKey)}`}
-                onPress={handleStatusChange}
-                disabled={isSigningOut || isLoading}
-              />
-            </Animatable.View>
+            {/* Role Badge */}
+            <View style={[
+              styles.roleBadge,
+              { backgroundColor: getRoleBadgeColor(currentProfile?.role || 'staff') }
+            ]}>
+              <Text style={styles.roleBadgeText}>
+                {currentProfile?.role || 'Staff'}
+              </Text>
+            </View>
 
-            {/* Admin-only features */}
-            {isAdminOrManager && (
-              <Animatable.View
-                animation="fadeInUp"
-                duration={600}
-                delay={300}
-              >
-                <ActionButton
-                  icon="settings-outline"
-                  title="Admin Settings"
-                  subtitle="Access administrative features"
-                  onPress={() => Alert.alert('Admin Settings', 'Admin settings features coming soon!')}
-                  disabled={isSigningOut || isLoading}
-                />
-              </Animatable.View>
-            )}
-
-            {/* Sign Out Button */}
-            <Animatable.View
-              animation="fadeInUp"
-              duration={600}
-              delay={isAdminOrManager ? 400 : 300}
-            >
-              <ActionButton
-                icon="log-out-outline"
-                title={t('profile.signOutTitle')}
-                subtitle={t('profile.signOutSubtitle')}
-                onPress={handleSignOut}
-                isSpecial={true}
-                showChevron={false}
-                isLoading={isSigningOut || isLoading}
-                disabled={isSigningOut || isLoading}
-              />
-            </Animatable.View>
+            {/* Status Indicator */}
+            <View style={styles.statusContainer}>
+              <View style={[
+                styles.statusDot,
+                { backgroundColor: getCurrentStatus().color }
+              ]} />
+              <Text style={[
+                styles.statusText,
+                { color: getCurrentStatus().color }
+              ]}>
+                {t(getCurrentStatus().labelKey)}
+              </Text>
+            </View>
           </View>
-        </ScrollView>
-      </SafeAreaView>
+        </Card>
 
-      {/* Beautiful Logout Overlay with AIS Telecom Styling */}
+        {/* Action Buttons Section */}
+        <View style={styles.actionsSection}>
+          {/* Edit Profile Button */}
+          <ActionButton
+            icon="person-outline"
+            title={t('profile.editProfile')}
+            subtitle={t('profile.personalInfo')}
+            onPress={handleEditProfile}
+            disabled={isSigningOut || isLoading}
+          />
+
+          {/* Change Status Button */}
+          <ActionButton
+            icon="radio-button-on-outline"
+            title={t('profile.status')}
+            subtitle={`${t('profile.currentStatus')}: ${t(getCurrentStatus().labelKey)}`}
+            onPress={handleStatusChange}
+            disabled={isSigningOut || isLoading}
+          />
+
+          {/* Admin-only features */}
+          {isAdminOrManager && (
+            <ActionButton
+              icon="settings-outline"
+              title="Admin Settings"
+              subtitle="Access administrative features"
+              onPress={() => Alert.alert('Admin Settings', 'Admin settings features coming soon!')}
+              disabled={isSigningOut || isLoading}
+            />
+          )}
+
+          {/* Sign Out Button */}
+          <ActionButton
+            icon="log-out-outline"
+            title={t('profile.signOutTitle')}
+            subtitle={t('profile.signOutSubtitle')}
+            onPress={handleSignOut}
+            isSpecial={true}
+            showChevron={false}
+            isLoading={isSigningOut || isLoading}
+            disabled={isSigningOut || isLoading}
+          />
+        </View>
+      </ScrollView>
+
+      {/* Beautiful Logout Overlay */}
       <LogoutOverlay
         visible={isSigningOut}
         message="Signing out..."
       />
-    </View>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: BrandTheme.colors.GREY_PRIMARY,
+  },
+
+  header: {
+    paddingHorizontal: BrandTheme.spacing.LG,
+    paddingVertical: BrandTheme.spacing.MD,
+    borderBottomWidth: 1,
+    borderBottomColor: BrandTheme.colors.BORDER_SUBTLE,
+  },
+
+  headerTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+  },
+
+  headerSubtitle: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 16,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    marginTop: BrandTheme.spacing.XS,
+  },
+
+  scrollView: {
+    flex: 1,
+    paddingHorizontal: BrandTheme.spacing.LG,
+  },
+
+  scrollContent: {
+    paddingTop: BrandTheme.spacing.LG,
+    paddingBottom: 100,
+  },
+
+  profileCard: {
+    marginBottom: BrandTheme.spacing.LG,
+  },
+
+  profileHeader: {
+    alignItems: 'center',
+  },
+
+  avatarContainer: {
+    marginBottom: BrandTheme.spacing.LG,
+  },
+
+  avatarGradient: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    padding: 3,
+    backgroundColor: BrandTheme.colors.YELLOW,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  avatarInner: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor: BrandTheme.colors.SURFACE_1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  avatarImage: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+  },
+
+  avatarText: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.YELLOW,
+  },
+
+  userName: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 20,
+    fontWeight: '600',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    textAlign: 'center',
+  },
+
+  userEmail: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 16,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    marginTop: BrandTheme.spacing.XS,
+    textAlign: 'center',
+  },
+
+  roleBadge: {
+    paddingHorizontal: BrandTheme.spacing.SM,
+    paddingVertical: BrandTheme.spacing.XS,
+    borderRadius: 0, // Brand kit: sharp corners
+    marginTop: BrandTheme.spacing.SM,
+  },
+
+  roleBadgeText: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+  },
+
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: BrandTheme.spacing.SM,
+  },
+
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: BrandTheme.spacing.SM,
+  },
+
+  statusText: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  actionsSection: {
+    gap: BrandTheme.spacing.SM,
+  },
+
+  actionButton: {
+    backgroundColor: BrandTheme.colors.SURFACE_1,
+    borderRadius: 0, // Brand kit: sharp corners
+    padding: BrandTheme.spacing.LG,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.BORDER,
+    ...BrandTheme.shadows.SMALL_GLOW,
+  },
+
+  actionButtonSpecial: {
+    backgroundColor: BrandTheme.colors.YELLOW,
+    borderColor: BrandTheme.colors.YELLOW,
+  },
+
+  actionButtonDisabled: {
+    opacity: 0.5,
+  },
+
+  actionButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  actionButtonIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: BrandTheme.colors.SURFACE_2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: BrandTheme.spacing.MD,
+  },
+
+  actionButtonIconSpecial: {
+    backgroundColor: BrandTheme.colors.BLACK,
+  },
+
+  actionButtonText: {
+    flex: 1,
+  },
+
+  actionButtonTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 16,
+    fontWeight: '600',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+  },
+
+  actionButtonTitleSpecial: {
+    color: BrandTheme.colors.BLACK,
+  },
+
+  actionButtonSubtitle: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    marginTop: BrandTheme.spacing.XS,
+  },
+
+  actionButtonSubtitleSpecial: {
+    color: BrandTheme.colors.BLACK,
+    opacity: 0.7,
+  },
+});

@@ -824,7 +824,10 @@ class JobService {
       
       console.log('📁 JobService: Creating storage reference for:', filename);
       console.log('🗄️ JobService: Storage instance type:', typeof storageInstance);
-      const photoRef = ref(storageInstance, `job_photos/${jobId}/${filename}`);
+      console.log('🪣 JobService: Storage bucket:', storageInstance.app.options.storageBucket);
+      const storagePath = `job_photos/${jobId}/${filename}`;
+      console.log('📂 JobService: Full storage path:', storagePath);
+      const photoRef = ref(storageInstance, storagePath);
 
       console.log('🌐 JobService: Fetching image from URI...');
       // Convert image URI to blob
@@ -836,10 +839,20 @@ class JobService {
       
       const blob = await response.blob();
       console.log('📊 JobService: Image blob created, size:', blob.size);
+      console.log('📊 JobService: Image blob type:', blob.type);
 
       console.log('⬆️ JobService: Uploading to Firebase Storage...');
-      // Upload to Firebase Storage
-      const uploadResult = await uploadBytes(photoRef, blob);
+      // Upload to Firebase Storage with metadata
+      const metadata = {
+        contentType: blob.type || 'image/jpeg',
+        customMetadata: {
+          jobId: jobId,
+          uploadType: type,
+        }
+      };
+      
+      console.log('📦 JobService: Upload metadata:', metadata);
+      const uploadResult = await uploadBytes(photoRef, blob, metadata);
       
       console.log('🔗 JobService: Getting download URL...');
       const downloadURL = await getDownloadURL(uploadResult.ref);
@@ -877,14 +890,26 @@ class JobService {
       };
     } catch (error) {
       console.error('❌ JobService: Error uploading photo:', error);
-      console.error('❌ JobService: Error details:', {
+      
+      // Extract Firebase-specific error details
+      const firebaseError = error as any;
+      console.error('❌ JobService: Error code:', firebaseError?.code);
+      console.error('❌ JobService: Server response:', firebaseError?.serverResponse);
+      console.error('❌ JobService: Custom data:', firebaseError?.customData);
+      console.error('❌ JobService: Full error details:', {
         jobId,
         imageUri,
         type,
         description,
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        errorStack: error instanceof Error ? error.stack : 'No stack trace'
+        errorStack: error instanceof Error ? error.stack : 'No stack trace',
+        errorCode: firebaseError?.code,
+        serverResponse: firebaseError?.serverResponse,
+        customData: firebaseError?.customData,
+        httpError: firebaseError?.httpErrorCode,
+        errorName: error instanceof Error ? error.name : 'Unknown',
       });
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to upload photo',

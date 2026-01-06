@@ -311,14 +311,18 @@ export default function JobAcceptanceModal({
           {/* Job Title and Priority */}
           <View style={styles.titleSection}>
             <Text style={styles.jobTitle}>{job.title}</Text>
-            <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(job.priority) }]}>
-              <Text style={styles.priorityText}>{job.priority.toUpperCase()}</Text>
+            <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(job.priority || 'medium') }]}>
+              <Text style={styles.priorityText}>
+                {job.priority && typeof job.priority === 'string' ? job.priority.toUpperCase() : 'MEDIUM'}
+              </Text>
             </View>
           </View>
 
           {/* Job Type */}
           <View style={styles.typeSection}>
-            <Text style={styles.jobType}>{job.type.replace('_', ' ').toUpperCase()}</Text>
+            <Text style={styles.jobType}>
+              {job.type && typeof job.type === 'string' ? job.type.replace('_', ' ').toUpperCase() : 'JOB'}
+            </Text>
           </View>
 
           {/* Job Details */}

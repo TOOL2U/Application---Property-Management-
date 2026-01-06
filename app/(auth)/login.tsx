@@ -9,7 +9,6 @@ import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
-import * as Animatable from 'react-native-animatable';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -56,9 +55,7 @@ export default function LoginScreen() {
 
       <View className="flex-1 justify-center">
         {/* App Branding Section */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
+        <View
           className="items-center mb-12"
         >
           {/* App Logo/Icon */}
@@ -79,12 +76,10 @@ export default function LoginScreen() {
           <Text className="text-text-secondary text-center text-base">
             Secure staff access with profile selection
           </Text>
-        </Animatable.View>
+        </View>
 
         {/* Login Button */}
-        <Animatable.View
-          animation="fadeInUp"
-          duration={600}
+        <View
           className="mb-8"
         >
           <TouchableOpacity
@@ -102,9 +97,7 @@ export default function LoginScreen() {
           >
             <View className="flex-row items-center justify-center">
               {loading ? (
-                <Animatable.View animation="rotate" iterationCount="infinite">
-                  <Ionicons name="refresh" size={24} color="#0B0F1A" />
-                </Animatable.View>
+                <Ionicons name="refresh" size={24} color="#0B0F1A" />
               ) : (
                 <Ionicons name="shield-checkmark" size={24} color="#0B0F1A" />
               )}
@@ -116,14 +109,11 @@ export default function LoginScreen() {
               )}
             </View>
           </TouchableOpacity>
-        </Animatable.View>
+        </View>
 
         {/* Info Cards */}
         <View className="space-y-4">
-          <Animatable.View
-            animation="fadeInUp"
-            duration={600}
-            delay={100}
+          <View
             className="bg-dark-surface rounded-xl p-4 mb-4"
           >
             <View className="flex-row items-center mb-2">
@@ -133,12 +123,9 @@ export default function LoginScreen() {
             <Text className="text-text-secondary text-sm leading-5">
               All staff use a shared login, then select their profile with a personal PIN code.
             </Text>
-          </Animatable.View>
+          </View>
 
-          <Animatable.View
-            animation="fadeInUp"
-            duration={600}
-            delay={200}
+          <View
             className="bg-dark-surface rounded-xl p-4"
           >
             <View className="flex-row items-center mb-2">
@@ -148,19 +135,18 @@ export default function LoginScreen() {
             <Text className="text-text-secondary text-sm leading-5">
               Choose your profile and enter your 4-digit PIN to access your personalized dashboard.
             </Text>
-          </Animatable.View>
+          </View>
         </View>
 
         {/* Error Display */}
         {error && (
-          <Animatable.View
-            animation="fadeIn"
+          <View
             className="mt-6 bg-red-500/20 border border-red-500/30 rounded-xl p-4"
           >
             <Text className="text-red-400 text-center font-medium">
               {error}
             </Text>
-          </Animatable.View>
+          </View>
         )}
       </View>
     </SafeAreaView>

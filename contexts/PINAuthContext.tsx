@@ -7,6 +7,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { localStaffService, StaffProfile, StaffSession } from '../services/localStaffService';
 import { staffSyncService, getStaffSyncService } from '../services/staffSyncService';
 import { initializeFirebase } from '../lib/firebase';
+import { firebaseAuthService, AuthenticatedUser } from '../services/firebaseAuthService';
+import { secureFirestore } from '../services/secureFirestore';
 
 interface PINAuthContextType {
   // Authentication state
@@ -15,6 +17,10 @@ interface PINAuthContextType {
   currentProfile: StaffProfile | null;
   currentSession: StaffSession | null;
   error: string | null;
+
+  // Firebase authentication state (required for new security rules)
+  firebaseUser: AuthenticatedUser | null;
+  isFirebaseAuthenticated: boolean;
 
   // Staff profiles
   staffProfiles: StaffProfile[];
@@ -49,9 +55,38 @@ export function PINAuthProvider({ children }: PINAuthProviderProps) {
   const [staffProfiles, setStaffProfiles] = useState<StaffProfile[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Firebase authentication state (required for new security rules)
+  const [firebaseUser, setFirebaseUser] = useState<AuthenticatedUser | null>(null);
+  const [isFirebaseAuthenticated, setIsFirebaseAuthenticated] = useState(false);
+
   // Initialize the service and check for existing session
   useEffect(() => {
     initializeAuth();
+  }, []);
+
+  // Set up Firebase authentication listener (required for new security rules)
+  useEffect(() => {
+    console.log('🔐 PINAuth: Setting up Firebase authentication listener...');
+    
+    const unsubscribe = firebaseAuthService.onAuthStateChanged((user) => {
+      setFirebaseUser(user);
+      setIsFirebaseAuthenticated(!!user);
+      
+      if (user) {
+        console.log('✅ PINAuth: Firebase user authenticated:', {
+          email: user.email,
+          role: user.role,
+          isAdmin: user.isAdmin
+        });
+      } else {
+        console.log('🔓 PINAuth: Firebase user signed out');
+      }
+    });
+
+    return () => {
+      console.log('🔇 PINAuth: Cleaning up Firebase auth listener');
+      unsubscribe();
+    };
   }, []);
 
   // Set up real-time staff profile synchronization
@@ -110,7 +145,7 @@ export function PINAuthProvider({ children }: PINAuthProviderProps) {
         }
       }
       
-      // Check for existing session (uses local storage, not Firebase)
+      // Only check for existing session AFTER staff profiles are loaded
       await checkExistingSession();
       
       console.log('✅ PINAuth: Authentication initialized');
@@ -124,52 +159,135 @@ export function PINAuthProvider({ children }: PINAuthProviderProps) {
 
   const loadStaffProfiles = async () => {
     try {
-      console.log('🔄 PINAuth: Starting loadStaffProfiles...');
+      console.log('� PINAuth: Loading staff profiles with new security requirements...');
 
-      // Get the service instance with fallback
-      let syncService = staffSyncService;
-      if (!syncService || !syncService.fetchStaffProfiles) {
-        console.warn('⚠️ PINAuth: staffSyncService not available, using fallback getter');
-        syncService = getStaffSyncService();
-      }
-
-      // Get staff profiles exclusively from staff_accounts collection in Firestore
-      const syncResponse = await syncService.fetchStaffProfiles();
-
-      console.log('📊 PINAuth: Sync response received:', {
-        success: syncResponse.success,
-        profileCount: syncResponse.profiles.length,
-        fromCache: syncResponse.fromCache
-      });
-
-      if (syncResponse.success && syncResponse.profiles.length > 0) {
-        console.log('✅ PINAuth: Setting staff profiles in state...');
-        setStaffProfiles(syncResponse.profiles);
-        console.log(`📋 PINAuth: Loaded ${syncResponse.profiles.length} staff accounts ${syncResponse.fromCache ? '(from cache)' : '(from Firestore)'}`);
-
-        // Log each profile for debugging
-        syncResponse.profiles.forEach((profile: StaffProfile, index: number) => {
-          console.log(`   ${index + 1}. ${profile.name} (${profile.email}) - ${profile.role}`);
-        });
-
-        // Clear any existing error
-        setError(null);
-      } else {
-        // No fallback to local profiles - rely exclusively on staff_accounts collection
-        console.log('❌ PINAuth: No profiles to set, clearing staff profiles array');
-        setStaffProfiles([]);
-        if (syncResponse.success && syncResponse.profiles.length === 0) {
-          console.log('⚠️ PINAuth: No active staff accounts found in staff_accounts collection');
-          setError('No staff accounts available. Please contact your administrator.');
+      // **NEW SECURITY REQUIREMENT**: Use secure Firestore service
+      // Note: This will require authentication for database access
+      try {
+        console.log('🔥 PINAuth: Loading staff profiles using secure Firestore...');
+        
+        // For staff profile loading, we need to handle the bootstrap case
+        // where no user is logged in yet but we need to show available profiles
+        let profiles: StaffProfile[] = [];
+        
+        if (isFirebaseAuthenticated && firebaseUser) {
+          // User is authenticated, try to load from Firestore
+          console.log('🔐 PINAuth: User authenticated, loading from Firestore...');
+          const querySnapshot = await secureFirestore.queryCollection('staff_accounts');
+          profiles = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as StaffProfile));
+          
+          console.log(`✅ PINAuth: Loaded ${profiles.length} staff profiles from Firestore`);
+          
+          // Profiles are automatically available to the local service for PIN operations
+          console.log('💾 PINAuth: Staff profiles loaded for PIN operations');
         } else {
-          console.log('⚠️ PINAuth: Failed to sync staff accounts from Firestore');
-          setError('Unable to load staff accounts. Please check your connection and try again.');
+          // Not authenticated - try to use legacy sync service for initial profile loading
+          // This is needed for the bootstrap case where users haven't logged in yet
+          console.log('🔒 PINAuth: Not authenticated, trying legacy sync service for bootstrap...');
+          
+          try {
+            let syncService = staffSyncService;
+            if (!syncService || !syncService.fetchStaffProfiles) {
+              console.warn('⚠️ PINAuth: staffSyncService not available, using fallback getter');
+              syncService = getStaffSyncService();
+            }
+
+            const syncResponse = await syncService.fetchStaffProfiles();
+            
+            if (syncResponse.success && syncResponse.profiles.length > 0) {
+              profiles = syncResponse.profiles;
+              console.log(`📱 PINAuth: Loaded ${profiles.length} staff profiles from legacy sync ${syncResponse.fromCache ? '(from cache)' : '(from Firestore)'}`);
+            } else {
+              console.log('📭 PINAuth: No profiles from legacy sync, trying local cache...');
+              profiles = await localStaffService.getStaffProfiles();
+              console.log(`💾 PINAuth: Loaded ${profiles.length} staff profiles from local cache`);
+            }
+          } catch (legacyError) {
+            console.warn('⚠️ PINAuth: Legacy sync failed, trying local cache:', legacyError);
+            profiles = await localStaffService.getStaffProfiles();
+            console.log(`� PINAuth: Loaded ${profiles.length} staff profiles from local cache`);
+          }
+        }
+        
+        // Update state
+        setStaffProfiles(profiles);
+        
+        if (profiles.length > 0) {
+          setError(null);
+          console.log(`📋 PINAuth: Successfully loaded ${profiles.length} staff accounts`);
+          
+          // Log each profile for debugging
+          profiles.forEach((profile: StaffProfile, index: number) => {
+            console.log(`   ${index + 1}. ${profile.name} (${profile.email}) - ${profile.role}`);
+          });
+        } else {
+          console.log('⚠️ PINAuth: No staff accounts available');
+          setError('No staff accounts available. Please contact your administrator.');
+        }
+        
+      } catch (secureFirestoreError: any) {
+        console.warn('⚠️ PINAuth: Secure Firestore access failed:', secureFirestoreError);
+        
+        // If permission denied, this might be expected for non-authenticated users
+        if (secureFirestoreError.message.includes('Permission denied') || 
+            secureFirestoreError.message.includes('Authentication required')) {
+          console.log('🔐 PINAuth: No Firebase auth, falling back to legacy sync...');
+          
+          try {
+            // Try legacy sync service as fallback
+            let syncService = staffSyncService;
+            if (!syncService || !syncService.fetchStaffProfiles) {
+              syncService = getStaffSyncService();
+            }
+
+            const syncResponse = await syncService.fetchStaffProfiles();
+            
+            if (syncResponse.success && syncResponse.profiles.length > 0) {
+              setStaffProfiles(syncResponse.profiles);
+              console.log(`📱 PINAuth: Fallback to legacy sync successful (${syncResponse.profiles.length} profiles)`);
+              setError(null);
+            } else {
+              // Try local cache as final fallback
+              const localProfiles = await localStaffService.getStaffProfiles();
+              if (localProfiles.length > 0) {
+                setStaffProfiles(localProfiles);
+                console.log(`💾 PINAuth: Fallback to local cache successful (${localProfiles.length} profiles)`);
+                setError('Using cached staff accounts. Some data may be outdated.');
+              } else {
+                console.log('📭 PINAuth: No profiles available from any source');
+                setStaffProfiles([]);
+                setError('No staff accounts available. Please contact your administrator.');
+              }
+            }
+          } catch (fallbackError) {
+            console.error('❌ PINAuth: All fallback methods failed:', fallbackError);
+            setStaffProfiles([]);
+            setError('Unable to load staff accounts. Please contact your administrator.');
+          }
+        } else {
+          console.error('❌ PINAuth: Unexpected secure Firestore error:', secureFirestoreError);
+          // Try fallback to legacy sync
+          try {
+            let syncService = staffSyncService;
+            if (!syncService) {
+              syncService = getStaffSyncService();
+            }
+            const syncResponse = await syncService.fetchStaffProfiles();
+            setStaffProfiles(syncResponse.profiles);
+            console.log(`📱 PINAuth: Fallback to legacy sync successful (${syncResponse.profiles.length} profiles)`);
+            setError('Database temporarily unavailable, using cached data.');
+          } catch (legacyFallbackError) {
+            console.error('❌ PINAuth: Legacy fallback also failed:', legacyFallbackError);
+            setStaffProfiles([]);
+            setError('Unable to load staff accounts. Please check your connection and try again.');
+          }
         }
       }
     } catch (error) {
       console.error('❌ PINAuth: Failed to load staff accounts:', error);
-
-      // No fallback to local profiles - show appropriate error message
       setStaffProfiles([]);
       setError('Unable to connect to staff account system. Please check your connection and try again.');
     }
@@ -204,13 +322,12 @@ export function PINAuthProvider({ children }: PINAuthProviderProps) {
       setError(null);
       console.log(`🔐 PINAuth: Attempting login for profile ${profileId}`);
 
-      // Verify PIN
+      // Verify PIN first
       const isValidPIN = await localStaffService.verifyStaffPIN(profileId, pin);
       if (!isValidPIN) {
         setError('Invalid PIN. Please try again.');
         return false;
       }
-
 
       // Get profile from in-memory state
       const profile = staffProfiles.find(p => p.id === profileId);
@@ -224,15 +341,35 @@ export function PINAuthProvider({ children }: PINAuthProviderProps) {
         return false;
       }
 
-      // Create session
-      const session = await localStaffService.createSession(profileId);
+      // **TEMPORARY**: Skip Firebase authentication to fix login issue
+      // This allows PIN-only login while Firebase integration is being set up
+      console.log('� PINAuth: Using PIN-only authentication (Firebase integration pending)');
       
-      // Update state
+      // TODO: Re-enable Firebase authentication once staff Firebase accounts are configured
+      // The Firebase security infrastructure is in place but not required for PIN login
+      let firebaseAuthSuccess = false;
+      
+      console.log('ℹ️ PINAuth: Proceeding with PIN-only authentication for compatibility');
+
+      // Create local session
+      const session = await localStaffService.createSession(profileId);
+      console.log(`✅ PINAuth: Session created for profile ${profileId}`);
+      
+      // Verify session was created successfully by reading it back
+      const verifySession = await localStaffService.getCurrentSession();
+      if (!verifySession) {
+        console.error('❌ PINAuth: Session verification failed - session not found after creation');
+        setError('Failed to create session. Please try again.');
+        return false;
+      }
+      console.log(`✅ PINAuth: Session verified successfully`);
+      
+      // Update state - this will trigger job loading
       setCurrentProfile(profile);
       setCurrentSession(session);
       setIsAuthenticated(true);
       
-      console.log(`✅ PINAuth: Login successful for ${profile.name}`);
+      console.log(`✅ PINAuth: PIN login successful for ${profile.name}`);
       console.log(`🔑 PINAuth: Authentication state updated - isAuthenticated: true`);
       console.log(`👤 PINAuth: Current profile set:`, {
         id: profile.id,
@@ -295,6 +432,16 @@ export function PINAuthProvider({ children }: PINAuthProviderProps) {
       setIsLoading(true);
       console.log('🚪 PINAuth: Starting comprehensive logout process...');
 
+      // **NEW SECURITY REQUIREMENT**: Sign out from Firebase first
+      console.log('🔥 PINAuth: Signing out from Firebase...');
+      try {
+        await firebaseAuthService.signOut();
+        console.log('✅ PINAuth: Firebase signout successful');
+      } catch (firebaseError) {
+        console.warn('⚠️ PINAuth: Firebase signout failed:', firebaseError);
+        // Continue with logout even if Firebase signout fails
+      }
+
       // Clear all session data
       await localStaffService.clearSession();
 
@@ -325,6 +472,8 @@ export function PINAuthProvider({ children }: PINAuthProviderProps) {
       setCurrentProfile(null);
       setCurrentSession(null);
       setIsAuthenticated(false);
+      setFirebaseUser(null);
+      setIsFirebaseAuthenticated(false);
       setError(null);
 
       // Clear any other cached data
@@ -338,6 +487,8 @@ export function PINAuthProvider({ children }: PINAuthProviderProps) {
       setCurrentProfile(null);
       setCurrentSession(null);
       setIsAuthenticated(false);
+      setFirebaseUser(null);
+      setIsFirebaseAuthenticated(false);
       setError('Logout completed with some issues. You have been signed out for security.');
 
       // Re-throw the error so the UI can handle it
@@ -402,6 +553,10 @@ export function PINAuthProvider({ children }: PINAuthProviderProps) {
     currentProfile,
     currentSession,
     error,
+
+    // Firebase authentication state (required for new security rules)
+    firebaseUser,
+    isFirebaseAuthenticated,
 
     // Staff profiles
     staffProfiles,

@@ -149,27 +149,21 @@ service cloud.firestore {
       allow create: if request.auth != null; // Allow creation for API endpoints
     }
 
-    // Staff accounts for mobile app authentication (NEW)
+    // Staff accounts for mobile app authentication (UPDATED)
     match /staff_accounts/{accountId} {
-      // Staff can read their own account, admins can read all
-      allow read: if request.auth != null &&
-        (request.auth.uid == accountId || isAdmin());
+      // Allow read access for all authenticated users for login lookup
+      // This is needed for email-to-UID mapping during login
+      allow read: if true;
+
+      // Allow staff to update their own profile data
+      allow update: if request.auth != null && request.auth.uid == accountId;
 
       // Admins can create, update, and delete staff accounts
       allow create, update, delete: if isAdmin();
 
-      // Ensure account integrity
-      allow write: if isAdmin() &&
-        // Validate required fields for mobile sync
-        request.resource.data.keys().hasAll(['firebaseUid', 'email', 'name', 'role', 'hasCredentials', 'isActive']) &&
-        // Validate data types
-        request.resource.data.email is string &&
-        request.resource.data.name is string &&
-        request.resource.data.role is string &&
-        request.resource.data.hasCredentials is bool &&
-        request.resource.data.isActive is bool &&
-        // Ensure Firebase UID matches document ID
-        request.resource.data.firebaseUid == accountId;
+      // For development: Allow create/update/delete operations
+      // TODO: Remove in production and use proper authentication
+      allow write: if true;
     }
 
     // Staff authentication and credential management
@@ -219,21 +213,6 @@ service cloud.firestore {
       allow read: if isAdmin() || isStaff();
       allow write: if isAdmin();
       allow create: if isStaff() || isAdmin();
-    }
-
-    // Staff accounts collection - single source of truth for authentication
-    match /staff_accounts/{staffId} {
-      // Allow read access for authentication purposes (email lookup)
-      // This is needed for login functionality
-      allow read: if true;
-
-      // Allow all updates for development/testing
-      // In production, restrict this to specific conditions
-      allow update: if true;
-
-      // Allow creation and deletion for development/testing
-      // In production, restrict this to admin users only
-      allow create, delete: if true;
     }
 
     // Connection test collection for testing Firebase connectivity

@@ -9,7 +9,8 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Colors, Typography, Spacing, BorderRadius, Shadows, ComponentDimensions } from '../../constants/Design';
+import { BrandTheme } from '../../constants/BrandTheme';
+import { Colors, Typography, Spacing, Shadows, ComponentDimensions } from '../../constants/Design';
 
 interface ButtonProps {
   title: string;

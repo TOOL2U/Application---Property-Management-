@@ -12,7 +12,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Camera, CameraView } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Animatable from 'react-native-animatable';
 
 const { width, height } = Dimensions.get('window');
 
@@ -58,9 +57,7 @@ export default function ScanScreen() {
         <StatusBar barStyle="light-content" backgroundColor="#0B0F1A" />
         <SafeAreaView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 32 }}>
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Animatable.View
-              animation="pulse"
-              iterationCount="infinite"
+            <View
               style={{ alignItems: 'center' }}
             >
               <Ionicons name="camera-outline" size={64} color="#C6FF00" />
@@ -73,7 +70,7 @@ export default function ScanScreen() {
               }}>
                 Requesting Camera Permission
               </Text>
-            </Animatable.View>
+            </View>
           </View>
         </SafeAreaView>
       </View>
@@ -135,9 +132,7 @@ export default function ScanScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#0B0F1A" />
       <SafeAreaView style={{ flex: 1 }}>
         {/* Header */}
-        <Animatable.View 
-          animation="fadeInDown"
-          duration={600}
+        <View 
           style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}
         >
           <Text style={{ 
@@ -156,13 +151,10 @@ export default function ScanScreen() {
           }}>
             Point your camera at a QR code to scan
           </Text>
-        </Animatable.View>
+        </View>
 
         {/* Camera View */}
-        <Animatable.View 
-          animation="fadeInUp"
-          duration={600}
-          delay={200}
+        <View 
           style={{ 
             flex: 1, 
             marginHorizontal: 16, 
@@ -187,10 +179,7 @@ export default function ScanScreen() {
             <View style={styles.overlay}>
               {/* Scanning Frame */}
               <View style={styles.scanFrame}>
-                <Animatable.View
-                  animation="pulse"
-                  iterationCount="infinite"
-                  duration={2000}
+                <View
                   style={styles.scanLine}
                 />
               </View>
@@ -220,13 +209,10 @@ export default function ScanScreen() {
               </TouchableOpacity>
             </View>
           </CameraView>
-        </Animatable.View>
+        </View>
 
         {/* Bottom Actions */}
-        <Animatable.View 
-          animation="fadeInUp"
-          duration={600}
-          delay={400}
+        <View 
           style={{ paddingHorizontal: 16, paddingBottom: 16 }}
         >
           <TouchableOpacity
@@ -255,7 +241,7 @@ export default function ScanScreen() {
               {scanned ? 'Tap to Scan Again' : 'Ready to Scan'}
             </Text>
           </TouchableOpacity>
-        </Animatable.View>
+        </View>
       </SafeAreaView>
     </View>
   );

@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as Animatable from 'react-native-animatable';
 import * as ImagePicker from 'expo-image-picker';
 import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useRouter } from 'expo-router';
@@ -288,9 +287,7 @@ export default function EditProfileScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           {/* Header */}
-          <Animatable.View
-            animation="fadeInDown"
-            duration={600}
+          <View
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -341,7 +338,7 @@ export default function EditProfileScreen() {
                 backgroundColor: '#C6FF00',
               }} />
             )}
-          </Animatable.View>
+          </View>
 
           {/* Form Content */}
           <ScrollView
@@ -350,10 +347,7 @@ export default function EditProfileScreen() {
             showsVerticalScrollIndicator={false}
           >
             {/* Profile Photo Section */}
-            <Animatable.View
-              animation="fadeInUp"
-              duration={600}
-              delay={200}
+            <View
               style={{
                 alignItems: 'center',
                 marginBottom: 32,
@@ -396,13 +390,10 @@ export default function EditProfileScreen() {
               }}>
                 {isUploadingPhoto ? 'Uploading...' : 'Tap to change photo'}
               </Text>
-            </Animatable.View>
+            </View>
 
             {/* Form Fields */}
-            <Animatable.View
-              animation="fadeInUp"
-              duration={600}
-              delay={400}
+            <View
             >
               {/* Name Field */}
               <View style={{ marginBottom: 24 }}>
@@ -581,14 +572,11 @@ export default function EditProfileScreen() {
                   }}
                 />
               </View>
-            </Animatable.View>
+            </View>
           </ScrollView>
 
           {/* Save Button */}
-          <Animatable.View
-            animation="fadeInUp"
-            duration={600}
-            delay={600}
+          <View
             style={{
               padding: 16,
               borderTopWidth: 1,
@@ -639,7 +627,7 @@ export default function EditProfileScreen() {
                 No changes to save
               </Text>
             )}
-          </Animatable.View>
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
