@@ -2,18 +2,27 @@
  * Script to create test notifications for the current user
  */
 
+require('dotenv').config({ path: '.env.local' });
+
 const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, addDoc, serverTimestamp } = require('firebase/firestore');
 
-// Firebase config (same as in the app)
+// Firebase config from environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyAuE_a_a5TfQYx2hUYu4Lx2Q-BwwEUdGSE",
-  authDomain: "property-management-f68bf.firebaseapp.com",
-  projectId: "property-management-f68bf",
-  storageBucket: "property-management-f68bf.appspot.com",
-  messagingSenderId: "926380456174",
-  appId: "1:926380456174:web:c05b4e25e80bf7d6b2fcf6"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID
 };
+
+// Validate config
+if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  console.error('❌ Error: Missing Firebase configuration in .env.local');
+  console.error('   Required: EXPO_PUBLIC_FIREBASE_API_KEY, EXPO_PUBLIC_FIREBASE_PROJECT_ID');
+  process.exit(1);
+}
 
 async function createTestNotifications() {
   try {
