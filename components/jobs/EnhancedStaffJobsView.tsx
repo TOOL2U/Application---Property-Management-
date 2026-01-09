@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5, MaterialIcons } from '@expo/vector-icons';
@@ -248,6 +249,55 @@ export default function EnhancedStaffJobsView() {
     });
   };
 
+  // Flashing animation for review button
+  const FlashingReviewButton = ({ job }: { job: Job }) => {
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.15,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      animation.start();
+      return () => animation.stop();
+    }, []);
+
+    return (
+      <View style={styles.reviewButtonContainer}>
+        {/* Outer glow effect */}
+        <Animated.View
+          style={[
+            styles.reviewButtonGlow,
+            {
+              transform: [{ scale: pulseAnim }],
+            },
+          ]}
+        />
+        
+        {/* Main button */}
+        <TouchableOpacity
+          style={styles.reviewButton}
+          onPress={() => handleJobPress(job)}
+        >
+          <View style={styles.reviewButtonGradient}>
+            <Ionicons name="eye-outline" size={18} color={BrandTheme.colors.BLACK} />
+            <Text style={styles.reviewButtonText}>REVIEW JOB</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   const renderJobCard = (job: Job) => (
     <TouchableOpacity
       key={job.id}
@@ -300,50 +350,7 @@ export default function EnhancedStaffJobsView() {
         {/* Job Actions */}
         <View style={styles.jobActions}>
           {(job.status === 'assigned' || job.status === 'pending') && (
-            <View style={styles.acceptButtonContainer}>
-              {/* Glow Effect - Same as JOBS button */}
-              <View
-                style={{
-                  position: 'absolute',
-                  top: -6,
-                  left: -6,
-                  right: -6,
-                  bottom: -6,
-                  borderRadius: 14,
-                  backgroundColor: '#C6FF00',
-                  opacity: 0.4,
-                  shadowColor: '#C6FF00',
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.6,
-                  shadowRadius: 15,
-                  elevation: 12,
-                }}
-              />
-              
-              <TouchableOpacity
-                style={[styles.actionButton, styles.acceptButton]}
-                onPress={() => handleJobPress(job)}
-              >
-                <View style={styles.actionButtonGradient}>
-                  <Ionicons name="checkmark-circle-outline" size={16} color="#0B0F1A" />
-                  <Text style={styles.actionButtonText}>{t('jobs.acceptJob')}</Text>
-                </View>
-              </TouchableOpacity>
-              
-              {/* Pulse Animation */}
-              <View
-                style={{
-                  position: 'absolute',
-                  top: -8,
-                  left: -8,
-                  right: -8,
-                  bottom: -8,
-                  borderRadius: 16,
-                  borderWidth: 2,
-                  borderColor: 'rgba(198, 255, 0, 0.4)',
-                }}
-              />
-            </View>
+            <FlashingReviewButton job={job} />
           )}
 
           {job.status === 'accepted' && (
@@ -783,6 +790,52 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 12, // Modern rounded
     backgroundColor: BrandTheme.colors.YELLOW,
+  },
+  reviewButtonContainer: {
+    position: 'relative',
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reviewButtonGlow: {
+    position: 'absolute',
+    top: -8,
+    left: -8,
+    right: -8,
+    bottom: -8,
+    borderRadius: 16,
+    backgroundColor: BrandTheme.colors.YELLOW,
+    opacity: 0.5,
+    shadowColor: BrandTheme.colors.YELLOW,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    elevation: 15,
+  },
+  reviewButton: {
+    width: '100%',
+    borderRadius: 12,
+    backgroundColor: BrandTheme.colors.YELLOW,
+    shadowColor: BrandTheme.colors.YELLOW,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  reviewButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  reviewButtonText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.BLACK,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    letterSpacing: 1,
   },
   acceptButtonContainer: {
     position: 'relative',

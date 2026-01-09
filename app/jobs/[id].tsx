@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,11 @@ import {
   Image,
   Platform,
   RefreshControl,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
@@ -110,6 +112,36 @@ export default function JobDetailsScreen() {
   const [isUploading, setIsUploading] = useState(false);
   const [showCompletionWizard, setShowCompletionWizard] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Collapsible sections state
+  const [expandedSections, setExpandedSections] = useState<{
+    propertyDetails: boolean;
+    payment: boolean;
+    checklist: boolean;
+    contacts: boolean;
+    issues: boolean;
+    guestInfo: boolean;
+    supplies: boolean;
+    safety: boolean;
+    skills: boolean;
+  }>({
+    propertyDetails: false,
+    payment: false,
+    checklist: false,
+    contacts: false,
+    issues: false,
+    guestInfo: false,
+    supplies: false,
+    safety: false,
+    skills: false,
+  });
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
 
   // Auto-refresh when screen comes into focus
   useFocusEffect(
@@ -467,7 +499,7 @@ export default function JobDetailsScreen() {
               text: 'Great!', 
               onPress: () => {
                 // Navigate to jobs list instead of going back
-                router.replace('/(tabs)/jobs-brand');
+                router.replace('/(tabs)' as any);
               },
               style: 'default' 
             }
@@ -489,6 +521,159 @@ export default function JobDetailsScreen() {
         [{ text: 'OK', style: 'default' }]
       );
     }
+  };
+
+  // Collapsible Card Component
+  const CollapsibleCard = ({ 
+    title, 
+    icon, 
+    sectionKey, 
+    children,
+    badge 
+  }: { 
+    title: string; 
+    icon: React.ReactNode; 
+    sectionKey: keyof typeof expandedSections; 
+    children: React.ReactNode;
+    badge?: string;
+  }) => {
+    const isExpanded = expandedSections[sectionKey];
+    const rotateAnim = useRef(new Animated.Value(isExpanded ? 1 : 0)).current;
+
+    useEffect(() => {
+      Animated.timing(rotateAnim, {
+        toValue: isExpanded ? 1 : 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }, [isExpanded]);
+
+    const rotation = rotateAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['0deg', '180deg'],
+    });
+
+    return (
+      <View style={styles.card}>
+        <TouchableOpacity
+          style={styles.collapsibleHeader}
+          onPress={() => toggleSection(sectionKey)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.collapsibleHeaderLeft}>
+            {icon}
+            <Text style={styles.collapsibleTitle}>{title}</Text>
+            {badge && (
+              <View style={styles.collapsibleBadge}>
+                <Text style={styles.collapsibleBadgeText}>{badge}</Text>
+              </View>
+            )}
+          </View>
+          <Animated.View style={{ transform: [{ rotate: rotation }] }}>
+            <Ionicons name="chevron-down" size={20} color={BrandTheme.colors.YELLOW} />
+          </Animated.View>
+        </TouchableOpacity>
+        
+        {isExpanded && (
+          <View style={styles.collapsibleContent}>
+            {children}
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  // Flashing Accept Button Component
+  const FlashingAcceptButton = () => {
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const glowAnim = useRef(new Animated.Value(0.5)).current;
+
+    useEffect(() => {
+      const pulseAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.08,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+
+      const glowAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(glowAnim, {
+            toValue: 0.5,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+
+      pulseAnimation.start();
+      glowAnimation.start();
+      
+      return () => {
+        pulseAnimation.stop();
+        glowAnimation.stop();
+      };
+    }, []);
+
+    return (
+      <View style={styles.flashingButtonContainer}>
+        {/* Multiple glow layers for intense effect */}
+        <Animated.View
+          style={[
+            styles.flashingButtonGlow1,
+            {
+              opacity: glowAnim,
+              transform: [{ scale: pulseAnim }],
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.flashingButtonGlow2,
+            {
+              opacity: glowAnim.interpolate({
+                inputRange: [0.5, 1],
+                outputRange: [0.3, 0.6],
+              }),
+              transform: [{ 
+                scale: pulseAnim.interpolate({
+                  inputRange: [1, 1.08],
+                  outputRange: [1.1, 1.2],
+                }),
+              }],
+            },
+          ]}
+        />
+        
+        <TouchableOpacity
+          style={styles.flashingButton}
+          onPress={handleAcceptJob}
+        >
+          <Animated.View
+            style={[
+              styles.flashingButtonGradient,
+              { transform: [{ scale: pulseAnim }] },
+            ]}
+          >
+            <CheckCircle size={22} color={BrandTheme.colors.BLACK} />
+            <Text style={styles.flashingButtonText}>ACCEPT JOB</Text>
+          </Animated.View>
+        </TouchableOpacity>
+      </View>
+    );
   };
 
   if (isLoading || !job) {
@@ -737,367 +922,340 @@ export default function JobDetailsScreen() {
           </View>
         )}
 
-        {/* Property Details Card */}
+        {/* Property Details Card - Collapsible */}
         {(job as any).propertyRef && (
-          <View style={styles.card}>
-            <View style={styles.cardGradient}>
-              <View style={styles.sectionHeader}>
-                <Building size={20} color={BrandTheme.colors.YELLOW} />
-                <Text style={styles.sectionTitle}>Property Details</Text>
-              </View>
-              <View style={styles.propertyDetailsGrid}>
-                {(job as any).propertyRef.type && (
-                  <View style={styles.propertyDetail}>
-                    <Text style={styles.propertyDetailLabel}>Type:</Text>
-                    <Text style={styles.propertyDetailValue}>
-                      {(job as any).propertyRef.type.charAt(0).toUpperCase() + (job as any).propertyRef.type.slice(1)}
-                    </Text>
-                  </View>
-                )}
-                {(job as any).propertyRef.bedrooms && (
-                  <View style={styles.propertyDetail}>
-                    <Text style={styles.propertyDetailLabel}>Bedrooms:</Text>
-                    <Text style={styles.propertyDetailValue}>{(job as any).propertyRef.bedrooms}</Text>
-                  </View>
-                )}
-                {(job as any).propertyRef.bathrooms && (
-                  <View style={styles.propertyDetail}>
-                    <Text style={styles.propertyDetailLabel}>Bathrooms:</Text>
-                    <Text style={styles.propertyDetailValue}>{(job as any).propertyRef.bathrooms}</Text>
-                  </View>
-                )}
-                {(job as any).propertyRef.size && (
-                  <View style={styles.propertyDetail}>
-                    <Text style={styles.propertyDetailLabel}>Size:</Text>
-                    <Text style={styles.propertyDetailValue}>{(job as any).propertyRef.size}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Payment Information */}
-        {(job as any).compensation && (
-          <View style={styles.card}>
-            <View style={[styles.cardGradient, { backgroundColor: 'rgba(198, 255, 0, 0.1)' }]}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.paymentIcon}>💰</Text>
-                <Text style={styles.sectionTitle}>Payment</Text>
-              </View>
-              <View style={styles.paymentContent}>
-                <Text style={styles.paymentAmount}>
-                  {(job as any).compensation.amount?.toLocaleString()} {(job as any).compensation.currency || 'THB'}
-                </Text>
-                {(job as any).compensation.paymentMethod && (
-                  <Text style={styles.paymentDetail}>
-                    Via {(job as any).compensation.paymentMethod.replace('_', ' ')}
+          <CollapsibleCard
+            title="Property Details"
+            icon={<Building size={20} color={BrandTheme.colors.YELLOW} />}
+            sectionKey="propertyDetails"
+          >
+            <View style={styles.propertyDetailsGrid}>
+              {(job as any).propertyRef.type && (
+                <View style={styles.propertyDetail}>
+                  <Text style={styles.propertyDetailLabel}>Type:</Text>
+                  <Text style={styles.propertyDetailValue}>
+                    {(job as any).propertyRef.type.charAt(0).toUpperCase() + (job as any).propertyRef.type.slice(1)}
                   </Text>
-                )}
-                {(job as any).compensation.paymentTiming && (
-                  <Text style={styles.paymentDetail}>
-                    Paid {(job as any).compensation.paymentTiming === 'completion' ? 'upon completion' : (job as any).compensation.paymentTiming}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Interactive Checklist */}
-        {(job as any).checklist && (job as any).checklist.length > 0 && (
-          <View style={styles.card}>
-            <View style={styles.cardGradient}>
-              <View style={styles.sectionHeader}>
-                <CheckCircle size={20} color={BrandTheme.colors.YELLOW} />
-                <Text style={styles.sectionTitle}>Checklist</Text>
-                <Text style={styles.checklistProgress}>
-                  {(job as any).checklist.filter((item: any) => item.completed).length}/{(job as any).checklist.length}
-                </Text>
-              </View>
-              
-              {/* Progress Bar */}
-              <View style={styles.progressBarContainer}>
-                <View 
-                  style={[
-                    styles.progressBarFill, 
-                    { width: `${((job as any).checklist.filter((item: any) => item.completed).length / (job as any).checklist.length) * 100}%` }
-                  ]} 
-                />
-              </View>
-
-              {/* Checklist Items */}
-              <View style={styles.checklistItems}>
-                {(job as any).checklist.map((item: any, index: number) => (
-                  <TouchableOpacity 
-                    key={index}
-                    style={styles.checklistItem}
-                    onPress={() => {
-                      // Toggle checklist item
-                      const updatedChecklist = [...(job as any).checklist];
-                      updatedChecklist[index].completed = !updatedChecklist[index].completed;
-                      setJob({ ...job, checklist: updatedChecklist } as any);
-                      // TODO: Sync to Firebase
-                    }}
-                  >
-                    <View style={[styles.checkbox, item.completed && styles.checkboxChecked]}>
-                      {item.completed && <Text style={styles.checkmark}>✓</Text>}
-                    </View>
-                    <Text style={[styles.checklistText, item.completed && styles.checklistTextCompleted]}>
-                      {item.task}
-                    </Text>
-                    {item.required && (
-                      <Text style={styles.requiredBadge}>Required</Text>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Issues to Check */}
-        {(job as any).issuesReported && (job as any).issuesReported.length > 0 && (
-          <View style={styles.card}>
-            <View style={styles.cardGradient}>
-              <View style={styles.sectionHeader}>
-                <AlertTriangle size={20} color={BrandTheme.colors.WARNING} />
-                <Text style={styles.sectionTitle}>Issues to Check</Text>
-              </View>
-              {(job as any).issuesReported.map((issue: any, index: number) => (
-                <View key={index} style={styles.issueItem}>
-                  <View style={styles.issueHeader}>
-                    <View style={[styles.severityBadge, { 
-                      backgroundColor: issue.severity === 'high' ? '#ff4444' : 
-                                      issue.severity === 'medium' ? '#ff9800' : '#ffc107'
-                    }]}>
-                      <Text style={styles.severityText}>
-                        {issue.severity?.toUpperCase() || 'LOW'}
-                      </Text>
-                    </View>
-                    <Text style={styles.issueStatus}>{issue.status || 'Needs inspection'}</Text>
-                  </View>
-                  <Text style={styles.issueDescription}>{issue.description}</Text>
-                  {issue.reportedBy && (
-                    <Text style={styles.issueReportedBy}>Reported by: {issue.reportedBy}</Text>
-                  )}
                 </View>
+              )}
+              {(job as any).propertyRef.bedrooms && (
+                <View style={styles.propertyDetail}>
+                  <Text style={styles.propertyDetailLabel}>Bedrooms:</Text>
+                  <Text style={styles.propertyDetailValue}>{(job as any).propertyRef.bedrooms}</Text>
+                </View>
+              )}
+              {(job as any).propertyRef.bathrooms && (
+                <View style={styles.propertyDetail}>
+                  <Text style={styles.propertyDetailLabel}>Bathrooms:</Text>
+                  <Text style={styles.propertyDetailValue}>{(job as any).propertyRef.bathrooms}</Text>
+                </View>
+              )}
+              {(job as any).propertyRef.size && (
+                <View style={styles.propertyDetail}>
+                  <Text style={styles.propertyDetailLabel}>Size:</Text>
+                  <Text style={styles.propertyDetailValue}>{(job as any).propertyRef.size}</Text>
+                </View>
+              )}
+            </View>
+          </CollapsibleCard>
+        )}
+
+        {/* Payment Information - Collapsible */}
+        {(job as any).compensation && (
+          <CollapsibleCard
+            title="Payment"
+            icon={<Text style={styles.paymentIcon}>💰</Text>}
+            sectionKey="payment"
+          >
+            <View style={styles.paymentContent}>
+              <Text style={styles.paymentAmount}>
+                {(job as any).compensation.amount?.toLocaleString()} {(job as any).compensation.currency || 'THB'}
+              </Text>
+              {(job as any).compensation.paymentMethod && (
+                <Text style={styles.paymentDetail}>
+                  Via {(job as any).compensation.paymentMethod.replace('_', ' ')}
+                </Text>
+              )}
+              {(job as any).compensation.paymentTiming && (
+                <Text style={styles.paymentDetail}>
+                  Paid {(job as any).compensation.paymentTiming === 'completion' ? 'upon completion' : (job as any).compensation.paymentTiming}
+                </Text>
+              )}
+            </View>
+          </CollapsibleCard>
+        )}
+
+        {/* Interactive Checklist - Collapsible */}
+        {(job as any).checklist && (job as any).checklist.length > 0 && (
+          <CollapsibleCard
+            title="Checklist"
+            icon={<CheckCircle size={20} color={BrandTheme.colors.YELLOW} />}
+            sectionKey="checklist"
+            badge={`${(job as any).checklist.filter((item: any) => item.completed).length}/${(job as any).checklist.length}`}
+          >
+            {/* Progress Bar */}
+            <View style={styles.progressBarContainer}>
+              <View 
+                style={[
+                  styles.progressBarFill, 
+                  { width: `${((job as any).checklist.filter((item: any) => item.completed).length / (job as any).checklist.length) * 100}%` }
+                ]} 
+              />
+            </View>
+
+            {/* Checklist Items */}
+            <View style={styles.checklistItems}>
+              {(job as any).checklist.map((item: any, index: number) => (
+                <TouchableOpacity 
+                  key={index}
+                  style={styles.checklistItem}
+                  onPress={() => {
+                    // Toggle checklist item
+                    const updatedChecklist = [...(job as any).checklist];
+                    updatedChecklist[index].completed = !updatedChecklist[index].completed;
+                    setJob({ ...job, checklist: updatedChecklist } as any);
+                    // TODO: Sync to Firebase
+                  }}
+                >
+                  <View style={[styles.checkbox, item.completed && styles.checkboxChecked]}>
+                    {item.completed && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={[styles.checklistText, item.completed && styles.checklistTextCompleted]}>
+                    {item.task}
+                  </Text>
+                  {item.required && (
+                    <Text style={styles.requiredBadge}>Required</Text>
+                  )}
+                </TouchableOpacity>
               ))}
             </View>
-          </View>
+          </CollapsibleCard>
         )}
 
-        {/* Contact Information */}
+        {/* Issues to Check - Collapsible */}
+        {(job as any).issuesReported && (job as any).issuesReported.length > 0 && (
+          <CollapsibleCard
+            title="Issues to Check"
+            icon={<AlertTriangle size={20} color={BrandTheme.colors.WARNING} />}
+            sectionKey="issues"
+            badge={`${(job as any).issuesReported.length}`}
+          >
+            {(job as any).issuesReported.map((issue: any, index: number) => (
+              <View key={index} style={styles.issueItem}>
+                <View style={styles.issueHeader}>
+                  <View style={[styles.severityBadge, { 
+                    backgroundColor: issue.severity === 'high' ? '#ff4444' : 
+                                    issue.severity === 'medium' ? '#ff9800' : '#ffc107'
+                  }]}>
+                    <Text style={styles.severityText}>
+                      {issue.severity?.toUpperCase() || 'LOW'}
+                    </Text>
+                  </View>
+                  <Text style={styles.issueStatus}>{issue.status || 'Needs inspection'}</Text>
+                </View>
+                <Text style={styles.issueDescription}>{issue.description}</Text>
+                {issue.reportedBy && (
+                  <Text style={styles.issueReportedBy}>Reported by: {issue.reportedBy}</Text>
+                )}
+              </View>
+            ))}
+          </CollapsibleCard>
+        )}
+
+        {/* Contact Information - Collapsible */}
         {(job as any).contacts && (
-          <View style={styles.card}>
-            <View style={styles.cardGradient}>
-              <View style={styles.sectionHeader}>
-                <Phone size={20} color={BrandTheme.colors.YELLOW} />
-                <Text style={styles.sectionTitle}>Contact Information</Text>
-              </View>
-
-              {/* Property Manager */}
-              {(job as any).contacts.propertyManager && (
-                <View style={styles.contactCard}>
-                  <Text style={styles.contactRole}>Property Manager</Text>
-                  <Text style={styles.contactName}>{(job as any).contacts.propertyManager.name}</Text>
-                  {(job as any).contacts.propertyManager.availability && (
-                    <Text style={styles.contactAvailability}>
-                      Available: {(job as any).contacts.propertyManager.availability}
-                    </Text>
+          <CollapsibleCard
+            title="Contact Information"
+            icon={<Phone size={20} color={BrandTheme.colors.YELLOW} />}
+            sectionKey="contacts"
+          >
+            {/* Property Manager */}
+            {(job as any).contacts.propertyManager && (
+              <View style={styles.contactCard}>
+                <Text style={styles.contactRole}>Property Manager</Text>
+                <Text style={styles.contactName}>{(job as any).contacts.propertyManager.name}</Text>
+                {(job as any).contacts.propertyManager.availability && (
+                  <Text style={styles.contactAvailability}>
+                    Available: {(job as any).contacts.propertyManager.availability}
+                  </Text>
+                )}
+                <View style={styles.contactButtons}>
+                  {(job as any).contacts.propertyManager.phone && (
+                    <TouchableOpacity 
+                      style={styles.contactButton}
+                      onPress={() => Linking.openURL(`tel:${(job as any).contacts.propertyManager.phone}`)}
+                    >
+                      <Phone size={16} color={BrandTheme.colors.BLACK} />
+                      <Text style={styles.contactButtonText}>Call</Text>
+                    </TouchableOpacity>
                   )}
-                  <View style={styles.contactButtons}>
-                    {(job as any).contacts.propertyManager.phone && (
-                      <TouchableOpacity 
-                        style={styles.contactButton}
-                        onPress={() => Linking.openURL(`tel:${(job as any).contacts.propertyManager.phone}`)}
-                      >
-                        <Phone size={16} color={BrandTheme.colors.BLACK} />
-                        <Text style={styles.contactButtonText}>Call</Text>
-                      </TouchableOpacity>
-                    )}
-                    {(job as any).contacts.propertyManager.email && (
-                      <TouchableOpacity 
-                        style={styles.contactButton}
-                        onPress={() => Linking.openURL(`mailto:${(job as any).contacts.propertyManager.email}`)}
-                      >
-                        <Text style={styles.contactButtonText}>✉️ Email</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
+                  {(job as any).contacts.propertyManager.email && (
+                    <TouchableOpacity 
+                      style={styles.contactButton}
+                      onPress={() => Linking.openURL(`mailto:${(job as any).contacts.propertyManager.email}`)}
+                    >
+                      <Text style={styles.contactButtonText}>✉️ Email</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
-              )}
-
-              {/* Emergency Contact */}
-              {(job as any).contacts.emergencyContact && (
-                <View style={[styles.contactCard, styles.emergencyContactCard]}>
-                  <Text style={styles.emergencyLabel}>🚨 EMERGENCY (24/7)</Text>
-                  <Text style={styles.contactName}>{(job as any).contacts.emergencyContact.name}</Text>
-                  <TouchableOpacity 
-                    style={[styles.contactButton, styles.emergencyButton]}
-                    onPress={() => Linking.openURL(`tel:${(job as any).contacts.emergencyContact.phone}`)}
-                  >
-                    <Phone size={18} color="#fff" />
-                    <Text style={styles.emergencyButtonText}>
-                      {(job as any).contacts.emergencyContact.phone}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {/* Maintenance Team */}
-              {(job as any).contacts.maintenanceTeam && (
-                <View style={styles.contactCard}>
-                  <Text style={styles.contactRole}>Maintenance Team</Text>
-                  <Text style={styles.contactName}>{(job as any).contacts.maintenanceTeam.name}</Text>
-                  <View style={styles.contactButtons}>
-                    {(job as any).contacts.maintenanceTeam.phone && (
-                      <TouchableOpacity 
-                        style={styles.contactButton}
-                        onPress={() => Linking.openURL(`tel:${(job as any).contacts.maintenanceTeam.phone}`)}
-                      >
-                        <Phone size={16} color={BrandTheme.colors.BLACK} />
-                        <Text style={styles.contactButtonText}>Call</Text>
-                      </TouchableOpacity>
-                    )}
-                    {(job as any).contacts.maintenanceTeam.email && (
-                      <TouchableOpacity 
-                        style={styles.contactButton}
-                        onPress={() => Linking.openURL(`mailto:${(job as any).contacts.maintenanceTeam.email}`)}
-                      >
-                        <Text style={styles.contactButtonText}>✉️ Email</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* Guest Information */}
-        {((job as any).guestName || (job as any).guestContact || (job as any).guestNationality) && (
-          <View style={styles.card}>
-            <View style={styles.cardGradient}>
-              <View style={styles.sectionHeader}>
-                <User size={20} color={BrandTheme.colors.YELLOW} />
-                <Text style={styles.sectionTitle}>Guest Information</Text>
               </View>
-              {(job as any).guestName && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Name:</Text>
-                  <Text style={styles.detailValue}>{(job as any).guestName}</Text>
-                </View>
-              )}
-              {(job as any).guestCount && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Guests:</Text>
-                  <Text style={styles.detailValue}>{(job as any).guestCount} people</Text>
-                </View>
-              )}
-              {(job as any).guestNationality && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Nationality:</Text>
-                  <Text style={styles.detailValue}>{(job as any).guestNationality}</Text>
-                </View>
-              )}
-              {(job as any).guestContact && (
+            )}
+
+            {/* Emergency Contact */}
+            {(job as any).contacts.emergencyContact && (
+              <View style={[styles.contactCard, styles.emergencyContactCard]}>
+                <Text style={styles.emergencyLabel}>🚨 EMERGENCY (24/7)</Text>
+                <Text style={styles.contactName}>{(job as any).contacts.emergencyContact.name}</Text>
                 <TouchableOpacity 
-                  style={styles.guestContactButton}
-                  onPress={() => Linking.openURL(`tel:${(job as any).guestContact}`)}
+                  style={[styles.contactButton, styles.emergencyButton]}
+                  onPress={() => Linking.openURL(`tel:${(job as any).contacts.emergencyContact.phone}`)}
                 >
-                  <Phone size={16} color={BrandTheme.colors.BLACK} />
-                  <Text style={styles.guestContactText}>{(job as any).guestContact}</Text>
+                  <Phone size={18} color="#fff" />
+                  <Text style={styles.emergencyButtonText}>
+                    {(job as any).contacts.emergencyContact.phone}
+                  </Text>
                 </TouchableOpacity>
-              )}
-            </View>
-          </View>
+              </View>
+            )}
+
+            {/* Maintenance Team */}
+            {(job as any).contacts.maintenanceTeam && (
+              <View style={styles.contactCard}>
+                <Text style={styles.contactRole}>Maintenance Team</Text>
+                <Text style={styles.contactName}>{(job as any).contacts.maintenanceTeam.name}</Text>
+                <View style={styles.contactButtons}>
+                  {(job as any).contacts.maintenanceTeam.phone && (
+                    <TouchableOpacity 
+                      style={styles.contactButton}
+                      onPress={() => Linking.openURL(`tel:${(job as any).contacts.maintenanceTeam.phone}`)}
+                    >
+                      <Phone size={16} color={BrandTheme.colors.BLACK} />
+                      <Text style={styles.contactButtonText}>Call</Text>
+                    </TouchableOpacity>
+                  )}
+                  {(job as any).contacts.maintenanceTeam.email && (
+                    <TouchableOpacity 
+                      style={styles.contactButton}
+                      onPress={() => Linking.openURL(`mailto:${(job as any).contacts.maintenanceTeam.email}`)}
+                    >
+                      <Text style={styles.contactButtonText}>✉️ Email</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            )}
+          </CollapsibleCard>
         )}
 
-        {/* Required Supplies & Equipment */}
+        {/* Guest Information - Collapsible */}
+        {((job as any).guestName || (job as any).guestContact || (job as any).guestNationality) && (
+          <CollapsibleCard
+            title="Guest Information"
+            icon={<User size={20} color={BrandTheme.colors.YELLOW} />}
+            sectionKey="guestInfo"
+          >
+            {(job as any).guestName && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Name:</Text>
+                <Text style={styles.detailValue}>{(job as any).guestName}</Text>
+              </View>
+            )}
+            {(job as any).guestCount && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Guests:</Text>
+                <Text style={styles.detailValue}>{(job as any).guestCount} people</Text>
+              </View>
+            )}
+            {(job as any).guestNationality && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Nationality:</Text>
+                <Text style={styles.detailValue}>{(job as any).guestNationality}</Text>
+              </View>
+            )}
+            {(job as any).guestContact && (
+              <TouchableOpacity 
+                style={styles.guestContactButton}
+                onPress={() => Linking.openURL(`tel:${(job as any).guestContact}`)}
+              >
+                <Phone size={16} color={BrandTheme.colors.BLACK} />
+                <Text style={styles.guestContactText}>{(job as any).guestContact}</Text>
+              </TouchableOpacity>
+            )}
+          </CollapsibleCard>
+        )}
+
+        {/* Required Supplies & Equipment - Collapsible */}
         {(((job as any).requiredSupplies && (job as any).requiredSupplies.length > 0) || 
           ((job as any).equipmentNeeded && (job as any).equipmentNeeded.length > 0)) && (
-          <View style={styles.card}>
-            <View style={styles.cardGradient}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.paymentIcon}>🧰</Text>
-                <Text style={styles.sectionTitle}>Bring With You</Text>
+          <CollapsibleCard
+            title="Bring With You"
+            icon={<Text style={styles.paymentIcon}>🧰</Text>}
+            sectionKey="supplies"
+          >
+            {(job as any).equipmentNeeded && (job as any).equipmentNeeded.length > 0 && (
+              <View style={styles.suppliesSection}>
+                <Text style={styles.suppliesSectionTitle}>Equipment:</Text>
+                {(job as any).equipmentNeeded.map((item: string, index: number) => (
+                  <Text key={index} style={styles.supplyItem}>• {item}</Text>
+                ))}
               </View>
-              
-              {(job as any).equipmentNeeded && (job as any).equipmentNeeded.length > 0 && (
-                <View style={styles.suppliesSection}>
-                  <Text style={styles.suppliesSectionTitle}>Equipment:</Text>
-                  {(job as any).equipmentNeeded.map((item: string, index: number) => (
-                    <Text key={index} style={styles.supplyItem}>• {item}</Text>
-                  ))}
-                </View>
-              )}
+            )}
 
-              {(job as any).requiredSupplies && (job as any).requiredSupplies.length > 0 && (
-                <View style={styles.suppliesSection}>
-                  <Text style={styles.suppliesSectionTitle}>Supplies to Restock:</Text>
-                  {(job as any).requiredSupplies.slice(0, 5).map((item: string, index: number) => (
-                    <Text key={index} style={styles.supplyItem}>• {item}</Text>
-                  ))}
-                  {(job as any).requiredSupplies.length > 5 && (
-                    <Text style={styles.supplyMore}>
-                      + {(job as any).requiredSupplies.length - 5} more items
-                    </Text>
-                  )}
-                </View>
-              )}
-            </View>
-          </View>
+            {(job as any).requiredSupplies && (job as any).requiredSupplies.length > 0 && (
+              <View style={styles.suppliesSection}>
+                <Text style={styles.suppliesSectionTitle}>Supplies to Restock:</Text>
+                {(job as any).requiredSupplies.slice(0, 5).map((item: string, index: number) => (
+                  <Text key={index} style={styles.supplyItem}>• {item}</Text>
+                ))}
+                {(job as any).requiredSupplies.length > 5 && (
+                  <Text style={styles.supplyMore}>
+                    + {(job as any).requiredSupplies.length - 5} more items
+                  </Text>
+                )}
+              </View>
+            )}
+          </CollapsibleCard>
         )}
 
-        {/* Safety Notes */}
+        {/* Safety Notes - Collapsible */}
         {(job as any).safetyNotes && (job as any).safetyNotes.length > 0 && (
-          <View style={styles.card}>
-            <View style={styles.cardGradient}>
-              <View style={styles.sectionHeader}>
-                <AlertTriangle size={20} color={BrandTheme.colors.WARNING} />
-                <Text style={styles.sectionTitle}>Safety Guidelines</Text>
+          <CollapsibleCard
+            title="Safety Guidelines"
+            icon={<AlertTriangle size={20} color={BrandTheme.colors.WARNING} />}
+            sectionKey="safety"
+            badge={`${(job as any).safetyNotes.length}`}
+          >
+            {(job as any).safetyNotes.map((note: string, index: number) => (
+              <View key={index} style={styles.safetyNoteItem}>
+                <Text style={styles.safetyNoteBullet}>⚠️</Text>
+                <Text style={styles.safetyNoteText}>{note}</Text>
               </View>
-              {(job as any).safetyNotes.map((note: string, index: number) => (
-                <View key={index} style={styles.safetyNoteItem}>
-                  <Text style={styles.safetyNoteBullet}>⚠️</Text>
-                  <Text style={styles.safetyNoteText}>{note}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+            ))}
+          </CollapsibleCard>
         )}
 
         {/* Required Skills */}
+        {/* Required Skills - Collapsible */}
         {(job as any).requiredSkills && (job as any).requiredSkills.length > 0 && (
-          <View style={styles.card}>
-            <View style={styles.cardGradient}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.paymentIcon}>✓</Text>
-                <Text style={styles.sectionTitle}>Required Skills</Text>
-              </View>
-              <View style={styles.skillsContainer}>
-                {(job as any).requiredSkills.map((skill: string, index: number) => (
-                  <View key={index} style={styles.skillBadge}>
-                    <Text style={styles.skillText}>{skill}</Text>
-                  </View>
-                ))}
-              </View>
+          <CollapsibleCard
+            title="Required Skills"
+            icon={<Text style={styles.paymentIcon}>✓</Text>}
+            sectionKey="skills"
+            badge={`${(job as any).requiredSkills.length}`}
+          >
+            <View style={styles.skillsContainer}>
+              {(job as any).requiredSkills.map((skill: string, index: number) => (
+                <View key={index} style={styles.skillBadge}>
+                  <Text style={styles.skillText}>{skill}</Text>
+                </View>
+              ))}
             </View>
-          </View>
+          </CollapsibleCard>
         )}
-
         {/* Action Buttons */}
         <View style={styles.actionsContainer}>
           {(job.status === 'pending' || job.status === 'assigned') && (
-            <TouchableOpacity style={styles.actionButton} onPress={handleAcceptJob}>
-              <View
-                style={[styles.actionButtonGradient, { backgroundColor: BrandTheme.colors.YELLOW }]}
-              >
-                <CheckCircle size={20} color={BrandTheme.colors.BLACK} />
-                <Text style={[styles.actionButtonText, { color: BrandTheme.colors.BLACK }]}>Accept Job</Text>
-              </View>
-            </TouchableOpacity>
+            <FlashingAcceptButton />
           )}
 
           {job.status === 'accepted' && (
@@ -1806,6 +1964,108 @@ const styles = StyleSheet.create({
     color: BrandTheme.colors.YELLOW,
     fontWeight: 'bold',
     fontFamily: BrandTheme.typography.fontFamily.primary,
+    textTransform: 'uppercase',
+  },
+  // Collapsible Card Styles
+  collapsibleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: BrandTheme.spacing.LG,
+    backgroundColor: BrandTheme.colors.SURFACE_1,
+    borderBottomWidth: 1,
+    borderBottomColor: BrandTheme.colors.BORDER,
+  },
+  collapsibleHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.MD,
+    flex: 1,
+  },
+  collapsibleTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  collapsibleBadge: {
+    paddingHorizontal: BrandTheme.spacing.SM,
+    paddingVertical: 4,
+    backgroundColor: BrandTheme.colors.YELLOW,
+    borderRadius: 12,
+  },
+  collapsibleBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.BLACK,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+  },
+  collapsibleContent: {
+    padding: BrandTheme.spacing.LG,
+    backgroundColor: BrandTheme.colors.SURFACE_1,
+  },
+  // Flashing Accept Button Styles
+  flashingButtonContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: BrandTheme.spacing.LG,
+  },
+  flashingButtonGlow1: {
+    position: 'absolute',
+    top: -12,
+    left: -12,
+    right: -12,
+    bottom: -12,
+    borderRadius: 16,
+    backgroundColor: BrandTheme.colors.YELLOW,
+    shadowColor: BrandTheme.colors.YELLOW,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 30,
+    elevation: 20,
+  },
+  flashingButtonGlow2: {
+    position: 'absolute',
+    top: -20,
+    left: -20,
+    right: -20,
+    bottom: -20,
+    borderRadius: 24,
+    backgroundColor: BrandTheme.colors.YELLOW,
+    shadowColor: BrandTheme.colors.YELLOW,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 40,
+    elevation: 25,
+  },
+  flashingButton: {
+    width: '100%',
+    borderRadius: 12,
+    backgroundColor: BrandTheme.colors.YELLOW,
+    shadowColor: BrandTheme.colors.YELLOW,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    elevation: 15,
+  },
+  flashingButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    gap: 12,
+  },
+  flashingButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.BLACK,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    letterSpacing: 2,
     textTransform: 'uppercase',
   },
 });
