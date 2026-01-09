@@ -555,17 +555,33 @@ class JobService {
       let jobDoc = await getDoc(jobRef);
       let collection = this.JOBS_COLLECTION;
 
+      console.log(`🔍 JobService: Checking ${this.JOBS_COLLECTION} collection...`);
+      
       // If not found in 'jobs', try 'operational_jobs'
       if (!jobDoc.exists()) {
+        console.log(`⚠️ JobService: Not found in ${this.JOBS_COLLECTION}, checking ${this.OPERATIONAL_JOBS_COLLECTION}...`);
         jobRef = doc(db, this.OPERATIONAL_JOBS_COLLECTION, jobId);
         jobDoc = await getDoc(jobRef);
         collection = this.OPERATIONAL_JOBS_COLLECTION;
       }
 
       if (!jobDoc.exists()) {
+        console.error(`❌ JobService: Job ${jobId} not found in either collection (jobs or operational_jobs)`);
         return {
           success: false,
-          error: 'Job not found in any collection',
+          error: 'Job not found in any collection. This job may have been deleted or the ID is incorrect.',
+        };
+      }
+
+      const currentData = jobDoc.data();
+      console.log(`📋 JobService: Found job in ${collection} collection with status: ${currentData?.status}`);
+      
+      // Check if job is already in progress
+      if (currentData?.status === 'in_progress') {
+        console.log(`⚠️ JobService: Job ${jobId} is already in progress`);
+        return {
+          success: true,
+          message: 'Job is already in progress',
         };
       }
 
@@ -575,7 +591,7 @@ class JobService {
         updatedAt: serverTimestamp(),
       });
 
-      console.log(`✅ JobService: Job started successfully in ${collection} collection`);
+      console.log(`✅ JobService: Job ${jobId} started successfully in ${collection} collection`);
       return {
         success: true,
         message: 'Job started successfully',
