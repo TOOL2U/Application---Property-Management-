@@ -109,7 +109,7 @@ export default function IndexScreen() {
 
   // Handle navigation to jobs
   const handleViewJobs = () => {
-    router.push('/(tabs)/jobs-brand');
+    router.push('/(tabs)/jobs-brand' as any);
   };
 
   // Handle profile selection
@@ -202,6 +202,7 @@ export default function IndexScreen() {
 
       <ScrollView
         style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -211,151 +212,160 @@ export default function IndexScreen() {
           />
         }
       >
-        {/* Greeting */}
-        <View style={styles.greetingSection}>
-          <Text style={styles.greetingText}>{getGreeting()}, {currentProfile.name}!</Text>
+        {/* Dashboard Header - Greeting & Date */}
+        <View style={styles.dashboardHeader}>
+          <Text style={styles.greetingText}>{getGreeting()}</Text>
+          <Text style={styles.nameText}>{currentProfile.name}</Text>
           <Text style={styles.dateText}>
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </Text>
         </View>
 
-        {/* Urgent Alerts */}
-        {urgentJobs.length > 0 && (
-          <Card variant="elevated" style={styles.urgentCard}>
-            <View style={styles.urgentHeader}>
-              <View style={styles.urgentIconContainer}>
-                <Ionicons name="alert-circle" size={24} color={BrandTheme.colors.ERROR} />
-              </View>
-              <View style={styles.urgentContent}>
-                <Text style={styles.urgentTitle}>Needs Attention</Text>
-                <Text style={styles.urgentCount}>{urgentJobs.length} urgent {urgentJobs.length === 1 ? 'job' : 'jobs'}</Text>
-              </View>
-              <TouchableOpacity onPress={handleViewJobs}>
-                <Ionicons name="arrow-forward" size={24} color={BrandTheme.colors.ERROR} />
-              </TouchableOpacity>
+        {/* Quick Stats Overview - 4 Cards */}
+        <View style={styles.statsGrid}>
+          <TouchableOpacity 
+            style={styles.statCardLarge}
+            onPress={handleViewJobs}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.statIconCircle, { backgroundColor: 'rgba(255, 240, 43, 0.15)' }]}>
+              <Ionicons name="time-outline" size={24} color={BrandTheme.colors.YELLOW} />
             </View>
-          </Card>
+            <Text style={styles.statNumberLarge}>{pendingJobCount}</Text>
+            <Text style={styles.statLabelLarge}>Pending Jobs</Text>
+            <Text style={styles.statAction}>Review Now →</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.statCardLarge}
+            onPress={handleViewJobs}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.statIconCircle, { backgroundColor: 'rgba(96, 165, 250, 0.15)' }]}>
+              <Ionicons name="play-circle-outline" size={24} color="#60A5FA" />
+            </View>
+            <Text style={styles.statNumberLarge}>{activeJobCount}</Text>
+            <Text style={styles.statLabelLarge}>Active Jobs</Text>
+            <Text style={styles.statAction}>Continue →</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.statCardLarge}
+            onPress={handleViewJobs}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.statIconCircle, { backgroundColor: 'rgba(0, 255, 136, 0.15)' }]}>
+              <Ionicons name="calendar-outline" size={24} color={BrandTheme.colors.SUCCESS} />
+            </View>
+            <Text style={styles.statNumberLarge}>{todaysJobCount}</Text>
+            <Text style={styles.statLabelLarge}>Today</Text>
+            <Text style={styles.statAction}>View Schedule →</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.statCardLarge}
+            onPress={handleViewJobs}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.statIconCircle, { backgroundColor: 'rgba(255, 163, 0, 0.15)' }]}>
+              <Ionicons name="checkmark-done-outline" size={24} color={BrandTheme.colors.WARNING} />
+            </View>
+            <Text style={styles.statNumberLarge}>{completedJobs.length}</Text>
+            <Text style={styles.statLabelLarge}>Completed</Text>
+            <Text style={styles.statAction}>This Period</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Urgent Alerts Banner */}
+        {urgentJobs.length > 0 && (
+          <TouchableOpacity 
+            style={styles.urgentBanner}
+            onPress={handleViewJobs}
+            activeOpacity={0.9}
+          >
+            <View style={styles.urgentBannerContent}>
+              <View style={styles.urgentBannerLeft}>
+                <Ionicons name="warning" size={28} color="#FFF" />
+                <View style={styles.urgentBannerText}>
+                  <Text style={styles.urgentBannerTitle}>Urgent Attention Required</Text>
+                  <Text style={styles.urgentBannerSubtitle}>
+                    {urgentJobs.length} high-priority {urgentJobs.length === 1 ? 'job' : 'jobs'} waiting
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#FFF" />
+            </View>
+          </TouchableOpacity>
         )}
 
-        {/* Today's Schedule */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Today's Schedule</Text>
-            {todaysJobCount > 3 && (
-              <TouchableOpacity onPress={handleViewJobs}>
-                <Text style={styles.sectionLink}>VIEW ALL</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {todaysJobCount === 0 ? (
-            <Card variant="standard" style={styles.emptyScheduleCard}>
-              <View style={styles.emptySchedule}>
-                <Ionicons name="calendar-outline" size={48} color={BrandTheme.colors.TEXT_SECONDARY} />
-                <Text style={styles.emptyScheduleTitle}>No jobs scheduled today</Text>
-                <Text style={styles.emptyScheduleText}>Enjoy your free time!</Text>
+        {/* Today's Schedule Section */}
+        {todaysJobCount > 0 && (
+          <View style={styles.dashboardSection}>
+            <View style={styles.dashboardSectionHeader}>
+              <View style={styles.sectionTitleRow}>
+                <Ionicons name="today-outline" size={20} color={BrandTheme.colors.YELLOW} />
+                <Text style={styles.dashboardSectionTitle}>Today's Schedule</Text>
               </View>
-            </Card>
-          ) : (
-            todaysJobs.slice(0, 3).map((job) => (
+              {todaysJobCount > 2 && (
+                <TouchableOpacity onPress={handleViewJobs}>
+                  <Text style={styles.viewAllLink}>View All ({todaysJobCount})</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {todaysJobs.slice(0, 2).map((job) => (
               <TouchableOpacity
                 key={job.id}
                 onPress={() => router.push(`/jobs/${job.id}`)}
+                style={styles.todayJobCard}
+                activeOpacity={0.8}
               >
-                <Card variant="standard" style={styles.scheduleCard}>
-                  <View style={styles.scheduleCardContent}>
-                    <View style={styles.scheduleTime}>
-                      <Ionicons 
-                        name={getStatusIcon(job.status)} 
-                        size={24} 
-                        color={getStatusColor(job.status)} 
-                      />
-                      <Text style={styles.timeText}>{formatTime(job.scheduledDate)}</Text>
-                    </View>
-                    <View style={styles.scheduleDetails}>
-                      <Text style={styles.scheduleTitle} numberOfLines={1}>
-                        {job.title}
+                <View style={styles.todayJobTime}>
+                  <Ionicons name="time" size={18} color={BrandTheme.colors.YELLOW} />
+                  <Text style={styles.todayJobTimeText}>{formatTime(job.scheduledDate)}</Text>
+                </View>
+                <View style={styles.todayJobDetails}>
+                  <Text style={styles.todayJobTitle} numberOfLines={1}>{job.title}</Text>
+                  {job.location?.address && (
+                    <Text style={styles.todayJobLocation} numberOfLines={1}>
+                      📍 {job.location.address}
+                    </Text>
+                  )}
+                  <View style={styles.todayJobFooter}>
+                    <View style={[styles.todayJobStatus, { 
+                      backgroundColor: getStatusColor(job.status) + '20',
+                      borderColor: getStatusColor(job.status)
+                    }]}>
+                      <Text style={[styles.todayJobStatusText, { color: getStatusColor(job.status) }]}>
+                        {job.status.replace('_', ' ').toUpperCase()}
                       </Text>
-                      <View style={styles.scheduleMetaRow}>
-                        {job.location?.address && (
-                          <View style={styles.scheduleMeta}>
-                            <Ionicons name="location-outline" size={14} color={BrandTheme.colors.TEXT_SECONDARY} />
-                            <Text style={styles.scheduleMetaText} numberOfLines={1}>
-                              {job.location.address}
-                            </Text>
-                          </View>
-                        )}
-                        {job.priority && (
-                          <View style={[styles.priorityPill, { 
-                            backgroundColor: job.priority === 'urgent' || job.priority === 'high' 
-                              ? BrandTheme.colors.ERROR 
-                              : BrandTheme.colors.SUCCESS 
-                          }]}>
-                            <Text style={styles.priorityText}>
-                              {job.priority.toUpperCase()}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
                     </View>
+                    {job.estimatedDuration && (
+                      <Text style={styles.todayJobDuration}>⏱ {job.estimatedDuration} min</Text>
+                    )}
                   </View>
-                </Card>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={BrandTheme.colors.TEXT_SECONDARY} />
               </TouchableOpacity>
-            ))
-          )}
-        </View>
-
-        {/* Quick Stats */}
-        <View style={styles.statsSection}>
-          <View style={styles.statsRow}>
-            <Card variant="elevated" style={styles.statCard}>
-              <View style={styles.statContent}>
-                <View style={styles.statIconWrapper}>
-                  <Ionicons name="time-outline" size={28} color={BrandTheme.colors.YELLOW} />
-                </View>
-                <Text style={styles.statNumber}>{pendingJobCount}</Text>
-                <Text style={styles.statLabel}>Pending</Text>
-              </View>
-            </Card>
-
-            <Card variant="elevated" style={styles.statCard}>
-              <View style={styles.statContent}>
-                <View style={styles.statIconWrapper}>
-                  <Ionicons name="play-circle" size={28} color={BrandTheme.colors.WARNING} />
-                </View>
-                <Text style={styles.statNumber}>{activeJobCount}</Text>
-                <Text style={styles.statLabel}>Active</Text>
-              </View>
-            </Card>
-
-            <Card variant="elevated" style={styles.statCard}>
-              <View style={styles.statContent}>
-                <View style={styles.statIconWrapper}>
-                  <Ionicons name="calendar" size={28} color={BrandTheme.colors.INFO} />
-                </View>
-                <Text style={styles.statNumber}>{todaysJobCount}</Text>
-                <Text style={styles.statLabel}>Today</Text>
-              </View>
-            </Card>
+            ))}
           </View>
-        </View>
+        )}
 
-        {/* Upcoming Jobs with Check-in Dates */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Upcoming Check-ins</Text>
-            <TouchableOpacity onPress={handleViewJobs}>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          
-          {upcomingJobs.length > 0 ? (
-            upcomingJobs.map((job) => {
+        {/* Upcoming Check-ins Section */}
+        {upcomingJobs.length > 0 && (
+          <View style={styles.dashboardSection}>
+            <View style={styles.dashboardSectionHeader}>
+              <View style={styles.sectionTitleRow}>
+                <Ionicons name="calendar" size={20} color={BrandTheme.colors.SUCCESS} />
+                <Text style={styles.dashboardSectionTitle}>Upcoming Check-ins</Text>
+              </View>
+              <TouchableOpacity onPress={handleViewJobs}>
+                <Text style={styles.viewAllLink}>View All</Text>
+              </TouchableOpacity>
+            </View>
+
+            {upcomingJobs.slice(0, 3).map((job) => {
               const checkInDate = job.checkInDate instanceof Date ? job.checkInDate : new Date(job.checkInDate!);
-              const checkOutDate = job.checkOutDate ? (job.checkOutDate instanceof Date ? job.checkOutDate : new Date(job.checkOutDate)) : null;
-              const duration = (job as any).duration || (job as any).estimatedDuration || '150 min';
-              
-              // Calculate days until check-in
               const daysUntil = Math.ceil((checkInDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
               const isToday = daysUntil === 0;
               const isTomorrow = daysUntil === 1;
@@ -364,99 +374,81 @@ export default function IndexScreen() {
                 <TouchableOpacity 
                   key={job.id}
                   onPress={() => router.push(`/jobs/${job.id}`)}
-                  style={styles.upcomingJobCard}
+                  style={styles.upcomingCard}
+                  activeOpacity={0.8}
                 >
-                  <Card variant="elevated" style={styles.upcomingJobCardInner}>
-                    {/* Urgency Badge */}
+                  {isToday && <View style={styles.todayIndicator} />}
+                  {isTomorrow && <View style={styles.tomorrowIndicator} />}
+                  
+                  <View style={styles.upcomingCardHeader}>
+                    <View style={styles.upcomingPropertyInfo}>
+                      <Ionicons name="home" size={18} color={BrandTheme.colors.YELLOW} />
+                      <Text style={styles.upcomingPropertyName} numberOfLines={1}>
+                        {job.propertyName || job.title}
+                      </Text>
+                    </View>
                     {isToday && (
-                      <View style={styles.urgencyBadge}>
-                        <Text style={styles.urgencyBadgeText}>TODAY</Text>
+                      <View style={styles.todayBadge}>
+                        <Text style={styles.todayBadgeText}>TODAY</Text>
                       </View>
                     )}
                     {isTomorrow && (
-                      <View style={[styles.urgencyBadge, styles.tomorrowBadge]}>
-                        <Text style={styles.urgencyBadgeText}>TOMORROW</Text>
+                      <View style={styles.tomorrowBadge}>
+                        <Text style={styles.tomorrowBadgeText}>TOMORROW</Text>
                       </View>
                     )}
-                    
-                    <View style={styles.upcomingJobHeader}>
-                      <View style={styles.upcomingJobTitleRow}>
-                        <Ionicons name="home" size={20} color={BrandTheme.colors.YELLOW} />
-                        <Text style={styles.upcomingJobTitle} numberOfLines={1}>
-                          {job.propertyName || job.title}
-                        </Text>
-                      </View>
-                      <View style={styles.durationBadge}>
-                        <Ionicons name="time-outline" size={14} color={BrandTheme.colors.TEXT_SECONDARY} />
-                        <Text style={styles.durationText}>{duration}</Text>
-                      </View>
+                  </View>
+
+                  <View style={styles.upcomingCardDates}>
+                    <View style={styles.dateColumn}>
+                      <Text style={styles.dateColumnLabel}>Check-in</Text>
+                      <Text style={styles.dateColumnValue}>
+                        {checkInDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </Text>
                     </View>
-
-                    <View style={styles.upcomingJobDetails}>
-                      <View style={styles.dateRow}>
-                        <View style={styles.dateItem}>
-                          <Ionicons name="log-in-outline" size={16} color={BrandTheme.colors.SUCCESS} />
-                          <View style={styles.dateTextContainer}>
-                            <Text style={styles.dateLabel}>Check-in</Text>
-                            <Text style={styles.dateValue}>
-                              {checkInDate.toLocaleDateString('en-US', { 
-                                month: 'short', 
-                                day: 'numeric',
-                                weekday: 'short'
-                              })}
-                            </Text>
-                          </View>
-                        </View>
-
-                        {checkOutDate && (
-                          <View style={styles.dateItem}>
-                            <Ionicons name="log-out-outline" size={16} color={BrandTheme.colors.WARNING} />
-                            <View style={styles.dateTextContainer}>
-                              <Text style={styles.dateLabel}>Check-out</Text>
-                              <Text style={styles.dateValue}>
-                                {checkOutDate.toLocaleDateString('en-US', { 
-                                  month: 'short', 
-                                  day: 'numeric',
-                                  weekday: 'short'
-                                })}
-                              </Text>
-                            </View>
-                          </View>
-                        )}
-                      </View>
-
-                      {job.location?.address && (
-                        <View style={styles.locationRow}>
-                          <Ionicons name="location-outline" size={14} color={BrandTheme.colors.TEXT_SECONDARY} />
-                          <Text style={styles.locationText} numberOfLines={1}>
-                            {job.location.address}
-                          </Text>
-                        </View>
-                      )}
-
-                      {job.guestCount && (
-                        <View style={styles.guestRow}>
-                          <Ionicons name="people-outline" size={14} color={BrandTheme.colors.TEXT_SECONDARY} />
-                          <Text style={styles.guestText}>{job.guestCount} guests</Text>
-                        </View>
-                      )}
+                    <Ionicons name="arrow-forward" size={16} color={BrandTheme.colors.TEXT_SECONDARY} />
+                    <View style={styles.dateColumn}>
+                      <Text style={styles.dateColumnLabel}>Check-out</Text>
+                      <Text style={styles.dateColumnValue}>
+                        {job.checkOutDate 
+                          ? new Date(job.checkOutDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                          : 'TBD'
+                        }
+                      </Text>
                     </View>
-                  </Card>
+                    {job.guestCount && (
+                      <View style={styles.guestBadge}>
+                        <Ionicons name="people" size={12} color={BrandTheme.colors.TEXT_SECONDARY} />
+                        <Text style={styles.guestBadgeText}>{job.guestCount}</Text>
+                      </View>
+                    )}
+                  </View>
                 </TouchableOpacity>
               );
-            })
-          ) : (
-            <Card variant="elevated" style={styles.emptyStateCard}>
-              <View style={styles.emptyState}>
-                <Ionicons name="calendar-outline" size={48} color={BrandTheme.colors.TEXT_SECONDARY} />
-                <Text style={styles.emptyTitle}>No Upcoming Check-ins</Text>
-                <Text style={styles.emptySubtext}>
-                  You don't have any scheduled jobs with check-in dates yet
-                </Text>
-              </View>
-            </Card>
-          )}
-        </View>
+            })}
+          </View>
+        )}
+
+        {/* Empty State - No jobs today */}
+        {todaysJobCount === 0 && upcomingJobs.length === 0 && (
+          <View style={styles.emptyStateDashboard}>
+            <View style={styles.emptyStateIcon}>
+              <Ionicons name="checkmark-done-circle-outline" size={64} color={BrandTheme.colors.SUCCESS} />
+            </View>
+            <Text style={styles.emptyStateTitle}>All Clear!</Text>
+            <Text style={styles.emptyStateText}>
+              You have no jobs scheduled for today. Check pending jobs or enjoy your free time!
+            </Text>
+            <TouchableOpacity 
+              style={styles.emptyStateButton}
+              onPress={handleViewJobs}
+            >
+              <Text style={styles.emptyStateButtonText}>View All Jobs</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View style={styles.bottomPadding} />
       </ScrollView>
 
       {/* Logout Overlay */}
@@ -784,10 +776,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
 
-  tomorrowBadge: {
-    backgroundColor: BrandTheme.colors.INFO,
-  },
-
   urgencyBadgeText: {
     fontFamily: BrandTheme.typography.fontFamily.primary,
     fontSize: 10,
@@ -1021,5 +1009,408 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: BrandTheme.colors.TEXT_SECONDARY,
     textAlign: 'center',
+  },
+
+  // ============================================================================
+  // DASHBOARD REDESIGN STYLES
+  // ============================================================================
+
+  // Dashboard Header
+  dashboardHeader: {
+    paddingHorizontal: BrandTheme.spacing.LG,
+    paddingTop: BrandTheme.spacing.XL,
+    paddingBottom: BrandTheme.spacing.LG,
+    alignItems: 'center',
+  },
+
+  nameText: {
+    fontFamily: BrandTheme.typography.fontFamily.display,
+    fontSize: 36,
+    fontWeight: 'normal',
+    color: BrandTheme.colors.YELLOW,
+    letterSpacing: 2,
+    marginTop: 4,
+  },
+
+  // Stats Grid (2x2)
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: BrandTheme.spacing.MD,
+    gap: BrandTheme.spacing.MD,
+    marginBottom: BrandTheme.spacing.LG,
+  },
+
+  statCardLarge: {
+    flex: 1,
+    minWidth: '47%',
+    backgroundColor: BrandTheme.colors.SURFACE_1,
+    borderRadius: BrandTheme.radius.MD,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.BORDER,
+    padding: BrandTheme.spacing.LG,
+    alignItems: 'center',
+    ...BrandTheme.shadows.BLACK_SMALL,
+  },
+
+  statIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: BrandTheme.spacing.MD,
+  },
+
+  statNumberLarge: {
+    fontFamily: BrandTheme.typography.fontFamily.display,
+    fontSize: 40,
+    fontWeight: 'normal',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    letterSpacing: 1,
+  },
+
+  statLabelLarge: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 13,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+
+  statAction: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 11,
+    color: BrandTheme.colors.YELLOW,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  // Urgent Banner
+  urgentBanner: {
+    marginHorizontal: BrandTheme.spacing.LG,
+    marginBottom: BrandTheme.spacing.LG,
+    backgroundColor: BrandTheme.colors.ERROR,
+    borderRadius: BrandTheme.radius.MD,
+    overflow: 'hidden',
+  },
+
+  urgentBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: BrandTheme.spacing.LG,
+  },
+
+  urgentBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.MD,
+    flex: 1,
+  },
+
+  urgentBannerText: {
+    flex: 1,
+  },
+
+  urgentBannerTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+
+  urgentBannerSubtitle: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+
+  // Dashboard Sections
+  dashboardSection: {
+    marginBottom: BrandTheme.spacing.XXL,
+  },
+
+  dashboardSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: BrandTheme.spacing.LG,
+    marginBottom: BrandTheme.spacing.MD,
+  },
+
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.SM,
+  },
+
+  dashboardSectionTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  viewAllLink: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 12,
+    color: BrandTheme.colors.YELLOW,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  // Today's Job Cards
+  todayJobCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: BrandTheme.colors.SURFACE_1,
+    borderRadius: BrandTheme.radius.MD,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.BORDER,
+    padding: BrandTheme.spacing.MD,
+    marginHorizontal: BrandTheme.spacing.LG,
+    marginBottom: BrandTheme.spacing.MD,
+    gap: BrandTheme.spacing.MD,
+  },
+
+  todayJobTime: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingRight: BrandTheme.spacing.MD,
+    borderRightWidth: 1,
+    borderRightColor: BrandTheme.colors.BORDER,
+  },
+
+  todayJobTimeText: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+  },
+
+  todayJobDetails: {
+    flex: 1,
+  },
+
+  todayJobTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    marginBottom: 4,
+  },
+
+  todayJobLocation: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 12,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    marginBottom: 6,
+  },
+
+  todayJobFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.SM,
+  },
+
+  todayJobStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: BrandTheme.radius.SM,
+    borderWidth: 1,
+  },
+
+  todayJobStatusText: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+
+  todayJobDuration: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 11,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+  },
+
+  // Upcoming Check-in Cards
+  upcomingCard: {
+    position: 'relative',
+    backgroundColor: BrandTheme.colors.SURFACE_1,
+    borderRadius: BrandTheme.radius.MD,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.BORDER,
+    padding: BrandTheme.spacing.MD,
+    marginHorizontal: BrandTheme.spacing.LG,
+    marginBottom: BrandTheme.spacing.MD,
+  },
+
+  todayIndicator: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: BrandTheme.colors.SUCCESS,
+    borderTopLeftRadius: BrandTheme.radius.MD,
+    borderBottomLeftRadius: BrandTheme.radius.MD,
+  },
+
+  tomorrowIndicator: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: BrandTheme.colors.WARNING,
+    borderTopLeftRadius: BrandTheme.radius.MD,
+    borderBottomLeftRadius: BrandTheme.radius.MD,
+  },
+
+  upcomingCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: BrandTheme.spacing.MD,
+  },
+
+  upcomingPropertyInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.SM,
+    flex: 1,
+  },
+
+  upcomingPropertyName: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    flex: 1,
+  },
+
+  todayBadge: {
+    backgroundColor: BrandTheme.colors.SUCCESS,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: BrandTheme.radius.SM,
+  },
+
+  todayBadgeText: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.BLACK,
+    letterSpacing: 0.5,
+  },
+
+  tomorrowBadge: {
+    backgroundColor: BrandTheme.colors.WARNING,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: BrandTheme.radius.SM,
+  },
+
+  tomorrowBadgeText: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.BLACK,
+    letterSpacing: 0.5,
+  },
+
+  upcomingCardDates: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.MD,
+  },
+
+  dateColumn: {
+    flex: 1,
+  },
+
+  dateColumnLabel: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 11,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  dateColumnValue: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+  },
+
+  guestBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: BrandTheme.colors.SURFACE_2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: BrandTheme.radius.SM,
+  },
+
+  guestBadgeText: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 11,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+  },
+
+  // Empty State Dashboard
+  emptyStateDashboard: {
+    alignItems: 'center',
+    paddingVertical: BrandTheme.spacing.XXL * 2,
+    paddingHorizontal: BrandTheme.spacing.LG,
+  },
+
+  emptyStateIcon: {
+    marginBottom: BrandTheme.spacing.LG,
+  },
+
+  emptyStateTitle: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    marginBottom: BrandTheme.spacing.SM,
+  },
+
+  emptyStateText: {
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontSize: 15,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: BrandTheme.spacing.XL,
+  },
+
+  emptyStateButton: {
+    backgroundColor: BrandTheme.colors.YELLOW,
+    paddingHorizontal: BrandTheme.spacing.XL,
+    paddingVertical: BrandTheme.spacing.MD,
+    borderRadius: BrandTheme.radius.SM,
+  },
+
+  emptyStateButtonText: {
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.BLACK,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  bottomPadding: {
+    height: BrandTheme.spacing.XXL,
   },
 });
