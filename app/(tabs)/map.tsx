@@ -447,7 +447,7 @@ export default function MapScreen() {
 
     return (
       <Marker
-        key={property.id}
+        key={`${property.id}-${property.status}-${property.jobs.length}`}
         coordinate={{
           latitude: property.latitude,
           longitude: property.longitude,
