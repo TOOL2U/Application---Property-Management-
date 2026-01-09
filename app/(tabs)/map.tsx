@@ -105,6 +105,8 @@ export default function MapScreen() {
     // Update job status on property markers when jobs change
     // Only update if we have markers AND jobs have actually changed
     if (propertyMarkers.length > 0) {
+      console.log('🔄 MapScreen: Jobs updated, refreshing markers...');
+      console.log(`   📊 Pending jobs: ${pendingJobs.length}, Active jobs: ${activeJobs.length}, Total jobs: ${jobs.length}`);
       updateJobStatusOnMarkers();
     }
   }, [jobs, pendingJobs, activeJobs]); // Don't include propertyMarkers here!
@@ -288,30 +290,40 @@ export default function MapScreen() {
         let status: 'active' | 'pending' | 'inactive' = 'inactive';
         
         // Active: accepted or in_progress jobs
-        const hasActiveJob = propertyJobs.some(j => 
-          j.status === 'accepted' || j.status === 'in_progress'
-        );
+        const hasActiveJob = propertyJobs.some(j => {
+          const isActive = j.status === 'accepted' || j.status === 'in_progress';
+          if (isActive) {
+            console.log(`🟢 MapScreen: Job ${j.id} has ACTIVE status: "${j.status}"`);
+          }
+          return isActive;
+        });
         
         // Pending: assigned or pending status jobs
-        const hasPendingJob = propertyJobs.some(j => 
-          j.status === 'assigned' || j.status === 'pending'
-        );
+        const hasPendingJob = propertyJobs.some(j => {
+          const isPending = j.status === 'assigned' || j.status === 'pending';
+          if (isPending) {
+            console.log(`🟡 MapScreen: Job ${j.id} has PENDING status: "${j.status}"`);
+          }
+          return isPending;
+        });
         
         // Log job statuses for debugging
         if (propertyJobs.length > 0) {
           console.log(`🏠 MapScreen: Property ${marker.propertyName} has ${propertyJobs.length} job(s):`, 
-            propertyJobs.map(j => ({ id: j.id, status: j.status }))
+            propertyJobs.map(j => ({ id: j.id, status: j.status, title: j.title }))
           );
         }
         
         if (hasActiveJob) {
           status = 'active';
-          console.log(`✅ MapScreen: Property ${marker.propertyName} marked as ACTIVE (green)`);
+          console.log(`✅ MapScreen: Property ${marker.propertyName} marked as ACTIVE (green) - will FLASH`);
         } else if (hasPendingJob) {
           status = 'pending';
           console.log(`⏳ MapScreen: Property ${marker.propertyName} marked as PENDING (yellow)`);
-        } else {
-          console.log(`⚪ MapScreen: Property ${marker.propertyName} marked as INACTIVE (grey)`);
+        } else if (propertyJobs.length > 0) {
+          console.log(`⚠️ MapScreen: Property ${marker.propertyName} has jobs but unknown status:`, 
+            propertyJobs.map(j => j.status)
+          );
         }
 
         // Only update if status or jobs changed
