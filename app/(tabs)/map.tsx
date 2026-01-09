@@ -437,7 +437,7 @@ export default function MapScreen() {
 
   const renderCustomMarker = (property: PropertyMarker) => {
     const color = getMarkerColor(property.status);
-    const isActive = property.status === 'active';
+    const isPending = property.status === 'pending'; // Flash only for pending jobs
 
     return (
       <Marker
@@ -452,7 +452,7 @@ export default function MapScreen() {
           style={[
             styles.markerContainer,
             {
-              opacity: isActive ? flashAnim : 1,
+              opacity: isPending ? flashAnim : 1, // Only flash pending markers
             },
           ]}
         >
@@ -460,7 +460,7 @@ export default function MapScreen() {
             <Ionicons
               name="home"
               size={24}
-              color={isActive ? BrandTheme.colors.BLACK : BrandTheme.colors.TEXT_PRIMARY}
+              color={property.status === 'active' ? BrandTheme.colors.BLACK : BrandTheme.colors.TEXT_PRIMARY}
             />
           </View>
           {property.jobs.length > 1 && (
