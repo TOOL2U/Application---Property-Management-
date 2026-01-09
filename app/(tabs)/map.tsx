@@ -25,7 +25,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_DEFAULT, Region } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { usePINAuth } from '@/contexts/PINAuthContext';
 import { useStaffJobs } from '@/hooks/useStaffJobs';
 import { propertyService } from '@/services/propertyService';
@@ -100,6 +100,14 @@ export default function MapScreen() {
     // Load all properties from Firebase
     loadAllProperties();
   }, []);
+
+  // Refresh jobs when map tab is focused (to catch updates from webapp)
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🗺️ MapScreen: Tab focused, refreshing jobs for real-time updates...');
+      refreshJobs();
+    }, [refreshJobs])
+  );
 
   useEffect(() => {
     // Update job status on property markers when jobs change
@@ -286,43 +294,51 @@ export default function MapScreen() {
       const updatedMarkers = markers.map(marker => {
         const propertyJobs = jobsByProperty.get(marker.id) || [];
         
-        // Determine status based on jobs
+        // Determine status based on jobs - matching dashboard logic
         let status: 'active' | 'pending' | 'inactive' = 'inactive';
         
-        // Active: accepted or in_progress jobs
-        const hasActiveJob = propertyJobs.some(j => {
-          const isActive = j.status === 'accepted' || j.status === 'in_progress';
-          if (isActive) {
-            console.log(`🟢 MapScreen: Job ${j.id} has ACTIVE status: "${j.status}"`);
+        // Get status color helper (matching dashboard implementation)
+        const getJobStatusPriority = (jobStatus: string): number => {
+          // Higher number = higher priority
+          switch (jobStatus) {
+            case 'in_progress': return 4; // Highest - job being worked on
+            case 'accepted': return 3;    // High - job confirmed
+            case 'assigned': return 2;    // Medium - job assigned
+            case 'pending': return 1;     // Low - job waiting
+            case 'offered': return 1;     // Low - job offered but not assigned
+            default: return 0;            // No priority
           }
-          return isActive;
+        };
+        
+        // Find the highest priority status among all jobs for this property
+        let highestPriority = 0;
+        let highestPriorityStatus = '';
+        
+        propertyJobs.forEach(j => {
+          const priority = getJobStatusPriority(j.status);
+          if (priority > highestPriority) {
+            highestPriority = priority;
+            highestPriorityStatus = j.status;
+          }
         });
         
-        // Pending: assigned or pending status jobs
-        const hasPendingJob = propertyJobs.some(j => {
-          const isPending = j.status === 'assigned' || j.status === 'pending';
-          if (isPending) {
-            console.log(`🟡 MapScreen: Job ${j.id} has PENDING status: "${j.status}"`);
-          }
-          return isPending;
-        });
-        
-        // Log job statuses for debugging
-        if (propertyJobs.length > 0) {
-          console.log(`🏠 MapScreen: Property ${marker.propertyName} has ${propertyJobs.length} job(s):`, 
-            propertyJobs.map(j => ({ id: j.id, status: j.status, title: j.title }))
-          );
-        }
-        
-        if (hasActiveJob) {
+        // Map to marker status based on highest priority job
+        if (highestPriorityStatus === 'accepted' || highestPriorityStatus === 'in_progress') {
           status = 'active';
-          console.log(`✅ MapScreen: Property ${marker.propertyName} marked as ACTIVE (green) - will FLASH`);
-        } else if (hasPendingJob) {
+          console.log(`✅ MapScreen: Property ${marker.propertyName} marked as ACTIVE (green) - highest status: "${highestPriorityStatus}"`);
+        } else if (highestPriorityStatus === 'assigned' || highestPriorityStatus === 'pending' || highestPriorityStatus === 'offered') {
           status = 'pending';
-          console.log(`⏳ MapScreen: Property ${marker.propertyName} marked as PENDING (yellow)`);
+          console.log(`⏳ MapScreen: Property ${marker.propertyName} marked as PENDING (yellow) - highest status: "${highestPriorityStatus}"`);
         } else if (propertyJobs.length > 0) {
           console.log(`⚠️ MapScreen: Property ${marker.propertyName} has jobs but unknown status:`, 
             propertyJobs.map(j => j.status)
+          );
+        }
+        
+        // Log all job statuses for debugging
+        if (propertyJobs.length > 0) {
+          console.log(`🏠 MapScreen: Property ${marker.propertyName} has ${propertyJobs.length} job(s):`, 
+            propertyJobs.map(j => ({ id: j.id, status: j.status, title: j.title }))
           );
         }
 
