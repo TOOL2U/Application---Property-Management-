@@ -1401,7 +1401,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: BrandTheme.colors.TEXT_PRIMARY,
+    color: '#FFFFFF',
     marginBottom: BrandTheme.spacing.LG,
     fontFamily: BrandTheme.typography.fontFamily.primary,
     textTransform: 'uppercase',
@@ -1596,14 +1596,14 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 13,
-    color: BrandTheme.colors.TEXT_SECONDARY,
+    color: '#FFFFFF',
     fontFamily: BrandTheme.typography.fontFamily.regular,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   detailValue: {
     fontSize: 14,
-    color: BrandTheme.colors.TEXT_PRIMARY,
+    color: '#FFFFFF',
     fontWeight: '600',
     fontFamily: BrandTheme.typography.fontFamily.primary,
   },
