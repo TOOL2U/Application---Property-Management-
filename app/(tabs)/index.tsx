@@ -564,11 +564,12 @@ const styles = StyleSheet.create({
   },
 
   greetingText: {
-    fontFamily: BrandTheme.typography.fontFamily.primary,
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontFamily: BrandTheme.typography.fontFamily.display,
+    fontSize: 32,
+    fontWeight: 'normal',
     color: BrandTheme.colors.TEXT_PRIMARY,
     marginBottom: BrandTheme.spacing.XS,
+    letterSpacing: 1,
   },
 
   dateText: {
