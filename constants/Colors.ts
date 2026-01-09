@@ -184,11 +184,5 @@ export const getColors = (scheme?: ColorScheme) => {
 };
 
 // Default export for current theme
-export const Colors = getColors();
-
-// Named exports for specific themes
-export { LightColors, DarkColors };
-
-
-
+const Colors = getColors();
 export default Colors;

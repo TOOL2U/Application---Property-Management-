@@ -113,15 +113,17 @@ export default function IndexScreen() {
   };
 
   // Handle profile selection
-  const handleProfilePress = () => {
-    setIsSwitchingProfile(true);
-  };
-
-  // Handle logout
-  const handleLogoutConfirm = async () => {
-    setIsSwitchingProfile(false);
-    await logout();
-    router.replace('/(auth)/select-staff-profile');
+  const handleProfilePress = async () => {
+    try {
+      setIsSwitchingProfile(true);
+      await logout();
+      // Add small delay for smooth transition
+      await new Promise(resolve => setTimeout(resolve, 300));
+      router.replace('/(auth)/select-profile');
+    } catch (error) {
+      console.error('Error switching profile:', error);
+      setIsSwitchingProfile(false);
+    }
   };
 
   const pendingJobCount = pendingJobs?.length || 0;

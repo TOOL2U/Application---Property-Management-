@@ -182,12 +182,17 @@ export default function EnterPINScreen() {
                     style={{
                       width: 72,
                       height: 72,
-                      borderRadius: 0,
+                      borderRadius: 36,
                       backgroundColor: BrandTheme.colors.SURFACE_1,
                       alignItems: 'center',
                       justifyContent: 'center',
                       borderWidth: 1,
                       borderColor: pin.length === 0 ? BrandTheme.colors.BORDER : BrandTheme.colors.YELLOW,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 4,
+                      elevation: 4,
                     }}
                   >
                     <Ionicons
@@ -208,12 +213,17 @@ export default function EnterPINScreen() {
                   style={{
                     width: 72,
                     height: 72,
-                    borderRadius: 0,
+                    borderRadius: 36,
                     backgroundColor: BrandTheme.colors.SURFACE_1,
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: 1,
                     borderColor: BrandTheme.colors.BORDER,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 4,
+                    elevation: 4,
                   }}
                 >
                   <Text style={{
@@ -252,7 +262,7 @@ export default function EnterPINScreen() {
                 backgroundColor: BrandTheme.colors.YELLOW,
                 paddingHorizontal: 24,
                 paddingVertical: 12,
-                borderRadius: 0,
+                borderRadius: BrandTheme.radius.SM,
               }}
               onPress={() => router.replace('/(auth)/select-profile')}
             >
@@ -319,7 +329,7 @@ export default function EnterPINScreen() {
             style={{
               width: 88,
               height: 88,
-              borderRadius: 0,
+              borderRadius: 44,
               backgroundColor: BrandTheme.colors.YELLOW,
               padding: 3,
               alignItems: 'center',
@@ -330,7 +340,7 @@ export default function EnterPINScreen() {
             <View style={{
               width: 82,
               height: 82,
-              borderRadius: 0,
+              borderRadius: 41,
               backgroundColor: BrandTheme.colors.SURFACE_1,
               alignItems: 'center',
               justifyContent: 'center',
@@ -338,7 +348,7 @@ export default function EnterPINScreen() {
               {profile.avatar ? (
                 <Image
                   source={{ uri: profile.avatar }}
-                  style={{ width: 82, height: 82, borderRadius: 0 }}
+                  style={{ width: 82, height: 82, borderRadius: 41 }}
                 />
               ) : (
                 <Text style={{

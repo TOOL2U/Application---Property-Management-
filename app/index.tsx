@@ -1,34 +1,56 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { usePINAuth } from "@/contexts/PINAuthContext";
 import { View, ActivityIndicator, Text } from 'react-native';
 import { Logo } from '@/components/ui/Logo';
 import { BrandTheme } from '@/constants/BrandTheme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+/**
+ * Root Index - Initial App Entry Point
+ * This component handles the initial routing based on authentication state
+ * NOTE: This file CANNOT use PINAuth context as it loads before _layout.tsx providers
+ */
 export default function Index() {
-  const { isAuthenticated, isLoading } = usePINAuth();
   const router = useRouter();
-  const [hasInitialized, setHasInitialized] = useState(false);
 
   useEffect(() => {
-    // Only perform initial routing, not logout routing
-    if (!isLoading && !hasInitialized) {
-      console.log('🏠 Index: Performing initial routing', { 
-        isAuthenticated, 
-        isLoading, 
-        hasInitialized 
-      });
-
-      if (isAuthenticated) {
-        console.log('🏠 Index: User is authenticated, redirecting to tabs');
-        router.replace('/(tabs)');
-      } else {
-        console.log('🏠 Index: User not authenticated, redirecting to select-profile');
+    async function checkAuth() {
+      try {
+        // Check for active session (the key used by LocalStaffService)
+        const sessionData = await AsyncStorage.getItem('@current_session');
+        
+        if (sessionData) {
+          try {
+            const session = JSON.parse(sessionData);
+            const expiresAt = new Date(session.expiresAt);
+            const now = new Date();
+            
+            // Check if session is still valid
+            if (expiresAt > now && session.profileId) {
+              console.log('🏠 Index: Valid session found, redirecting to tabs');
+              router.replace('/(tabs)');
+              return;
+            } else {
+              console.log('🏠 Index: Session expired, clearing and redirecting to auth');
+              await AsyncStorage.removeItem('@current_session');
+            }
+          } catch (parseError) {
+            console.error('❌ Index: Error parsing session:', parseError);
+            await AsyncStorage.removeItem('@current_session');
+          }
+        }
+        
+        console.log('🏠 Index: No valid session, redirecting to select-profile');
+        router.replace('/(auth)/select-profile');
+      } catch (error) {
+        console.error('❌ Index: Error checking auth:', error);
+        // Default to auth flow on error
         router.replace('/(auth)/select-profile');
       }
-      setHasInitialized(true);
     }
-  }, [isAuthenticated, isLoading, hasInitialized]);
+
+    checkAuth();
+  }, []);
 
   return (
     <View style={{

@@ -68,9 +68,21 @@ class InternationalizationService {
     // Set fallback language
     this.i18n.defaultLocale = 'en';
     this.i18n.enableFallback = true;
+    this.i18n.missingBehavior = 'guess'; // Show key if missing
 
     // Configure pluralization (optional - for complex language rules)
     // Note: Pluralization functions take (i18n, count) as parameters
+  }
+  
+  /**
+   * Force reload translations (useful after updating locale files)
+   */
+  reloadTranslations() {
+    console.log('🔄 Reloading translations...');
+    this.setupI18n();
+    this.i18n.locale = this.currentLanguage;
+    this.changeListeners.forEach(listener => listener(this.currentLanguage));
+    console.log('✅ Translations reloaded');
   }
 
   private async initializeLanguage() {

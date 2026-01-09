@@ -25,7 +25,7 @@ export default function LoginScreen() {
     }
     // If authenticated but no staff selected, go to profile selection
     else if (isAuthenticated && !isStaffSelected) {
-      router.replace('/(auth)/select-staff-profile');
+      router.replace('/(auth)/select-profile');
     }
   }, [isAuthenticated, isStaffSelected]);
 
@@ -36,7 +36,7 @@ export default function LoginScreen() {
       await signInShared();
 
       // Navigation will be handled by useEffect based on auth state
-      router.replace('/(auth)/select-staff-profile');
+      router.replace('/(auth)/select-profile');
     } catch (error) {
       console.error('❌ Login error:', error);
       Alert.alert(

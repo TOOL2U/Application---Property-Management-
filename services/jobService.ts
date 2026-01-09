@@ -40,6 +40,7 @@ import { getApp } from 'firebase/app';
 
 class JobService {
   private readonly JOBS_COLLECTION = 'jobs';
+  private readonly OPERATIONAL_JOBS_COLLECTION = 'operational_jobs'; // NEW: Webapp jobs
   private readonly COMPLETED_JOBS_COLLECTION = 'completed_jobs';
   private readonly JOB_PHOTOS_COLLECTION = 'job_photos';
   private readonly JOB_ASSIGNMENTS_COLLECTION = 'job_assignments';
@@ -70,6 +71,7 @@ class JobService {
 
   /**
    * Get jobs assigned to a specific staff member
+   * Queries both 'jobs' (mobile app) and 'operational_jobs' (webapp) collections
    */
   async getStaffJobs(staffId: string, filters?: JobFilter): Promise<JobListResponse> {
     try {
@@ -77,30 +79,55 @@ class JobService {
 
       // Get initialized Firestore instance
       const db = await getDb();
+      
+      // Query both collections in parallel
       const jobsRef = collection(db, this.JOBS_COLLECTION);
-      let q = query(
+      const operationalJobsRef = collection(db, this.OPERATIONAL_JOBS_COLLECTION);
+      
+      // Build queries for both collections
+      let q1 = query(
         jobsRef,
         where('assignedTo', '==', staffId),
         orderBy('scheduledDate', 'desc')
       );
+      
+      // For operational_jobs, check both assignedStaffId and assignedTo
+      let q2 = query(
+        operationalJobsRef,
+        where('assignedStaffId', '==', staffId),
+        orderBy('createdAt', 'desc')
+      );
 
-      // Apply filters
+      // Apply filters to both queries
       if (filters?.status) {
-        q = query(q, where('status', 'in', filters.status));
+        q1 = query(q1, where('status', 'in', filters.status));
+        q2 = query(q2, where('status', 'in', filters.status));
       }
 
       if (filters?.dateRange) {
-        q = query(
-          q,
+        q1 = query(
+          q1,
+          where('scheduledDate', '>=', filters.dateRange.start),
+          where('scheduledDate', '<=', filters.dateRange.end)
+        );
+        // operational_jobs uses scheduledDate field too
+        q2 = query(
+          q2,
           where('scheduledDate', '>=', filters.dateRange.start),
           where('scheduledDate', '<=', filters.dateRange.end)
         );
       }
 
-      const querySnapshot = await getDocs(q);
+      // Execute both queries in parallel
+      const [snapshot1, snapshot2] = await Promise.all([
+        getDocs(q1),
+        getDocs(q2)
+      ]);
+      
       const jobs: Job[] = [];
 
-      querySnapshot.forEach((doc) => {
+      // Process jobs from mobile app collection
+      snapshot1.forEach((doc) => {
         const data = doc.data();
         jobs.push({
           id: doc.id,
@@ -114,8 +141,26 @@ class JobService {
           updatedAt: data.updatedAt?.toDate() || new Date(),
         } as Job);
       });
+      
+      // Process jobs from webapp operational_jobs collection
+      snapshot2.forEach((doc) => {
+        const data = doc.data();
+        jobs.push({
+          id: doc.id,
+          ...data,
+          // Map webapp fields to mobile app format
+          assignedTo: data.assignedStaffId || data.assignedTo,
+          scheduledDate: data.scheduledDate?.toDate() || new Date(),
+          assignedAt: data.assignedAt?.toDate() || new Date(),
+          acceptedAt: data.acceptedAt?.toDate(),
+          startedAt: data.startedAt?.toDate(),
+          completedAt: data.completedAt?.toDate(),
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || new Date(),
+        } as Job);
+      });
 
-      console.log(`✅ JobService: Found ${jobs.length} jobs for staff`);
+      console.log(`✅ JobService: Found ${jobs.length} jobs for staff (${snapshot1.size} from jobs, ${snapshot2.size} from operational_jobs)`);
       return {
         success: true,
         jobs,
@@ -334,50 +379,64 @@ class JobService {
 
   /**
    * Accept a job assignment
+   * Supports BOTH 'jobs' and 'operational_jobs' collections
    */
   async acceptJob(request: AcceptJobRequest): Promise<JobResponse> {
     try {
       console.log('✅ JobService: Accepting job:', request.jobId);
 
-      // Check if Firebase is properly initialized
-      const isFirebaseReady = await this.waitForFirebaseInit(2000);
-      if (!isFirebaseReady) {
-        console.warn('⚠️ JobService: Firebase Firestore is not ready for accepting job');
-        return {
-          success: false,
-          error: 'Firebase Firestore is not ready. Please try again.',
-        };
-      }
-
       const db = await getDb();
-      const jobRef = doc(db, this.JOBS_COLLECTION, request.jobId);
-      const jobDoc = await getDoc(jobRef);
+      
+      // Try to find job in both collections
+      let jobRef = doc(db, this.JOBS_COLLECTION, request.jobId);
+      let jobDoc = await getDoc(jobRef);
+      let collection = this.JOBS_COLLECTION;
+
+      // If not found in 'jobs', try 'operational_jobs'
+      if (!jobDoc.exists()) {
+        jobRef = doc(db, this.OPERATIONAL_JOBS_COLLECTION, request.jobId);
+        jobDoc = await getDoc(jobRef);
+        collection = this.OPERATIONAL_JOBS_COLLECTION;
+      }
 
       if (!jobDoc.exists()) {
         return {
           success: false,
-          error: 'Job not found',
+          error: 'Job not found in any collection',
         };
       }
 
       const jobData = jobDoc.data();
       
-      // Verify the job is assigned to this staff member
-      if (jobData.assignedTo !== request.staffId) {
+      // Verify the job is assigned to this staff member OR is unassigned (pending/offered)
+      const isAssignedToStaff = jobData.assignedTo === request.staffId || jobData.assignedStaffId === request.staffId;
+      const isUnassigned = (jobData.status === 'pending' || jobData.status === 'offered') && 
+                           (!jobData.assignedStaffId || jobData.assignedStaffId === null);
+      
+      if (!isAssignedToStaff && !isUnassigned) {
         return {
           success: false,
-          error: 'Job not assigned to this staff member',
+          error: 'Job not available for this staff member',
         };
       }
 
-      // Update job status to accepted
-      await updateDoc(jobRef, {
+      // Update job status to accepted and assign to staff if unassigned
+      const updateData: any = {
         status: 'accepted',
         acceptedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      };
+      
+      // If job was unassigned, assign it to this staff member
+      if (isUnassigned) {
+        updateData.assignedStaffId = request.staffId;
+        updateData.assignedTo = request.staffId;
+        console.log('📌 JobService: Assigning unassigned job to staff:', request.staffId);
+      }
 
-      console.log('✅ JobService: Job accepted successfully');
+      await updateDoc(jobRef, updateData);
+
+      console.log(`✅ JobService: Job accepted successfully in ${collection} collection`);
       return {
         success: true,
         message: 'Job accepted successfully',
@@ -491,14 +550,32 @@ class JobService {
       // Get initialized Firestore instance
       const db = await getDb();
       
-      const jobRef = doc(db, this.JOBS_COLLECTION, jobId);
+      // Try to find job in both collections
+      let jobRef = doc(db, this.JOBS_COLLECTION, jobId);
+      let jobDoc = await getDoc(jobRef);
+      let collection = this.JOBS_COLLECTION;
+
+      // If not found in 'jobs', try 'operational_jobs'
+      if (!jobDoc.exists()) {
+        jobRef = doc(db, this.OPERATIONAL_JOBS_COLLECTION, jobId);
+        jobDoc = await getDoc(jobRef);
+        collection = this.OPERATIONAL_JOBS_COLLECTION;
+      }
+
+      if (!jobDoc.exists()) {
+        return {
+          success: false,
+          error: 'Job not found in any collection',
+        };
+      }
+
       await updateDoc(jobRef, {
         status: 'in_progress',
         startedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
-      console.log('✅ JobService: Job started successfully');
+      console.log(`✅ JobService: Job started successfully in ${collection} collection`);
       return {
         success: true,
         message: 'Job started successfully',
@@ -522,14 +599,22 @@ class JobService {
       const db = await getDb();
       const batch = writeBatch(db);
       
-      // Step 1: Get the current job data
-      const jobRef = doc(db, this.JOBS_COLLECTION, request.jobId);
-      const jobDoc = await getDoc(jobRef);
+      // Step 1: Get the current job data - check both collections
+      let jobRef = doc(db, this.JOBS_COLLECTION, request.jobId);
+      let jobDoc = await getDoc(jobRef);
+      let sourceCollection = this.JOBS_COLLECTION;
+
+      // If not found in 'jobs', try 'operational_jobs'
+      if (!jobDoc.exists()) {
+        jobRef = doc(db, this.OPERATIONAL_JOBS_COLLECTION, request.jobId);
+        jobDoc = await getDoc(jobRef);
+        sourceCollection = this.OPERATIONAL_JOBS_COLLECTION;
+      }
 
       if (!jobDoc.exists()) {
         return {
           success: false,
-          error: 'Job not found',
+          error: 'Job not found in any collection',
         };
       }
 
@@ -578,19 +663,20 @@ class JobService {
         // Original job metadata for reference
         originalJobId: request.jobId,
         originalCreatedAt: jobData.createdAt,
+        sourceCollection: sourceCollection, // Track which collection it came from
       };
 
       // Step 4: Add to completed_jobs collection
       const completedJobRef = doc(db, this.COMPLETED_JOBS_COLLECTION, request.jobId);
       batch.set(completedJobRef, completedJobData);
 
-      // Step 5: Remove from active jobs collection
+      // Step 5: Remove from active jobs collection (either 'jobs' or 'operational_jobs')
       batch.delete(jobRef);
 
       // Step 6: Commit the transaction
       await batch.commit();
 
-      console.log('✅ JobService: Job completed and moved to completed_jobs collection successfully');
+      console.log(`✅ JobService: Job completed and moved from ${sourceCollection} to completed_jobs collection successfully`);
       return {
         success: true,
         message: 'Job completed and moved to completed collection successfully',

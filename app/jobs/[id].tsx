@@ -153,24 +153,43 @@ export default function JobDetailsScreen() {
     try {
       setIsLoading(true);
       
-      // Try to get the specific job document directly
+      // Try to get the job from both 'jobs' and 'operational_jobs' collections
       const db = await getDb();
-      const jobDocRef = doc(db, 'jobs', id);
-      const jobDoc = await getDoc(jobDocRef);
+      
+      // Try 'jobs' collection first
+      let jobDocRef = doc(db, 'jobs', id);
+      let jobDoc = await getDoc(jobDocRef);
+      let collection = 'jobs';
+      
+      // If not found, try 'operational_jobs' collection
+      if (!jobDoc.exists()) {
+        console.log('🔍 Job not found in jobs collection, trying operational_jobs...');
+        jobDocRef = doc(db, 'operational_jobs', id);
+        jobDoc = await getDoc(jobDocRef);
+        collection = 'operational_jobs';
+      }
       
       if (jobDoc.exists()) {
         const jobData = jobDoc.data();
         
-        console.log('🔍 Job Details Debug:', {
+        console.log(`🔍 Job Details Debug (from ${collection}):`, {
           jobId: id,
+          collection,
           jobDataKeys: Object.keys(jobData),
           assignedTo: jobData.assignedTo,
           userId: jobData.userId,
           assignedStaffId: jobData.assignedStaffId,
           assignedStaffDocId: jobData.assignedStaffDocId,
+          status: jobData.status,
           currentUserId: user.id,
           currentUserFirebaseId: (currentProfile as any)?.userId || 'not available'
         });
+        
+        // For unassigned operational_jobs (status: pending, no assignedStaffId), allow any cleaner to view
+        const isUnassignedOperationalJob = 
+          collection === 'operational_jobs' && 
+          jobData.status === 'pending' && 
+          !jobData.assignedStaffId;
         
         // More flexible verification - check multiple possible assignment fields
         const isAssignedToUser = 
@@ -184,7 +203,7 @@ export default function JobDetailsScreen() {
           jobData.assignedStaffId === (currentProfile as any)?.userId || // Firebase UID in assignedStaffId
           jobData.assignedStaffDocId === (currentProfile as any)?.userId; // Firebase UID in assignedStaffDocId
         
-        if (isAssignedToUser) {
+        if (isAssignedToUser || isUnassignedOperationalJob) {
           // Convert Firestore Timestamps to JavaScript Dates
           const processedJobData = {
             ...jobData,
@@ -205,6 +224,10 @@ export default function JobDetailsScreen() {
             checkOutType: typeof processedJobData.checkOutDate
           });
           
+          if (isUnassignedOperationalJob) {
+            console.log('✅ Unassigned operational job - accessible to all cleaners');
+          }
+          
           setJob({ id: jobDoc.id, ...processedJobData } as unknown as Job);
           setPhotos(jobData.photos || []);
         } else {
@@ -214,7 +237,8 @@ export default function JobDetailsScreen() {
               userId: jobData.userId, 
               staffId: jobData.staffId,
               assignedStaffId: jobData.assignedStaffId,
-              assignedStaffDocId: jobData.assignedStaffDocId
+              assignedStaffDocId: jobData.assignedStaffDocId,
+              status: jobData.status
             },
             userData: { 
               id: user.id, 
@@ -225,6 +249,7 @@ export default function JobDetailsScreen() {
           router.back();
         }
       } else {
+        console.error('❌ Job not found in either collection:', id);
         Alert.alert('Job Not Found', 'The requested job could not be found');
         router.back();
       }
@@ -315,6 +340,28 @@ export default function JobDetailsScreen() {
       Alert.alert('Error', 'Failed to upload photo');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleAcceptJob = async () => {
+    if (!job || !user?.id) return;
+
+    try {
+      const response = await jobService.acceptJob({
+        jobId: job.id,
+        staffId: user.id,
+        acceptedAt: new Date()
+      });
+      
+      if (response.success) {
+        setJob(prev => prev ? { ...prev, status: 'accepted', acceptedAt: new Date() } : null);
+        Alert.alert('Success', 'Job accepted successfully! You can now start the job when you\'re ready.');
+      } else {
+        Alert.alert('Error', response.error || 'Failed to accept job');
+      }
+    } catch (error) {
+      console.error('Error accepting job:', error);
+      Alert.alert('Error', 'Failed to accept job');
     }
   };
 
@@ -577,7 +624,12 @@ export default function JobDetailsScreen() {
                 {job.bookingRef && (
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Booking Reference:</Text>
-                    <Text style={styles.detailValue}>{job.bookingRef}</Text>
+                    <Text style={styles.detailValue}>
+                      {typeof job.bookingRef === 'object' 
+                        ? (job.bookingRef as any).confirmationCode || (job.bookingRef as any).id || JSON.stringify(job.bookingRef)
+                        : job.bookingRef
+                      }
+                    </Text>
                   </View>
                 )}
                 
@@ -685,8 +737,369 @@ export default function JobDetailsScreen() {
           </View>
         )}
 
+        {/* Property Details Card */}
+        {(job as any).propertyRef && (
+          <View style={styles.card}>
+            <View style={styles.cardGradient}>
+              <View style={styles.sectionHeader}>
+                <Building size={20} color={BrandTheme.colors.YELLOW} />
+                <Text style={styles.sectionTitle}>Property Details</Text>
+              </View>
+              <View style={styles.propertyDetailsGrid}>
+                {(job as any).propertyRef.type && (
+                  <View style={styles.propertyDetail}>
+                    <Text style={styles.propertyDetailLabel}>Type:</Text>
+                    <Text style={styles.propertyDetailValue}>
+                      {(job as any).propertyRef.type.charAt(0).toUpperCase() + (job as any).propertyRef.type.slice(1)}
+                    </Text>
+                  </View>
+                )}
+                {(job as any).propertyRef.bedrooms && (
+                  <View style={styles.propertyDetail}>
+                    <Text style={styles.propertyDetailLabel}>Bedrooms:</Text>
+                    <Text style={styles.propertyDetailValue}>{(job as any).propertyRef.bedrooms}</Text>
+                  </View>
+                )}
+                {(job as any).propertyRef.bathrooms && (
+                  <View style={styles.propertyDetail}>
+                    <Text style={styles.propertyDetailLabel}>Bathrooms:</Text>
+                    <Text style={styles.propertyDetailValue}>{(job as any).propertyRef.bathrooms}</Text>
+                  </View>
+                )}
+                {(job as any).propertyRef.size && (
+                  <View style={styles.propertyDetail}>
+                    <Text style={styles.propertyDetailLabel}>Size:</Text>
+                    <Text style={styles.propertyDetailValue}>{(job as any).propertyRef.size}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Payment Information */}
+        {(job as any).compensation && (
+          <View style={styles.card}>
+            <View style={[styles.cardGradient, { backgroundColor: 'rgba(198, 255, 0, 0.1)' }]}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.paymentIcon}>💰</Text>
+                <Text style={styles.sectionTitle}>Payment</Text>
+              </View>
+              <View style={styles.paymentContent}>
+                <Text style={styles.paymentAmount}>
+                  {(job as any).compensation.amount?.toLocaleString()} {(job as any).compensation.currency || 'THB'}
+                </Text>
+                {(job as any).compensation.paymentMethod && (
+                  <Text style={styles.paymentDetail}>
+                    Via {(job as any).compensation.paymentMethod.replace('_', ' ')}
+                  </Text>
+                )}
+                {(job as any).compensation.paymentTiming && (
+                  <Text style={styles.paymentDetail}>
+                    Paid {(job as any).compensation.paymentTiming === 'completion' ? 'upon completion' : (job as any).compensation.paymentTiming}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Interactive Checklist */}
+        {(job as any).checklist && (job as any).checklist.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardGradient}>
+              <View style={styles.sectionHeader}>
+                <CheckCircle size={20} color={BrandTheme.colors.YELLOW} />
+                <Text style={styles.sectionTitle}>Checklist</Text>
+                <Text style={styles.checklistProgress}>
+                  {(job as any).checklist.filter((item: any) => item.completed).length}/{(job as any).checklist.length}
+                </Text>
+              </View>
+              
+              {/* Progress Bar */}
+              <View style={styles.progressBarContainer}>
+                <View 
+                  style={[
+                    styles.progressBarFill, 
+                    { width: `${((job as any).checklist.filter((item: any) => item.completed).length / (job as any).checklist.length) * 100}%` }
+                  ]} 
+                />
+              </View>
+
+              {/* Checklist Items */}
+              <View style={styles.checklistItems}>
+                {(job as any).checklist.map((item: any, index: number) => (
+                  <TouchableOpacity 
+                    key={index}
+                    style={styles.checklistItem}
+                    onPress={() => {
+                      // Toggle checklist item
+                      const updatedChecklist = [...(job as any).checklist];
+                      updatedChecklist[index].completed = !updatedChecklist[index].completed;
+                      setJob({ ...job, checklist: updatedChecklist } as any);
+                      // TODO: Sync to Firebase
+                    }}
+                  >
+                    <View style={[styles.checkbox, item.completed && styles.checkboxChecked]}>
+                      {item.completed && <Text style={styles.checkmark}>✓</Text>}
+                    </View>
+                    <Text style={[styles.checklistText, item.completed && styles.checklistTextCompleted]}>
+                      {item.task}
+                    </Text>
+                    {item.required && (
+                      <Text style={styles.requiredBadge}>Required</Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Issues to Check */}
+        {(job as any).issuesReported && (job as any).issuesReported.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardGradient}>
+              <View style={styles.sectionHeader}>
+                <AlertTriangle size={20} color={BrandTheme.colors.WARNING} />
+                <Text style={styles.sectionTitle}>Issues to Check</Text>
+              </View>
+              {(job as any).issuesReported.map((issue: any, index: number) => (
+                <View key={index} style={styles.issueItem}>
+                  <View style={styles.issueHeader}>
+                    <View style={[styles.severityBadge, { 
+                      backgroundColor: issue.severity === 'high' ? '#ff4444' : 
+                                      issue.severity === 'medium' ? '#ff9800' : '#ffc107'
+                    }]}>
+                      <Text style={styles.severityText}>
+                        {issue.severity?.toUpperCase() || 'LOW'}
+                      </Text>
+                    </View>
+                    <Text style={styles.issueStatus}>{issue.status || 'Needs inspection'}</Text>
+                  </View>
+                  <Text style={styles.issueDescription}>{issue.description}</Text>
+                  {issue.reportedBy && (
+                    <Text style={styles.issueReportedBy}>Reported by: {issue.reportedBy}</Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Contact Information */}
+        {(job as any).contacts && (
+          <View style={styles.card}>
+            <View style={styles.cardGradient}>
+              <View style={styles.sectionHeader}>
+                <Phone size={20} color={BrandTheme.colors.YELLOW} />
+                <Text style={styles.sectionTitle}>Contact Information</Text>
+              </View>
+
+              {/* Property Manager */}
+              {(job as any).contacts.propertyManager && (
+                <View style={styles.contactCard}>
+                  <Text style={styles.contactRole}>Property Manager</Text>
+                  <Text style={styles.contactName}>{(job as any).contacts.propertyManager.name}</Text>
+                  {(job as any).contacts.propertyManager.availability && (
+                    <Text style={styles.contactAvailability}>
+                      Available: {(job as any).contacts.propertyManager.availability}
+                    </Text>
+                  )}
+                  <View style={styles.contactButtons}>
+                    {(job as any).contacts.propertyManager.phone && (
+                      <TouchableOpacity 
+                        style={styles.contactButton}
+                        onPress={() => Linking.openURL(`tel:${(job as any).contacts.propertyManager.phone}`)}
+                      >
+                        <Phone size={16} color={BrandTheme.colors.BLACK} />
+                        <Text style={styles.contactButtonText}>Call</Text>
+                      </TouchableOpacity>
+                    )}
+                    {(job as any).contacts.propertyManager.email && (
+                      <TouchableOpacity 
+                        style={styles.contactButton}
+                        onPress={() => Linking.openURL(`mailto:${(job as any).contacts.propertyManager.email}`)}
+                      >
+                        <Text style={styles.contactButtonText}>✉️ Email</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* Emergency Contact */}
+              {(job as any).contacts.emergencyContact && (
+                <View style={[styles.contactCard, styles.emergencyContactCard]}>
+                  <Text style={styles.emergencyLabel}>🚨 EMERGENCY (24/7)</Text>
+                  <Text style={styles.contactName}>{(job as any).contacts.emergencyContact.name}</Text>
+                  <TouchableOpacity 
+                    style={[styles.contactButton, styles.emergencyButton]}
+                    onPress={() => Linking.openURL(`tel:${(job as any).contacts.emergencyContact.phone}`)}
+                  >
+                    <Phone size={18} color="#fff" />
+                    <Text style={styles.emergencyButtonText}>
+                      {(job as any).contacts.emergencyContact.phone}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Maintenance Team */}
+              {(job as any).contacts.maintenanceTeam && (
+                <View style={styles.contactCard}>
+                  <Text style={styles.contactRole}>Maintenance Team</Text>
+                  <Text style={styles.contactName}>{(job as any).contacts.maintenanceTeam.name}</Text>
+                  <View style={styles.contactButtons}>
+                    {(job as any).contacts.maintenanceTeam.phone && (
+                      <TouchableOpacity 
+                        style={styles.contactButton}
+                        onPress={() => Linking.openURL(`tel:${(job as any).contacts.maintenanceTeam.phone}`)}
+                      >
+                        <Phone size={16} color={BrandTheme.colors.BLACK} />
+                        <Text style={styles.contactButtonText}>Call</Text>
+                      </TouchableOpacity>
+                    )}
+                    {(job as any).contacts.maintenanceTeam.email && (
+                      <TouchableOpacity 
+                        style={styles.contactButton}
+                        onPress={() => Linking.openURL(`mailto:${(job as any).contacts.maintenanceTeam.email}`)}
+                      >
+                        <Text style={styles.contactButtonText}>✉️ Email</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Guest Information */}
+        {((job as any).guestName || (job as any).guestContact || (job as any).guestNationality) && (
+          <View style={styles.card}>
+            <View style={styles.cardGradient}>
+              <View style={styles.sectionHeader}>
+                <User size={20} color={BrandTheme.colors.YELLOW} />
+                <Text style={styles.sectionTitle}>Guest Information</Text>
+              </View>
+              {(job as any).guestName && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Name:</Text>
+                  <Text style={styles.detailValue}>{(job as any).guestName}</Text>
+                </View>
+              )}
+              {(job as any).guestCount && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Guests:</Text>
+                  <Text style={styles.detailValue}>{(job as any).guestCount} people</Text>
+                </View>
+              )}
+              {(job as any).guestNationality && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Nationality:</Text>
+                  <Text style={styles.detailValue}>{(job as any).guestNationality}</Text>
+                </View>
+              )}
+              {(job as any).guestContact && (
+                <TouchableOpacity 
+                  style={styles.guestContactButton}
+                  onPress={() => Linking.openURL(`tel:${(job as any).guestContact}`)}
+                >
+                  <Phone size={16} color={BrandTheme.colors.BLACK} />
+                  <Text style={styles.guestContactText}>{(job as any).guestContact}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Required Supplies & Equipment */}
+        {(((job as any).requiredSupplies && (job as any).requiredSupplies.length > 0) || 
+          ((job as any).equipmentNeeded && (job as any).equipmentNeeded.length > 0)) && (
+          <View style={styles.card}>
+            <View style={styles.cardGradient}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.paymentIcon}>🧰</Text>
+                <Text style={styles.sectionTitle}>Bring With You</Text>
+              </View>
+              
+              {(job as any).equipmentNeeded && (job as any).equipmentNeeded.length > 0 && (
+                <View style={styles.suppliesSection}>
+                  <Text style={styles.suppliesSectionTitle}>Equipment:</Text>
+                  {(job as any).equipmentNeeded.map((item: string, index: number) => (
+                    <Text key={index} style={styles.supplyItem}>• {item}</Text>
+                  ))}
+                </View>
+              )}
+
+              {(job as any).requiredSupplies && (job as any).requiredSupplies.length > 0 && (
+                <View style={styles.suppliesSection}>
+                  <Text style={styles.suppliesSectionTitle}>Supplies to Restock:</Text>
+                  {(job as any).requiredSupplies.slice(0, 5).map((item: string, index: number) => (
+                    <Text key={index} style={styles.supplyItem}>• {item}</Text>
+                  ))}
+                  {(job as any).requiredSupplies.length > 5 && (
+                    <Text style={styles.supplyMore}>
+                      + {(job as any).requiredSupplies.length - 5} more items
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Safety Notes */}
+        {(job as any).safetyNotes && (job as any).safetyNotes.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardGradient}>
+              <View style={styles.sectionHeader}>
+                <AlertTriangle size={20} color={BrandTheme.colors.WARNING} />
+                <Text style={styles.sectionTitle}>Safety Guidelines</Text>
+              </View>
+              {(job as any).safetyNotes.map((note: string, index: number) => (
+                <View key={index} style={styles.safetyNoteItem}>
+                  <Text style={styles.safetyNoteBullet}>⚠️</Text>
+                  <Text style={styles.safetyNoteText}>{note}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Required Skills */}
+        {(job as any).requiredSkills && (job as any).requiredSkills.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardGradient}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.paymentIcon}>✓</Text>
+                <Text style={styles.sectionTitle}>Required Skills</Text>
+              </View>
+              <View style={styles.skillsContainer}>
+                {(job as any).requiredSkills.map((skill: string, index: number) => (
+                  <View key={index} style={styles.skillBadge}>
+                    <Text style={styles.skillText}>{skill}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Action Buttons */}
         <View style={styles.actionsContainer}>
+          {(job.status === 'pending' || job.status === 'assigned') && (
+            <TouchableOpacity style={styles.actionButton} onPress={handleAcceptJob}>
+              <View
+                style={[styles.actionButtonGradient, { backgroundColor: BrandTheme.colors.YELLOW }]}
+              >
+                <CheckCircle size={20} color={BrandTheme.colors.BLACK} />
+                <Text style={[styles.actionButtonText, { color: BrandTheme.colors.BLACK }]}>Accept Job</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+
           {job.status === 'accepted' && (
             <TouchableOpacity style={styles.actionButton} onPress={handleStartJob}>
               <View
@@ -1067,5 +1480,332 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  // Property Details
+  propertyDetailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: BrandTheme.spacing.MD,
+    marginTop: BrandTheme.spacing.SM,
+  },
+  propertyDetail: {
+    flex: 1,
+    minWidth: '45%',
+    padding: BrandTheme.spacing.SM,
+    backgroundColor: BrandTheme.colors.SURFACE_2,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.BORDER,
+  },
+  propertyDetailLabel: {
+    fontSize: 11,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  propertyDetailValue: {
+    fontSize: 16,
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    fontWeight: 'bold',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+  },
+  // Payment Information
+  paymentIcon: {
+    fontSize: 20,
+    marginRight: BrandTheme.spacing.SM,
+  },
+  paymentContent: {
+    alignItems: 'center',
+    marginTop: BrandTheme.spacing.LG,
+    padding: BrandTheme.spacing.LG,
+    backgroundColor: BrandTheme.colors.SURFACE_2,
+    borderWidth: 2,
+    borderColor: BrandTheme.colors.YELLOW,
+  },
+  paymentAmount: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.YELLOW,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    marginBottom: BrandTheme.spacing.SM,
+  },
+  paymentDetail: {
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    marginTop: 4,
+  },
+  // Interactive Checklist
+  checklistProgress: {
+    marginLeft: 'auto',
+    fontSize: 14,
+    color: BrandTheme.colors.YELLOW,
+    fontWeight: 'bold',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+  },
+  progressBarContainer: {
+    height: 8,
+    backgroundColor: BrandTheme.colors.SURFACE_2,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.BORDER,
+    marginVertical: BrandTheme.spacing.MD,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: BrandTheme.colors.YELLOW,
+  },
+  checklistItems: {
+    gap: BrandTheme.spacing.SM,
+  },
+  checklistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.MD,
+    padding: BrandTheme.spacing.MD,
+    backgroundColor: BrandTheme.colors.SURFACE_2,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.BORDER,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderWidth: 2,
+    borderColor: BrandTheme.colors.BORDER,
+    backgroundColor: BrandTheme.colors.SURFACE_1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: BrandTheme.colors.YELLOW,
+    borderColor: BrandTheme.colors.YELLOW,
+  },
+  checkmark: {
+    fontSize: 16,
+    color: BrandTheme.colors.BLACK,
+    fontWeight: 'bold',
+  },
+  checklistText: {
+    flex: 1,
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+  },
+  checklistTextCompleted: {
+    textDecorationLine: 'line-through',
+    color: BrandTheme.colors.TEXT_SECONDARY,
+  },
+  requiredBadge: {
+    fontSize: 10,
+    color: BrandTheme.colors.WARNING,
+    fontWeight: 'bold',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    textTransform: 'uppercase',
+    paddingHorizontal: BrandTheme.spacing.SM,
+    paddingVertical: 2,
+    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.WARNING,
+  },
+  // Issues Section
+  issueItem: {
+    padding: BrandTheme.spacing.MD,
+    backgroundColor: BrandTheme.colors.SURFACE_2,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.BORDER,
+    marginTop: BrandTheme.spacing.SM,
+  },
+  issueHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: BrandTheme.spacing.SM,
+  },
+  severityBadge: {
+    paddingHorizontal: BrandTheme.spacing.SM,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  severityText: {
+    fontSize: 10,
+    color: '#fff',
+    fontWeight: 'bold',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+  },
+  issueStatus: {
+    fontSize: 12,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+  },
+  issueDescription: {
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    marginBottom: BrandTheme.spacing.SM,
+    lineHeight: 20,
+  },
+  issueReportedBy: {
+    fontSize: 12,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    fontStyle: 'italic',
+  },
+  // Contact Cards
+  contactCard: {
+    padding: BrandTheme.spacing.LG,
+    backgroundColor: BrandTheme.colors.SURFACE_2,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.BORDER,
+    marginTop: BrandTheme.spacing.MD,
+  },
+  emergencyContactCard: {
+    backgroundColor: 'rgba(244, 67, 54, 0.1)',
+    borderColor: '#f44336',
+    borderWidth: 2,
+  },
+  contactRole: {
+    fontSize: 11,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  emergencyLabel: {
+    fontSize: 12,
+    color: '#f44336',
+    fontWeight: 'bold',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    marginBottom: BrandTheme.spacing.SM,
+  },
+  contactName: {
+    fontSize: 16,
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    fontWeight: 'bold',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    marginBottom: BrandTheme.spacing.SM,
+  },
+  contactAvailability: {
+    fontSize: 12,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    marginBottom: BrandTheme.spacing.MD,
+  },
+  contactButtons: {
+    flexDirection: 'row',
+    gap: BrandTheme.spacing.SM,
+  },
+  contactButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: BrandTheme.spacing.SM,
+    padding: BrandTheme.spacing.MD,
+    backgroundColor: BrandTheme.colors.YELLOW,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.YELLOW,
+  },
+  contactButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.BLACK,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+  },
+  emergencyButton: {
+    backgroundColor: '#f44336',
+    borderColor: '#f44336',
+  },
+  emergencyButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+  },
+  // Guest Information
+  guestContactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BrandTheme.spacing.SM,
+    padding: BrandTheme.spacing.MD,
+    backgroundColor: BrandTheme.colors.YELLOW,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.YELLOW,
+    marginTop: BrandTheme.spacing.MD,
+    justifyContent: 'center',
+  },
+  guestContactText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: BrandTheme.colors.BLACK,
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+  },
+  // Supplies & Equipment
+  suppliesSection: {
+    marginTop: BrandTheme.spacing.MD,
+  },
+  suppliesSectionTitle: {
+    fontSize: 13,
+    color: BrandTheme.colors.TEXT_SECONDARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: BrandTheme.spacing.SM,
+  },
+  supplyItem: {
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    marginVertical: 2,
+    lineHeight: 20,
+  },
+  supplyMore: {
+    fontSize: 13,
+    color: BrandTheme.colors.YELLOW,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    marginTop: BrandTheme.spacing.SM,
+    fontStyle: 'italic',
+  },
+  // Safety Notes
+  safetyNoteItem: {
+    flexDirection: 'row',
+    gap: BrandTheme.spacing.SM,
+    padding: BrandTheme.spacing.MD,
+    backgroundColor: BrandTheme.colors.SURFACE_2,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.BORDER,
+    marginTop: BrandTheme.spacing.SM,
+  },
+  safetyNoteBullet: {
+    fontSize: 18,
+  },
+  safetyNoteText: {
+    flex: 1,
+    fontSize: 14,
+    color: BrandTheme.colors.TEXT_PRIMARY,
+    fontFamily: BrandTheme.typography.fontFamily.regular,
+    lineHeight: 20,
+  },
+  // Required Skills
+  skillsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: BrandTheme.spacing.SM,
+    marginTop: BrandTheme.spacing.SM,
+  },
+  skillBadge: {
+    paddingHorizontal: BrandTheme.spacing.MD,
+    paddingVertical: BrandTheme.spacing.SM,
+    backgroundColor: BrandTheme.colors.SURFACE_2,
+    borderWidth: 1,
+    borderColor: BrandTheme.colors.YELLOW,
+  },
+  skillText: {
+    fontSize: 12,
+    color: BrandTheme.colors.YELLOW,
+    fontWeight: 'bold',
+    fontFamily: BrandTheme.typography.fontFamily.primary,
+    textTransform: 'uppercase',
   },
 });

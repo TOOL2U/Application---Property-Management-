@@ -14,6 +14,7 @@ import {
   Dimensions,
   StatusBar,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -77,14 +78,22 @@ export default function SelectProfileScreen() {
 
   const handleProfileSelect = async (profile: StaffProfile) => {
     console.log('👆 SelectProfile: Profile selected:', profile.id, profile.name);
+    console.log('📋 SelectProfile: Profile details:', {
+      id: profile.id,
+      name: profile.name,
+      email: profile.email,
+      role: profile.role
+    });
     setLoadingProfileId(profile.id);
 
     try {
       // Check if profile has a PIN set
+      console.log('🔍 SelectProfile: Checking if profile has PIN...');
       const hasPIN = await hasProfilePIN(profile.id);
+      console.log(`🔐 SelectProfile: Profile ${profile.name} has PIN: ${hasPIN}`);
       
       if (hasPIN) {
-        console.log('🔐 SelectProfile: Profile has PIN, navigating to PIN entry');
+        console.log('✅ SelectProfile: Profile has PIN, navigating to PIN entry');
         router.push({
           pathname: '/(auth)/enter-pin',
           params: {
@@ -94,19 +103,23 @@ export default function SelectProfileScreen() {
           }
         });
       } else {
-        console.log('⚙️ SelectProfile: Profile has no PIN, navigating to setup');
+        console.log('⚙️ SelectProfile: Profile has NO PIN, navigating to PIN creation');
         router.push({
-          pathname: '/(auth)/enter-pin',
+          pathname: '/(auth)/create-pin',
           params: {
             profileId: profile.id,
             profileName: profile.name,
             profileRole: profile.role,
-            setupMode: 'true',
           }
         });
       }
     } catch (error) {
       console.error('❌ SelectProfile: Profile selection failed:', error);
+      Alert.alert(
+        'Error',
+        'Failed to load profile. Please try again.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setLoadingProfileId(null);
     }

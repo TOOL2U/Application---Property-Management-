@@ -115,6 +115,15 @@ export function PINAuthProvider({ children }: PINAuthProviderProps) {
     }
   }, [staffProfiles.length > 0]);
 
+  // Retry session restoration when profiles are loaded
+  useEffect(() => {
+    // Only retry if we have profiles but no authenticated user yet
+    if (staffProfiles.length > 0 && !isAuthenticated && !isLoading) {
+      console.log('🔄 PINAuth: Profiles loaded, retrying session restoration...');
+      checkExistingSession();
+    }
+  }, [staffProfiles.length]);
+
   const initializeAuth = async () => {
     try {
       setIsLoading(true);
@@ -297,16 +306,24 @@ export function PINAuthProvider({ children }: PINAuthProviderProps) {
     try {
       const session = await localStaffService.getCurrentSession();
       if (session) {
-        const profile = await localStaffService.getStaffProfile(session.profileId);
+        // Try to find profile in loaded profiles first (from state)
+        let profile: StaffProfile | undefined = staffProfiles.find(p => p.id === session.profileId);
+        
+        // If not in state yet, try AsyncStorage
+        if (!profile) {
+          const cachedProfile = await localStaffService.getStaffProfile(session.profileId);
+          profile = cachedProfile || undefined;
+        }
+        
         if (profile) {
           setCurrentSession(session);
           setCurrentProfile(profile);
           setIsAuthenticated(true);
           console.log(`✅ PINAuth: Restored session for ${profile.name}`);
         } else {
-          // Profile not found, clear invalid session
-          await localStaffService.clearSession();
-          console.log('⚠️ PINAuth: Profile not found for session, cleared session');
+          // Profile not found YET - might still be loading
+          // Don't clear session, just log and wait for profiles to load
+          console.log('⚠️ PINAuth: Profile not found for session yet, will retry after profiles load');
         }
       } else {
         console.log('🔍 PINAuth: No existing session found');

@@ -38,6 +38,7 @@ interface StaffJobServiceResponse {
 
 class StaffJobService {
   private readonly JOBS_COLLECTION = 'jobs';
+  private readonly OPERATIONAL_JOBS_COLLECTION = 'operational_jobs'; // NEW: Webapp jobs
   private readonly CACHE_KEY_PREFIX = 'staff_jobs_';
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
   private unsubscribeCallbacks: Map<string, Unsubscribe> = new Map();
@@ -265,6 +266,7 @@ class StaffJobService {
 
   /**
    * Update job status (accept, start, complete, etc.)
+   * Supports BOTH 'jobs' and 'operational_jobs' collections
    */
   async updateJobStatus(
     jobId: string,
@@ -276,17 +278,44 @@ class StaffJobService {
       console.log(`🔄 StaffJobService: Updating job ${jobId} status to ${status}`);
 
       const db = await getDb();
-      const jobRef = doc(db, this.JOBS_COLLECTION, jobId);
+      
+      // Try to find job in both collections
+      let jobRef = doc(db, this.JOBS_COLLECTION, jobId);
+      let jobDoc = await getDoc(jobRef);
+      let collection = this.JOBS_COLLECTION;
+
+      // If not found in 'jobs', try 'operational_jobs'
+      if (!jobDoc.exists()) {
+        jobRef = doc(db, this.OPERATIONAL_JOBS_COLLECTION, jobId);
+        jobDoc = await getDoc(jobRef);
+        collection = this.OPERATIONAL_JOBS_COLLECTION;
+      }
+
+      if (!jobDoc.exists()) {
+        console.error(`❌ StaffJobService: Job ${jobId} not found in any collection`);
+        return {
+          success: false,
+          error: 'Job not found',
+        };
+      }
+
       const updateData: Record<string, any> = {
         status,
         updatedAt: serverTimestamp(),
         ...additionalData,
       };
 
-      // Add status-specific timestamps
+      // Add status-specific timestamps and fields
       switch (status) {
         case 'accepted':
           updateData.acceptedAt = serverTimestamp();
+          // If job was unassigned, assign it to this staff member
+          const jobData = jobDoc.data();
+          if (!jobData?.assignedStaffId || jobData.assignedStaffId === null) {
+            updateData.assignedStaffId = staffId;
+            updateData.assignedTo = staffId;
+            console.log('📌 StaffJobService: Assigning unassigned job to staff:', staffId);
+          }
           break;
         case 'in_progress':
           updateData.startedAt = serverTimestamp();
@@ -301,7 +330,7 @@ class StaffJobService {
       // Invalidate cache for this staff member
       await this.invalidateCache(staffId);
 
-      console.log(`✅ StaffJobService: Job ${jobId} status updated to ${status}`);
+      console.log(`✅ StaffJobService: Job ${jobId} status updated to ${status} in ${collection} collection`);
       return { success: true };
 
     } catch (error) {

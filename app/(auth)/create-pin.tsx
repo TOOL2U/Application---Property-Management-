@@ -1,6 +1,6 @@
 /**
- * Create PIN Screen - AIS Telecom Style
- * Beautiful PIN creation with neon green accents and dark theme matching profile selection
+ * Create PIN Screen - Sia Moon Brand Kit Style
+ * Beautiful PIN creation with yellow accents matching the brand kit
  */
 
 import React, { useState, useEffect } from 'react';
@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { usePINAuth } from "@/contexts/PINAuthContext";
+import { BrandTheme } from '@/constants/BrandTheme';
 
 export default function CreatePINScreen() {
   const router = useRouter();
@@ -161,7 +162,7 @@ export default function CreatePINScreen() {
           >
             {currentPin.length > index ? (
               <LinearGradient
-                colors={['#C6FF00', '#A3E635']}
+                colors={[BrandTheme.colors.YELLOW, BrandTheme.colors.YELLOW]}
                 style={{
                   width: 20,
                   height: 20,
@@ -174,7 +175,7 @@ export default function CreatePINScreen() {
                   width: 16,
                   height: 16,
                   borderRadius: 8,
-                  backgroundColor: '#C6FF00',
+                  backgroundColor: BrandTheme.colors.YELLOW,
                 }} />
               </LinearGradient>
             ) : (
@@ -183,7 +184,7 @@ export default function CreatePINScreen() {
                 height: 20,
                 borderRadius: 10,
                 borderWidth: 2,
-                borderColor: '#374151',
+                borderColor: BrandTheme.colors.GREY_SECONDARY,
                 backgroundColor: 'transparent',
               }} />
             )}
@@ -228,11 +229,11 @@ export default function CreatePINScreen() {
                       width: 72,
                       height: 72,
                       borderRadius: 36,
-                      backgroundColor: '#1C1F2A',
+                      backgroundColor: BrandTheme.colors.SURFACE_1,
                       alignItems: 'center',
                       justifyContent: 'center',
                       borderWidth: 1,
-                      borderColor: currentPin.length === 0 ? '#374151' : '#C6FF00',
+                      borderColor: currentPin.length === 0 ? BrandTheme.colors.BORDER : BrandTheme.colors.YELLOW,
                       shadowColor: '#000',
                       shadowOffset: { width: 0, height: 2 },
                       shadowOpacity: 0.3,
@@ -243,7 +244,7 @@ export default function CreatePINScreen() {
                     <Ionicons
                       name="backspace-outline"
                       size={28}
-                      color={currentPin.length === 0 ? '#71717A' : '#C6FF00'}
+                      color={currentPin.length === 0 ? BrandTheme.colors.TEXT_SECONDARY : BrandTheme.colors.YELLOW}
                     />
                   </TouchableOpacity>
                 );
@@ -259,11 +260,11 @@ export default function CreatePINScreen() {
                     width: 72,
                     height: 72,
                     borderRadius: 36,
-                    backgroundColor: '#1C1F2A',
+                    backgroundColor: BrandTheme.colors.SURFACE_1,
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: 1,
-                    borderColor: '#374151',
+                    borderColor: BrandTheme.colors.BORDER,
                     shadowColor: '#000',
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.3,
@@ -272,10 +273,10 @@ export default function CreatePINScreen() {
                   }}
                 >
                   <Text style={{
-                    color: 'white',
+                    color: BrandTheme.colors.TEXT_PRIMARY,
                     fontSize: 24,
                     fontWeight: '600',
-                    fontFamily: 'Urbanist'
+                    fontFamily: BrandTheme.typography.fontFamily.primary
                   }}>
                     {item}
                   </Text>
@@ -290,22 +291,22 @@ export default function CreatePINScreen() {
 
   if (!profile) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0B0F1A' }}>
-        <StatusBar barStyle="light-content" backgroundColor="#0B0F1A" />
+      <View style={{ flex: 1, backgroundColor: BrandTheme.colors.GREY_PRIMARY }}>
+        <StatusBar barStyle="light-content" backgroundColor={BrandTheme.colors.GREY_PRIMARY} />
         <SafeAreaView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 32 }}>
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ color: 'white', fontSize: 18, fontFamily: 'Inter' }}>Profile not found</Text>
+            <Text style={{ color: BrandTheme.colors.TEXT_PRIMARY, fontSize: 18, fontFamily: BrandTheme.typography.fontFamily.regular }}>Profile not found</Text>
             <TouchableOpacity
               style={{
                 marginTop: 16,
-                backgroundColor: '#C6FF00',
+                backgroundColor: BrandTheme.colors.YELLOW,
                 paddingHorizontal: 24,
                 paddingVertical: 12,
-                borderRadius: 12,
+                borderRadius: BrandTheme.radius.SM,
               }}
               onPress={() => router.replace('/(auth)/select-profile')}
             >
-              <Text style={{ color: '#0B0F1A', fontWeight: '600', fontFamily: 'Inter' }}>Back to Profiles</Text>
+              <Text style={{ color: BrandTheme.colors.BLACK, fontWeight: '600', fontFamily: BrandTheme.typography.fontFamily.primary }}>Back to Profiles</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -323,8 +324,8 @@ export default function CreatePINScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0B0F1A' }}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B0F1A" />
+    <View style={{ flex: 1, backgroundColor: BrandTheme.colors.GREY_PRIMARY }}>
+      <StatusBar barStyle="light-content" backgroundColor={BrandTheme.colors.GREY_PRIMARY} />
       <SafeAreaView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 32 }}>
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 32 }}>
@@ -332,21 +333,21 @@ export default function CreatePINScreen() {
             style={{ marginRight: 16, padding: 8 }}
             onPress={handleBackToProfiles}
           >
-            <Ionicons name="chevron-back" size={24} color="#C6FF00" />
+            <Ionicons name="chevron-back" size={24} color={BrandTheme.colors.YELLOW} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={{
-              color: 'white',
+              color: BrandTheme.colors.TEXT_PRIMARY,
               fontSize: 24,
               fontWeight: 'bold',
-              fontFamily: 'Urbanist'
+              fontFamily: BrandTheme.typography.fontFamily.primary
             }}>
               {step === 'create' ? 'Create PIN' : 'Confirm PIN'}
             </Text>
             <Text style={{
-              color: '#9CA3AF',
+              color: BrandTheme.colors.TEXT_SECONDARY,
               fontSize: 14,
-              fontFamily: 'Inter'
+              fontFamily: BrandTheme.typography.fontFamily.regular
             }}>
               {step === 'create' 
                 ? 'Set up a secure 4-digit PIN' 
@@ -360,7 +361,7 @@ export default function CreatePINScreen() {
           style={{ alignItems: 'center', marginBottom: 32 }}
         >
           <LinearGradient
-            colors={['#C6FF00', '#A3E635']}
+            colors={[BrandTheme.colors.YELLOW, BrandTheme.colors.YELLOW]}
             style={{
               width: 88,
               height: 88,
@@ -375,7 +376,7 @@ export default function CreatePINScreen() {
               width: 82,
               height: 82,
               borderRadius: 41,
-              backgroundColor: '#374151',
+              backgroundColor: BrandTheme.colors.GREY_SECONDARY,
               alignItems: 'center',
               justifyContent: 'center',
             }}>
@@ -386,10 +387,10 @@ export default function CreatePINScreen() {
                 />
               ) : (
                 <Text style={{
-                  color: '#C6FF00',
+                  color: BrandTheme.colors.YELLOW,
                   fontSize: 24,
                   fontWeight: 'bold',
-                  fontFamily: 'Urbanist'
+                  fontFamily: BrandTheme.typography.fontFamily.primary
                 }}>
                   {getInitials(profile.name)}
                 </Text>
@@ -397,19 +398,19 @@ export default function CreatePINScreen() {
             </View>
           </LinearGradient>
           <Text style={{
-            color: 'white',
+            color: BrandTheme.colors.TEXT_PRIMARY,
             fontSize: 20,
             fontWeight: '600',
             marginBottom: 4,
-            fontFamily: 'Urbanist'
+            fontFamily: BrandTheme.typography.fontFamily.primary
           }}>
             {profile.name}
           </Text>
           <Text style={{
-            color: '#9CA3AF',
+            color: BrandTheme.colors.TEXT_SECONDARY,
             fontSize: 14,
             textTransform: 'capitalize',
-            fontFamily: 'Inter'
+            fontFamily: BrandTheme.typography.fontFamily.regular
           }}>
             {profile.role}
           </Text>
@@ -420,10 +421,10 @@ export default function CreatePINScreen() {
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
         >
           <Text style={{
-            color: 'white',
+            color: BrandTheme.colors.TEXT_PRIMARY,
             fontSize: 18,
             marginBottom: 32,
-            fontFamily: 'Inter'
+            fontFamily: BrandTheme.typography.fontFamily.regular
           }}>
             {step === 'create' 
               ? 'Create your 4-digit PIN' 
@@ -434,11 +435,11 @@ export default function CreatePINScreen() {
 
           {error && (
             <Text style={{
-              color: '#EF4444',
+              color: BrandTheme.colors.ERROR,
               fontSize: 14,
               marginBottom: 16,
               textAlign: 'center',
-              fontFamily: 'Inter'
+              fontFamily: BrandTheme.typography.fontFamily.regular
             }}>
               {error}
             </Text>
@@ -446,7 +447,7 @@ export default function CreatePINScreen() {
 
           {isLoading ? (
             <View style={{ marginTop: 32 }}>
-              <ActivityIndicator size="large" color="#C6FF00" />
+              <ActivityIndicator size="large" color={BrandTheme.colors.YELLOW} />
             </View>
           ) : (
             renderNumberPad()
@@ -456,9 +457,9 @@ export default function CreatePINScreen() {
         {/* Footer */}
         <View style={{ alignItems: 'center', marginBottom: 32 }}>
           <Text style={{
-            color: '#6B7280',
+            color: BrandTheme.colors.TEXT_MUTED,
             fontSize: 12,
-            fontFamily: 'Inter'
+            fontFamily: BrandTheme.typography.fontFamily.regular
           }}>
             Secure PIN Authentication
           </Text>

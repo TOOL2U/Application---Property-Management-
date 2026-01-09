@@ -1,10 +1,12 @@
 /**
  * Custom hook for staff job management with PIN authentication integration
  * Provides offline-first caching, real-time updates, and job actions
+ * Now uses JobContext for real-time operational_jobs support
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePINAuth } from '@/contexts/PINAuthContext';
+import { useJobContext } from '@/contexts/JobContext';
 import { staffJobService } from '@/services/staffJobService';
 import { Job, JobStatus, JobFilter } from '@/types/job';
 
@@ -49,84 +51,36 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
 
   const { currentProfile } = usePINAuth();
   
-  // Use refs for stable references
-  const filtersRef = useRef(filters);
-  const enableCacheRef = useRef(enableCache);
-  
-  // Update refs when props change
-  filtersRef.current = filters;
-  enableCacheRef.current = enableCache;
+  // Use JobContext for real-time operational_jobs support
+  const jobContext = useJobContext();
   
   // State
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fromCache, setFromCache] = useState(false);
 
-  // Derived state - Filter out completed jobs since they're moved to completed_jobs collection
-  const activeJobs = jobs.filter(job => ['accepted', 'in_progress'].includes(job.status));
-  const pendingJobs = jobs.filter(job => job.status === 'assigned'); // Jobs assigned to staff, waiting for acceptance
-  const completedJobs: Job[] = []; // Always empty - completed jobs are moved to separate collection
+  // Get data from JobContext (includes both jobs + operational_jobs collections)
+  const jobs = jobContext.jobs as unknown as Job[];
+  const loading = jobContext.loading;
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Load jobs function - stabilized dependencies
-  const loadJobs = useCallback(async (useCache?: boolean) => {
-    if (!currentProfile?.id) {
-      console.log('❌ useStaffJobs: No current profile ID available');
-      setLoading(false);
-      return;
-    }
+  // Derived state - Filter jobs based on status
+  // pendingJobs now includes UNASSIGNED operational_jobs (status: pending, assignedStaffId: null)
+  const pendingJobs = jobs.filter(job => 
+    job.status === 'pending' || 
+    job.status === 'assigned'
+  );
+  const activeJobs = jobs.filter(job => 
+    job.status === 'accepted' || 
+    job.status === 'in_progress'
+  );
+  const completedJobs = jobs.filter(job => job.status === 'completed');
 
-    try {
-      console.log('🔄 useStaffJobs: Loading jobs for staff:', currentProfile.id);
-      console.log('🔍 useStaffJobs: Current profile details:', {
-        id: currentProfile.id,
-        name: currentProfile.name,
-        email: currentProfile.email,
-        role: currentProfile.role
-      });
-      
-      const response = await staffJobService.getStaffJobs(
-        currentProfile.id,
-        filtersRef.current,
-        useCache ?? enableCacheRef.current
-      );
-
-      if (response.success) {
-        // Filter out completed jobs - they should be in completed_jobs collection, not shown in mobile app
-        const activeJobsOnly = response.jobs.filter(job => job.status !== 'completed');
-        setJobs(activeJobsOnly);
-        setFromCache(response.fromCache || false);
-        setError(null);
-        console.log(`✅ useStaffJobs: Loaded ${activeJobsOnly.length} active jobs (from cache: ${response.fromCache})`);
-        if (response.jobs.length !== activeJobsOnly.length) {
-          console.log(`🗂️ useStaffJobs: Filtered out ${response.jobs.length - activeJobsOnly.length} completed jobs`);
-        }
-        console.log('🔍 useStaffJobs: Job details:', activeJobsOnly.map(job => ({
-          id: job.id,
-          title: job.title,
-          status: job.status,
-          assignedTo: job.assignedTo
-        })));
-      } else {
-        setError(response.error || 'Failed to load jobs');
-        console.error('❌ useStaffJobs: Failed to load jobs:', response.error);
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
-      console.error('❌ useStaffJobs: Error loading jobs:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentProfile?.id]); // Only depend on currentProfile.id
-
-  // Refresh jobs function
+  // Refresh jobs function - uses JobContext
   const refreshJobs = useCallback(async () => {
     setRefreshing(true);
-    await loadJobs(false); // Force fresh data
+    await jobContext.refreshJobs();
     setRefreshing(false);
-  }, [loadJobs]);
+  }, [jobContext.refreshJobs]);
 
   // Job action functions
   const acceptJob = useCallback(async (jobId: string): Promise<boolean> => {
@@ -143,15 +97,8 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
       );
 
       if (result.success) {
-        // Update local state optimistically
-        setJobs(prevJobs => 
-          prevJobs.map(job => 
-            job.id === jobId 
-              ? { ...job, status: 'accepted' as JobStatus, acceptedAt: new Date() }
-              : job
-          )
-        );
         console.log('✅ useStaffJobs: Job accepted successfully');
+        // JobContext real-time listener will update automatically
         return true;
       } else {
         setError(result.error || 'Failed to accept job');
@@ -179,15 +126,8 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
       );
 
       if (result.success) {
-        // Update local state optimistically
-        setJobs(prevJobs => 
-          prevJobs.map(job => 
-            job.id === jobId 
-              ? { ...job, status: 'in_progress' as JobStatus, startedAt: new Date() }
-              : job
-          )
-        );
         console.log('✅ useStaffJobs: Job started successfully');
+        // JobContext real-time listener will update automatically
         return true;
       } else {
         setError(result.error || 'Failed to start job');
@@ -223,15 +163,8 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
       );
 
       if (result.success) {
-        // Update local state optimistically
-        setJobs(prevJobs => 
-          prevJobs.map(job => 
-            job.id === jobId 
-              ? { ...job, status: 'completed' as JobStatus, completedAt: new Date() }
-              : job
-          )
-        );
         console.log('✅ useStaffJobs: Job completed successfully');
+        // JobContext real-time listener will update automatically
         return true;
       } else {
         setError(result.error || 'Failed to complete job');
@@ -263,15 +196,8 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
       );
 
       if (result.success) {
-        // Update local state optimistically
-        setJobs(prevJobs => 
-          prevJobs.map(job => 
-            job.id === jobId 
-              ? { ...job, status, ...additionalData }
-              : job
-          )
-        );
         console.log(`✅ useStaffJobs: Job ${jobId} status updated to ${status}`);
+        // JobContext real-time listener will update automatically
         return true;
       } else {
         setError(result.error || 'Failed to update job status');
@@ -296,51 +222,21 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
 
   const clearError = useCallback(() => {
     setError(null);
-  }, []);
+    jobContext.error && console.log('Cleared JobContext error');
+  }, [jobContext.error]);
 
-  // Effects
+  // Log job count for debugging
   useEffect(() => {
-    if (currentProfile?.id) {
-      loadJobs();
-    } else {
-      setJobs([]);
-      setLoading(false);
+    if (jobs.length > 0) {
+      console.log(`📊 useStaffJobs: ${jobs.length} total jobs (pending: ${pendingJobs.length}, active: ${activeJobs.length}, completed: ${completedJobs.length})`);
+      console.log('🔍 useStaffJobs: Job details:', jobs.map(job => ({
+        id: job.id,
+        title: job.title || 'Untitled',
+        status: job.status,
+        propertyName: job.propertyName || 'Unknown'
+      })));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProfile?.id]);
-
-  // Set up real-time listener
-  useEffect(() => {
-    if (!enableRealtime || !currentProfile?.id) {
-      return;
-    }
-
-    console.log('👂 useStaffJobs: Setting up real-time listener');
-    
-    const unsubscribe = staffJobService.subscribeToStaffJobs(
-      currentProfile.id,
-      (updatedJobs) => {
-        console.log(`📡 useStaffJobs: Real-time update - ${updatedJobs.length} jobs`);
-        setJobs(updatedJobs);
-        setFromCache(false);
-      },
-      filtersRef.current
-    );
-
-    return () => {
-      console.log('🔇 useStaffJobs: Cleaning up real-time listener');
-      unsubscribe();
-    };
-    // Only re-subscribe when currentProfile.id or enableRealtime changes, not on filters change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProfile?.id, enableRealtime]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      staffJobService.cleanup();
-    };
-  }, []);
+  }, [jobs.length, pendingJobs.length, activeJobs.length, completedJobs.length]);
 
   return {
     // Data
@@ -352,7 +248,7 @@ export function useStaffJobs(options: UseStaffJobsOptions = {}): UseStaffJobsRet
     // States
     loading,
     refreshing,
-    error,
+    error: error || jobContext.error,
     fromCache,
     
     // Actions

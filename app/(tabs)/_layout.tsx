@@ -1,11 +1,11 @@
-import { useEffect } from 'react';
-import { Tabs } from 'expo-router';
+import { useEffect, useMemo, useCallback } from 'react';
+import { Tabs, useSegments } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { usePINAuth } from "@/contexts/PINAuthContext";
 import { useAppNotifications } from "@/contexts/AppNotificationContext";
 import ScreenWrapper from '@/components/ScreenWrapper';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, Platform, ActivityIndicator, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from '@/hooks/useTranslation';
 import { BrandTheme } from '@/constants/BrandTheme';
 
@@ -81,10 +81,27 @@ export default function TabLayout() {
   const { unreadCount, notifications } = useAppNotifications();
   const { t } = useTranslation();
   const router = useRouter();
+  const segments = useSegments();
+
+  // Check if we're on the map screen - use segments instead of pathname
+  const isOnMapScreen = useMemo(() => {
+    return segments[1] === 'map';
+  }, [segments]);
+
+  // Handle FAB press - memoized to prevent re-renders
+  const handleFABPress = useCallback(() => {
+    if (isOnMapScreen) {
+      router.push('/');
+    } else {
+      router.push('/map');
+    }
+  }, [isOnMapScreen, router]);
 
   console.log('🏠 TabLayout rendered:', {
     isAuthenticated,
-    isLoading
+    isLoading,
+    segments,
+    isOnMapScreen
   });
 
   // DEBUG: Log notification state for troubleshooting
@@ -93,6 +110,14 @@ export default function TabLayout() {
     totalNotifications: notifications.length,
     notificationIds: notifications.map(n => n.id).slice(0, 3)
   });
+
+  // Redirect to login if not authenticated - MUST be before any conditional returns
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      console.log('🏠 TabLayout: Not authenticated, redirecting to select-profile');
+      router.replace('/(auth)/select-profile');
+    }
+  }, [isAuthenticated, isLoading, router]);
 
   // Show loading screen while checking authentication
   if (isLoading) {
@@ -107,14 +132,6 @@ export default function TabLayout() {
       </View>
     );
   }
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      console.log('🏠 TabLayout: Not authenticated, redirecting to select-profile');
-      router.replace('/(auth)/select-profile');
-    }
-  }, [isAuthenticated, isLoading, router]);
 
   // Don't render tabs if not authenticated
   if (!isAuthenticated) {
@@ -156,6 +173,15 @@ export default function TabLayout() {
           ),
         }}
       />
+      
+      {/* Hide map tab - it's now in the FAB */}
+      <Tabs.Screen
+        name="map"
+        options={{
+          href: null, // Hide from tab bar
+        }}
+      />
+      
       <Tabs.Screen
         name="profile"
         options={{
@@ -184,6 +210,46 @@ export default function TabLayout() {
         }}
       />
       </Tabs>
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={handleFABPress}
+        activeOpacity={0.8}
+      >
+        <View style={styles.fabInner}>
+          <Ionicons
+            name={isOnMapScreen ? "home" : "map"}
+            size={28}
+            color={BrandTheme.colors.BLACK}
+          />
+        </View>
+      </TouchableOpacity>
     </ScreenWrapper>
   );
 }
+
+const styles = StyleSheet.create({
+  fab: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 85 : 70,
+    alignSelf: 'center',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: BrandTheme.colors.YELLOW,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...BrandTheme.shadows.YELLOW_GLOW,
+    borderWidth: 3,
+    borderColor: BrandTheme.colors.BLACK,
+    elevation: 8,
+    zIndex: 1000,
+  },
+  fabInner: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

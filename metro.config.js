@@ -20,8 +20,9 @@ config.resolver.alias = {
 config.resolver.platforms = ['native', 'web', 'default'];
 
 // Enable web-specific settings
-config.server = {
-  port: 8083,
-};
+// Note: Removed custom port - let Expo use default 8081
+// config.server = {
+//   port: 8083,
+// };
 
 module.exports = withNativeWind(config, { input: './global.css' });

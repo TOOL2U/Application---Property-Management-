@@ -3,7 +3,7 @@
  * Implements real-time Firebase listener for job assignments
  */
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import {
   collection,
   query,
@@ -11,6 +11,7 @@ import {
   orderBy,
   onSnapshot,
   doc,
+  getDoc,
   updateDoc,
   addDoc,
   serverTimestamp,
@@ -137,14 +138,36 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         const db = await getDb();
 
-        // Set up job listener using Firebase UID
+        // Set up job listeners for BOTH collections (mobile app 'jobs' + webapp 'operational_jobs')
+        // Query 1: Mobile app jobs collection - assigned to this staff member
         const jobsQuery = query(
           collection(db, 'jobs'),
           where('assignedStaffId', '==', firebaseUid),
           orderBy('createdAt', 'desc')
         );
+        
+        // Query 2: Webapp operational_jobs collection - assigned to this staff member
+        const operationalJobsQuery = query(
+          collection(db, 'operational_jobs'),
+          where('assignedStaffId', '==', firebaseUid),
+          orderBy('createdAt', 'desc')
+        );
+        
+        // Query 3: Unassigned operational_jobs for cleaners (pending/offered status, no assignment yet)
+        const unassignedOperationalJobsQuery = query(
+          collection(db, 'operational_jobs'),
+          where('requiredRole', '==', 'cleaner'),
+          where('status', 'in', ['pending', 'offered']),
+          orderBy('createdAt', 'desc')
+        );
 
-        jobsUnsubscribe = onSnapshot(
+        // Combined job list from all queries
+        let assignedJobs: JobData[] = [];
+        let assignedOperationalJobs: JobData[] = [];
+        let unassignedJobs: JobData[] = [];
+        
+        // Listener 1: Mobile app jobs (assigned)
+        const unsubscribe1 = onSnapshot(
           jobsQuery,
           (snapshot) => {
             const jobList: JobData[] = [];
@@ -168,20 +191,115 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               } as unknown as JobData);
             });
             
-            console.log('🔄 JobContext: Jobs updated -', jobList.length, 'jobs for Firebase UID:', firebaseUid);
-            setJobs(jobList);
+            console.log('🔄 JobContext: Mobile app assigned jobs updated -', jobList.length, 'jobs');
+            assignedJobs = jobList;
+            // Merge all job lists
+            const allJobs = [...assignedJobs, ...assignedOperationalJobs, ...unassignedJobs];
+            setJobs(allJobs);
             setError(null);
             setLoading(false);
             setIsConnected(true);
             setLastUpdate(new Date());
           },
           (error) => {
-            console.error('❌ JobContext: Jobs listener error:', error);
+            console.error('❌ JobContext: Mobile jobs listener error:', error);
             setError('Failed to load jobs');
             setLoading(false);
             setIsConnected(false);
           }
         );
+        
+        // Listener 2: Webapp operational_jobs (assigned)
+        const unsubscribe2 = onSnapshot(
+          operationalJobsQuery,
+          (snapshot) => {
+            const operationalJobList: JobData[] = [];
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              operationalJobList.push({
+                id: doc.id,
+                ...data,
+                // Convert Firebase timestamps to proper format
+                createdAt: data.createdAt?.toDate?.() || data.createdAt,
+                updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
+                lastNotificationAt: data.lastNotificationAt?.toDate?.() || data.lastNotificationAt,
+                // Convert booking/schedule dates
+                checkInDate: data.checkInDate?.toDate?.() || data.checkInDate,
+                checkOutDate: data.checkOutDate?.toDate?.() || data.checkOutDate,
+                scheduledFor: data.scheduledFor?.toDate?.() || data.scheduledFor,
+                scheduledDate: data.scheduledDate?.toDate?.() || data.scheduledDate,
+                startedAt: data.startedAt?.toDate?.() || data.startedAt,
+                completedAt: data.completedAt?.toDate?.() || data.completedAt,
+                rejectedAt: data.rejectedAt?.toDate?.() || data.rejectedAt,
+              } as unknown as JobData);
+            });
+            
+            console.log('🔄 JobContext: Webapp assigned operational jobs updated -', operationalJobList.length, 'jobs');
+            assignedOperationalJobs = operationalJobList;
+            // Merge all job lists
+            const allJobs = [...assignedJobs, ...assignedOperationalJobs, ...unassignedJobs];
+            setJobs(allJobs);
+            setError(null);
+            setLoading(false);
+            setIsConnected(true);
+            setLastUpdate(new Date());
+          },
+          (error) => {
+            console.error('❌ JobContext: Operational jobs listener error:', error);
+            // Don't set error state - mobile jobs might still work
+          }
+        );
+        
+        // Listener 3: Unassigned operational_jobs (pending/offered for cleaners)
+        const unsubscribe3 = onSnapshot(
+          unassignedOperationalJobsQuery,
+          (snapshot) => {
+            const pendingJobList: JobData[] = [];
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              // Only include if not already assigned to someone else
+              if (!data.assignedStaffId || data.assignedStaffId === null) {
+                pendingJobList.push({
+                  id: doc.id,
+                  ...data,
+                  // Convert Firebase timestamps to proper format
+                  createdAt: data.createdAt?.toDate?.() || data.createdAt,
+                  updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
+                  lastNotificationAt: data.lastNotificationAt?.toDate?.() || data.lastNotificationAt,
+                  // Convert booking/schedule dates
+                  checkInDate: data.checkInDate?.toDate?.() || data.checkInDate,
+                  checkOutDate: data.checkOutDate?.toDate?.() || data.checkOutDate,
+                  scheduledFor: data.scheduledFor?.toDate?.() || data.scheduledFor,
+                  scheduledDate: data.scheduledDate?.toDate?.() || data.scheduledDate,
+                  startedAt: data.startedAt?.toDate?.() || data.startedAt,
+                  completedAt: data.completedAt?.toDate?.() || data.completedAt,
+                  rejectedAt: data.rejectedAt?.toDate?.() || data.rejectedAt,
+                } as unknown as JobData);
+              }
+            });
+            
+            console.log('🔄 JobContext: Unassigned operational jobs updated -', pendingJobList.length, 'pending jobs available');
+            unassignedJobs = pendingJobList;
+            // Merge all job lists
+            const allJobs = [...assignedJobs, ...assignedOperationalJobs, ...unassignedJobs];
+            setJobs(allJobs);
+            setError(null);
+            setLoading(false);
+            setIsConnected(true);
+            setLastUpdate(new Date());
+          },
+          (error) => {
+            console.error('❌ JobContext: Unassigned jobs listener error:', error);
+            // Don't set error state - assigned jobs might still work
+          }
+        );
+
+        // Combined unsubscribe function
+        jobsUnsubscribe = () => {
+          unsubscribe1();
+          unsubscribe2();
+          unsubscribe3();
+        };
 
         // Set up notifications listener (using Firebase UID for notifications)
         const notificationsQuery = query(
@@ -234,8 +352,8 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [isAuthenticated, currentProfile?.id]);
 
-  // Respond to job assignment (accept/decline)
-  const respondToJob = async (response: JobResponse): Promise<boolean> => {
+  // Respond to job assignment (accept/decline) - wrapped in useCallback
+  const respondToJob = useCallback(async (response: JobResponse): Promise<boolean> => {
     try {
       console.log('🎯 JobContext: Responding to job:', response.jobId, 'accepted:', response.accepted);
       
@@ -260,15 +378,34 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setError('Failed to respond to job');
       return false;
     }
-  };
+  }, [jobs]);
 
   // Update job status (start, complete, etc.)
-  const updateJobStatus = async (update: JobStatusUpdate): Promise<boolean> => {
+  // Supports BOTH 'jobs' and 'operational_jobs' collections - wrapped in useCallback
+  const updateJobStatus = useCallback(async (update: JobStatusUpdate): Promise<boolean> => {
     try {
       console.log('🔄 JobContext: Updating job status:', update.jobId, 'to', update.status);
       
-  const db = await getDb();
-  const jobRef = doc(db, 'jobs', update.jobId);
+      const db = await getDb();
+      
+      // Try to find job in both collections
+      let jobRef = doc(db, 'jobs', update.jobId);
+      let jobDoc = await getDoc(jobRef);
+      let collection = 'jobs';
+
+      // If not found in 'jobs', try 'operational_jobs'
+      if (!jobDoc.exists()) {
+        jobRef = doc(db, 'operational_jobs', update.jobId);
+        jobDoc = await getDoc(jobRef);
+        collection = 'operational_jobs';
+      }
+
+      if (!jobDoc.exists()) {
+        console.error('❌ JobContext: Job not found in any collection:', update.jobId);
+        setError('Job not found');
+        return false;
+      }
+
       const updateData: any = {
         status: update.status,
         updatedAt: serverTimestamp(),
@@ -290,17 +427,17 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       await updateDoc(jobRef, updateData);
 
-      console.log('✅ JobContext: Job status updated successfully');
+      console.log(`✅ JobContext: Job status updated successfully in ${collection} collection`);
       return true;
     } catch (error) {
       console.error('❌ JobContext: Error updating job status:', error);
       setError('Failed to update job status');
       return false;
     }
-  };
+  }, [jobs]); // Depends on jobs array for status history
 
-  // Mark notification as read
-  const markNotificationAsRead = async (notificationId: string): Promise<boolean> => {
+  // Mark notification as read - wrapped in useCallback
+  const markNotificationAsRead = useCallback(async (notificationId: string): Promise<boolean> => {
     try {
   const db = await getDb();
   const notificationRef = doc(db, 'staff_notifications', notificationId);
@@ -315,14 +452,14 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error('❌ JobContext: Error marking notification as read:', error);
       return false;
     }
-  };
+  }, []); // No dependencies
 
-  // Manual refresh
-  const refreshJobs = async (): Promise<void> => {
+  // Manual refresh - wrapped in useCallback to prevent infinite loops
+  const refreshJobs = useCallback(async (): Promise<void> => {
     console.log('🔄 JobContext: Manual refresh requested');
     // The real-time listener will handle updates automatically
     setLastUpdate(new Date());
-  };
+  }, []); // No dependencies - always stable
 
   const contextValue: JobContextType = {
     // Data

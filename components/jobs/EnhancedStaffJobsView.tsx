@@ -260,9 +260,11 @@ export default function EnhancedStaffJobsView() {
         <View style={styles.jobHeader}>
           <View style={styles.jobTitleSection}>
             <Text style={styles.jobTitle}>{job.title}</Text>
-            <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(job.priority) }]}>
-              <Text style={styles.priorityText}>{job.priority.toUpperCase()}</Text>
-            </View>
+            {job.priority && (
+              <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(job.priority) }]}>
+                <Text style={styles.priorityText}>{job.priority.toUpperCase()}</Text>
+              </View>
+            )}
           </View>
           <View style={[styles.statusBadge, { backgroundColor: getStatusColor(job.status) }]}>
             <Text style={styles.statusText}>{job.status.replace('_', ' ').toUpperCase()}</Text>
@@ -271,27 +273,33 @@ export default function EnhancedStaffJobsView() {
 
         {/* Job Details */}
         <View style={styles.jobDetails}>
-          <View style={styles.jobDetailRow}>
-            <Ionicons name="calendar-outline" size={16} color="#C6FF00" />
-            <Text style={styles.jobDetailText}>{formatDate(job.scheduledDate)}</Text>
-          </View>
+          {job.scheduledDate && (
+            <View style={styles.jobDetailRow}>
+              <Ionicons name="calendar-outline" size={16} color="#C6FF00" />
+              <Text style={styles.jobDetailText}>{formatDate(job.scheduledDate)}</Text>
+            </View>
+          )}
           
-          <View style={styles.jobDetailRow}>
-            <Ionicons name="time-outline" size={16} color="#C6FF00" />
-            <Text style={styles.jobDetailText}>{job.estimatedDuration} min</Text>
-          </View>
+          {job.estimatedDuration && (
+            <View style={styles.jobDetailRow}>
+              <Ionicons name="time-outline" size={16} color="#C6FF00" />
+              <Text style={styles.jobDetailText}>{job.estimatedDuration} min</Text>
+            </View>
+          )}
           
-          <View style={styles.jobDetailRow}>
-            <Ionicons name="location-outline" size={16} color="#C6FF00" />
-            <Text style={styles.jobDetailText} numberOfLines={1}>
-              {job.location.address}
-            </Text>
-          </View>
+          {job.location?.address && (
+            <View style={styles.jobDetailRow}>
+              <Ionicons name="location-outline" size={16} color="#C6FF00" />
+              <Text style={styles.jobDetailText} numberOfLines={1}>
+                {job.location.address}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Job Actions */}
         <View style={styles.jobActions}>
-          {job.status === 'assigned' && (
+          {(job.status === 'assigned' || job.status === 'pending') && (
             <View style={styles.acceptButtonContainer}>
               {/* Glow Effect - Same as JOBS button */}
               <View
@@ -610,6 +618,8 @@ const styles = StyleSheet.create({
   filterContainer: {
     paddingHorizontal: 20,
     paddingBottom: 16,
+    marginTop: 24,
+    paddingTop: 12,
   },
   filterScrollView: {
     gap: 12,
