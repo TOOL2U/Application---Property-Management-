@@ -175,16 +175,10 @@ export default function IndexScreen() {
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <View style={styles.headerLeft}>
-            <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>
-                {currentProfile.name ? currentProfile.name.charAt(0).toUpperCase() : 'U'}
-              </Text>
-            </View>
-            <View style={styles.userInfo}>
-              <Text style={styles.userName}>{currentProfile.name}</Text>
-              <Text style={styles.userRole}>{currentProfile.role}</Text>
-            </View>
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>
+              {currentProfile.name ? currentProfile.name.charAt(0).toUpperCase() : 'U'}
+            </Text>
           </View>
           
           <TouchableOpacity 
@@ -313,41 +307,53 @@ export default function IndexScreen() {
               )}
             </View>
 
-            {todaysJobs.slice(0, 2).map((job) => (
-              <TouchableOpacity
-                key={job.id}
-                onPress={() => router.push(`/jobs/${job.id}`)}
-                style={styles.todayJobCard}
-                activeOpacity={0.8}
-              >
-                <View style={styles.todayJobTime}>
-                  <Ionicons name="time" size={18} color={BrandTheme.colors.YELLOW} />
-                  <Text style={styles.todayJobTimeText}>{formatTime(job.scheduledDate)}</Text>
-                </View>
-                <View style={styles.todayJobDetails}>
-                  <Text style={styles.todayJobTitle} numberOfLines={1}>{job.title}</Text>
-                  {job.location?.address && (
-                    <Text style={styles.todayJobLocation} numberOfLines={1}>
-                      📍 {job.location.address}
-                    </Text>
-                  )}
-                  <View style={styles.todayJobFooter}>
-                    <View style={[styles.todayJobStatus, { 
-                      backgroundColor: getStatusColor(job.status) + '20',
-                      borderColor: getStatusColor(job.status)
-                    }]}>
-                      <Text style={[styles.todayJobStatusText, { color: getStatusColor(job.status) }]}>
-                        {job.status.replace('_', ' ').toUpperCase()}
-                      </Text>
-                    </View>
-                    {job.estimatedDuration && (
-                      <Text style={styles.todayJobDuration}>⏱ {job.estimatedDuration} min</Text>
-                    )}
+            {todaysJobs.slice(0, 2).map((job) => {
+              const statusColor = getStatusColor(job.status);
+              
+              return (
+                <TouchableOpacity
+                  key={job.id}
+                  onPress={() => router.push(`/jobs/${job.id}`)}
+                  style={[
+                    styles.todayJobCard,
+                    {
+                      borderLeftWidth: 4,
+                      borderLeftColor: statusColor,
+                      shadowColor: statusColor,
+                      shadowOpacity: 0.3,
+                    }
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.todayJobTime}>
+                    <Ionicons name="time" size={18} color={statusColor} />
+                    <Text style={styles.todayJobTimeText}>{formatTime(job.scheduledDate)}</Text>
                   </View>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={BrandTheme.colors.TEXT_SECONDARY} />
-              </TouchableOpacity>
-            ))}
+                  <View style={styles.todayJobDetails}>
+                    <Text style={styles.todayJobTitle} numberOfLines={1}>{job.title}</Text>
+                    {job.location?.address && (
+                      <Text style={styles.todayJobLocation} numberOfLines={1}>
+                        📍 {job.location.address}
+                      </Text>
+                    )}
+                    <View style={styles.todayJobFooter}>
+                      <View style={[styles.todayJobStatus, { 
+                        backgroundColor: statusColor + '20',
+                        borderColor: statusColor
+                      }]}>
+                        <Text style={[styles.todayJobStatusText, { color: statusColor }]}>
+                          {job.status.replace('_', ' ').toUpperCase()}
+                        </Text>
+                      </View>
+                      {job.estimatedDuration && (
+                        <Text style={styles.todayJobDuration}>⏱ {job.estimatedDuration} min</Text>
+                      )}
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={BrandTheme.colors.TEXT_SECONDARY} />
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
 
@@ -370,30 +376,59 @@ export default function IndexScreen() {
               const isToday = daysUntil === 0;
               const isTomorrow = daysUntil === 1;
               
+              // Get status color for the property indicator
+              const getJobStatusColor = (status: string) => {
+                switch (status) {
+                  case 'assigned':
+                  case 'pending':
+                    return BrandTheme.colors.YELLOW;
+                  case 'in_progress':
+                  case 'active':
+                    return '#60A5FA'; // Blue
+                  case 'accepted':
+                    return BrandTheme.colors.SUCCESS;
+                  case 'urgent':
+                  case 'high':
+                    return BrandTheme.colors.ERROR;
+                  default:
+                    return BrandTheme.colors.YELLOW;
+                }
+              };
+              
+              const statusColor = getJobStatusColor(job.status || 'assigned');
+              
               return (
                 <TouchableOpacity 
                   key={job.id}
                   onPress={() => router.push(`/jobs/${job.id}`)}
-                  style={styles.upcomingCard}
+                  style={[
+                    styles.upcomingCard,
+                    { 
+                      borderLeftWidth: 4,
+                      borderLeftColor: statusColor,
+                      shadowColor: statusColor,
+                      shadowOpacity: 0.3,
+                    }
+                  ]}
                   activeOpacity={0.8}
                 >
-                  {isToday && <View style={styles.todayIndicator} />}
-                  {isTomorrow && <View style={styles.tomorrowIndicator} />}
+                  {isToday && <View style={[styles.todayIndicator, { backgroundColor: statusColor }]} />}
+                  {isTomorrow && <View style={[styles.tomorrowIndicator, { backgroundColor: statusColor }]} />}
                   
                   <View style={styles.upcomingCardHeader}>
                     <View style={styles.upcomingPropertyInfo}>
-                      <Ionicons name="home" size={18} color={BrandTheme.colors.YELLOW} />
+                      <Ionicons name="home" size={18} color={statusColor} />
                       <Text style={styles.upcomingPropertyName} numberOfLines={1}>
                         {job.propertyName || job.title}
                       </Text>
                     </View>
                     {isToday && (
-                      <View style={styles.todayBadge}>
+                      <View style={[styles.todayBadge, { backgroundColor: statusColor }]}>
                         <Text style={styles.todayBadgeText}>TODAY</Text>
                       </View>
                     )}
                     {isTomorrow && (
-                      <View style={styles.tomorrowBadge}>
+                      <View style={[styles.tomorrowBadge, { backgroundColor: statusColor }]}>
                         <Text style={styles.tomorrowBadgeText}>TOMORROW</Text>
                       </View>
                     )}
