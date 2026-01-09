@@ -438,6 +438,12 @@ export default function MapScreen() {
   const renderCustomMarker = (property: PropertyMarker) => {
     const color = getMarkerColor(property.status);
     const isPending = property.status === 'pending'; // Flash only for pending jobs
+    const iconColor = property.status === 'active' ? BrandTheme.colors.BLACK : BrandTheme.colors.TEXT_PRIMARY;
+    
+    // Debug log for icon color
+    if (property.jobs.length > 0) {
+      console.log(`🎨 MapScreen: Rendering marker for ${property.propertyName} - Status: ${property.status}, Pin color: ${color}, Icon color: ${iconColor}`);
+    }
 
     return (
       <Marker
@@ -460,7 +466,7 @@ export default function MapScreen() {
             <Ionicons
               name="home"
               size={24}
-              color={property.status === 'active' ? BrandTheme.colors.BLACK : BrandTheme.colors.TEXT_PRIMARY}
+              color={iconColor}
             />
           </View>
           {property.jobs.length > 1 && (
