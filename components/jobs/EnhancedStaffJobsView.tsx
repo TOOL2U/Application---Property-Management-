@@ -355,12 +355,12 @@ export default function EnhancedStaffJobsView() {
 
           {job.status === 'accepted' && (
             <TouchableOpacity
-              style={styles.actionButton}
+              style={[styles.actionButton, styles.startJobButton]}
               onPress={() => handleStartJob(job)}
             >
-              <View style={styles.actionButtonGradient}>
-                <Ionicons name="play-outline" size={16} color="#0B0F1A" />
-                <Text style={styles.actionButtonText}>{t('jobs.startJob')}</Text>
+              <View style={[styles.actionButtonGradient, { backgroundColor: '#60A5FA' }]}>
+                <Ionicons name="play-outline" size={16} color="#FFFFFF" />
+                <Text style={[styles.actionButtonText, { color: '#FFFFFF' }]}>{t('jobs.startJob')}</Text>
               </View>
             </TouchableOpacity>
           )}
@@ -790,6 +790,14 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 12, // Modern rounded
     backgroundColor: BrandTheme.colors.YELLOW,
+  },
+  startJobButton: {
+    backgroundColor: '#60A5FA', // Blue color
+    shadowColor: '#60A5FA',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
   },
   reviewButtonContainer: {
     position: 'relative',
