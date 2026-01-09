@@ -76,7 +76,7 @@ export default function IndexScreen() {
   // Get upcoming jobs (next 3 scheduled jobs with check-in dates)
   const upcomingJobs = useMemo(() => {
     const now = new Date();
-    return [...pendingJobs, ...activeJobs]
+    const upcoming = [...pendingJobs, ...activeJobs]
       .filter(job => {
         if (!job.checkInDate) return false;
         const checkIn = job.checkInDate instanceof Date ? job.checkInDate : new Date(job.checkInDate);
@@ -88,6 +88,13 @@ export default function IndexScreen() {
         return aDate.getTime() - bDate.getTime();
       })
       .slice(0, 3); // Show next 3 jobs
+    
+    // Debug logging to see job statuses
+    if (upcoming.length > 0) {
+      console.log('📋 Dashboard: Upcoming jobs statuses:', upcoming.map(j => ({ id: j.id, status: j.status, title: j.title })));
+    }
+    
+    return upcoming;
   }, [pendingJobs, activeJobs]);
 
   // Get current time greeting
@@ -378,6 +385,7 @@ export default function IndexScreen() {
               
               // Get status color for the property indicator
               const getJobStatusColor = (status: string) => {
+                console.log(`🎨 Dashboard: Getting color for status "${status}" for job ${job.id}`);
                 switch (status) {
                   case 'assigned':
                   case 'pending':
@@ -391,11 +399,13 @@ export default function IndexScreen() {
                   case 'high':
                     return BrandTheme.colors.ERROR;
                   default:
+                    console.log(`⚠️ Dashboard: Unknown status "${status}", defaulting to yellow`);
                     return BrandTheme.colors.YELLOW;
                 }
               };
               
               const statusColor = getJobStatusColor(job.status || 'assigned');
+              console.log(`✅ Dashboard: Job ${job.id} (${job.title}) - Status: "${job.status}" - Color: ${statusColor}`);
               
               return (
                 <TouchableOpacity 
