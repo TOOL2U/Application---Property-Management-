@@ -287,15 +287,31 @@ export default function MapScreen() {
         // Determine status based on jobs
         let status: 'active' | 'pending' | 'inactive' = 'inactive';
         
+        // Active: accepted or in_progress jobs
         const hasActiveJob = propertyJobs.some(j => 
           j.status === 'accepted' || j.status === 'in_progress'
         );
-        const hasPendingJob = propertyJobs.some(j => j.status === 'assigned');
+        
+        // Pending: assigned or pending status jobs
+        const hasPendingJob = propertyJobs.some(j => 
+          j.status === 'assigned' || j.status === 'pending'
+        );
+        
+        // Log job statuses for debugging
+        if (propertyJobs.length > 0) {
+          console.log(`🏠 MapScreen: Property ${marker.propertyName} has ${propertyJobs.length} job(s):`, 
+            propertyJobs.map(j => ({ id: j.id, status: j.status }))
+          );
+        }
         
         if (hasActiveJob) {
           status = 'active';
+          console.log(`✅ MapScreen: Property ${marker.propertyName} marked as ACTIVE (green)`);
         } else if (hasPendingJob) {
           status = 'pending';
+          console.log(`⏳ MapScreen: Property ${marker.propertyName} marked as PENDING (yellow)`);
+        } else {
+          console.log(`⚪ MapScreen: Property ${marker.propertyName} marked as INACTIVE (grey)`);
         }
 
         // Only update if status or jobs changed
